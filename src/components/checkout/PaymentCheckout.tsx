@@ -11,7 +11,7 @@ import { getBankLogo } from "@/lib/banks";
 import type { FiatCurrency, PaymentMode, StablecoinSymbol } from "@/lib/payment-data";
 import { formatCurrency } from "@/lib/payment-data";
 import type { MerchantRecord, OrderRecord, PaymentLinkRecord, TokenNetworkRecord } from "@/server/types";
-type Stage = null | "naira" | "customer" | "asset" | "review" | "transfer" | "success";
+type Stage = null | "naira" | "customer" | "asset" | "token" | "review" | "transfer" | "success";
 
 interface PaymentCheckoutProps {
   linkId: string;
@@ -266,7 +266,13 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
             </div>
           )}
           {locked && <p className="rounded-2xl border border-zinc-200 p-4 text-2xl font-semibold">{formatNaira(value)}</p>}
-          <p className="mb-3 mt-6 text-sm font-medium">Select stablecoin</p>
+          <button disabled={!canContinue} onClick={() => setStage("token")} className="mt-5 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white disabled:opacity-40">Continue</button>
+        </BottomSheet>
+      )}
+
+      {stage === "token" && (
+        <BottomSheet onClose={() => setStage(null)}>
+          <div className="mb-5 flex items-center gap-3"><button onClick={() => setStage("asset")}><ArrowLeft /></button><h2 className="text-xl font-semibold">Select token</h2></div>
           <div className="grid grid-cols-2 gap-3">
             {(["USDSUI", "USDC"] as const).map((symbol) => (
               <button
@@ -280,14 +286,14 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
             ))}
           </div>
           <p className="mt-3 text-center text-xs text-zinc-400">Both on Sui network</p>
-          <button disabled={!canContinue} onClick={() => setStage("review")} className="mt-5 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white disabled:opacity-40">Continue</button>
+          <button onClick={() => setStage("review")} className="mt-5 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white">Continue</button>
         </BottomSheet>
       )}
 
 
 {stage === "review" && (
-        <BottomSheet onClose={() => setStage("asset")}>
-          <div className="mb-5 flex items-center gap-3"><button onClick={() => setStage("asset")}><ArrowLeft /></button><h2 className="text-xl font-semibold">Payment details</h2></div>
+        <BottomSheet onClose={() => setStage("token")}>
+          <div className="mb-5 flex items-center gap-3"><button onClick={() => setStage("token")}><ArrowLeft /></button><h2 className="text-xl font-semibold">Payment details</h2></div>
           <p className="text-center text-3xl font-semibold">{formatNaira(value)}</p>
           <p className="mt-2 text-center text-sm text-zinc-500">Estimated {cryptoDue.toFixed(2)} {token}</p>
           <div className="mt-7 divide-y divide-zinc-100 rounded-2xl bg-zinc-50 px-4">
