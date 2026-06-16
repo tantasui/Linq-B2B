@@ -30,8 +30,6 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
   const [accountIdentifier, setAccountIdentifier] = useState("");
   const [feedback, setFeedback] = useState("");
   const [saving, setSaving] = useState(false);
-  const [walletSetupTick, setWalletSetupTick] = useState(0);
-  const [walletSetupSlow, setWalletSetupSlow] = useState(false);
 
   const stepIndex = steps.findIndex((entry) => entry.id === step);
   const selectedBank = getBankByCode(institutionCode);
@@ -43,10 +41,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
       .slice(0, 10);
   }, [bankQuery]);
   const accountSignedIn = dynamic.connected && Boolean(dynamic.user?.id);
-  const walletReady = dynamic.wallets.length > 0;
-  const waitingForWallet = step === "account" && accountSignedIn && !walletReady;
-  const walletSetupDots = ".".repeat((walletSetupTick % 3) + 1);
-  const continueDisabled = saving || waitingForWallet;
+  const continueDisabled = saving;
 
   const wallets = dynamic.wallets.map((wallet) => ({
     walletId: wallet.id,
@@ -56,26 +51,6 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
     walletType: wallet.walletType,
     tokenSupport: ["USDSUI", "USDC"],
   }));
-
-  useEffect(() => {
-    if (!waitingForWallet) {
-      setWalletSetupTick(0);
-      setWalletSetupSlow(false);
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      setWalletSetupTick((current) => current + 1);
-    }, 450);
-    const slowTimer = window.setTimeout(() => {
-      setWalletSetupSlow(true);
-    }, 12000);
-
-    return () => {
-      window.clearInterval(interval);
-      window.clearTimeout(slowTimer);
-    };
-  }, [waitingForWallet]);
 
   useEffect(() => {
     if (!onCompleteHref) return;
@@ -119,10 +94,6 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
         setFeedback("Finish sign in before continuing.");
         return;
       }
-      if (!dynamic.wallets.length) {
-        setFeedback("Your business wallet is not ready yet. Finish sign-up, then continue.");
-        return;
-      }
       setStep("business");
       return;
     }
@@ -161,9 +132,6 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
         throw new Error("Sign in before saving merchant setup.");
       }
       setActiveDynamicUserId(dynamic.user.id);
-      if (!dynamic.wallets.length) {
-        throw new Error("Your business wallet is not ready yet. Finish sign-up, then save.");
-      }
       const response = await onboardMerchant({
         dynamicUserId: dynamic.user.id,
         userEmail: dynamic.user.email,
@@ -212,34 +180,13 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
           <div className="rounded-2xl bg-zinc-50 p-4">
             <p className="text-sm font-medium">{accountSignedIn ? "Account verified" : "Sign in or create your account"}</p>
             <p className="mt-2 text-xs leading-5 text-zinc-500">
-              {accountSignedIn
-                ? walletReady
-                  ? "Your Sui wallet is ready. You can continue."
-                  : "Setting up your Sui wallet — this takes a moment."
-                : "Use email or Google. Your Sui wallet is created for you and stays under your control."}
+              {accountSignedIn ? "Signed in. You can continue to the next step." : "Use email or Google to create your merchant account."}
             </p>
           </div>
           {dynamic.connected ? (
             <div className="rounded-2xl border border-zinc-100 p-4">
               <p className="text-sm font-medium">{dynamic.user?.email ?? "Account ready"}</p>
-              <p className="mt-1 text-xs text-zinc-500">
-                {walletReady ? `${dynamic.wallets.length} business wallet${dynamic.wallets.length === 1 ? "" : "s"} ready` : `Finishing wallet setup${walletSetupDots}`}
-              </p>
-              {!walletReady && (
-                <button onClick={startSignIn} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-700">
-                  <Mail className="h-4 w-4" /> Open wallet setup
-                </button>
-              )}
-              {walletSetupSlow && !walletReady && (
-                <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-700">
-                  Wallet setup is taking longer than expected. Open Dynamic setup to finish any passkey, backup, or embedded-wallet step.
-                </p>
-              )}
-              <div className="mt-3 space-y-2">
-                {dynamic.wallets.map((wallet) => (
-                  <code key={`${wallet.network}-${wallet.address}`} className="block truncate rounded-xl bg-zinc-50 p-3 text-xs text-zinc-500">{wallet.network}: {wallet.address}</code>
-                ))}
-              </div>
+              <p className="mt-1 text-xs text-zinc-500">Account verified — continue to set up your business.</p>
             </div>
           ) : (
             <button onClick={startSignIn} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#8A4FFF] text-sm font-medium text-white">
@@ -322,7 +269,6 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
             ["Email", businessEmail],
             ["Location", location || "Not set"],
             ["Bank", `${selectedBank?.name ?? institutionCode} / ${accountIdentifier}`],
-            ["Business wallet", `${dynamic.wallets.length} wallet${dynamic.wallets.length === 1 ? "" : "s"} ready`],
           ].map(([label, value]) => (
             <p key={label} className="flex justify-between gap-4 py-3"><span className="text-zinc-500">{label}</span><span className="text-right font-medium">{value}</span></p>
           ))}
@@ -330,7 +276,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
       )}
 
       <div className="mt-4 rounded-2xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-500">
-        <p className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#8A4FFF]" /> Your business wallet stays under your control.</p>
+        <p className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#8A4FFF]" /> Payments settle directly to your verified Naira account.</p>
         <p className="mt-1 flex items-center gap-2"><CreditCard className="h-4 w-4 text-[#8A4FFF]" /> Payout retries always use the verified account above.</p>
       </div>
 
@@ -345,16 +291,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
           </button>
         ) : (
           <button onClick={next} disabled={continueDisabled} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#8A4FFF] text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500">
-            {waitingForWallet ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Finishing setup{walletSetupDots}
-              </>
-            ) : (
-              <>
-                Continue <ArrowRight className="h-4 w-4" />
-              </>
-            )}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Continue <ArrowRight className="h-4 w-4" /></>}
           </button>
         )}
       </div>
