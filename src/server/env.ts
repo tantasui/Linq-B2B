@@ -27,7 +27,16 @@ const rawEnv = z.object({
   UPSTASH_REDIS_REST_URL: optionalUrl,
   UPSTASH_REDIS_REST_TOKEN: optionalString,
   REDIS_URL: optionalString,
-  NEXT_PUBLIC_APP_URL: optionalUrl,
+  NEXT_PUBLIC_APP_URL: z.preprocess(
+    (v) => {
+      if (!v || v === "") return undefined;
+      const s = String(v).trim();
+      if (!s || s === "undefined") return undefined;
+      if (!/^https?:\/\//.test(s)) return `https://${s}`;
+      return s;
+    },
+    z.string().url().optional(),
+  ),
   BACKEND_API_URL: optionalUrl,
 });
 
