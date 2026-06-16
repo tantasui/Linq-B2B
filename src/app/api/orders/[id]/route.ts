@@ -1,5 +1,6 @@
 import { fail, handleApiError, ok } from "@/server/http";
-import { getLinqOrderStatus, liveLinqEnabled } from "@/server/linq-offramp";
+import { liveLinqEnabled } from "@/server/env";
+import { getLinqOrderStatus } from "@/server/linq-offramp";
 import { logger } from "@/server/logger";
 import { addOrderEvent, getOrder, updateOrder } from "@/server/store";
 
