@@ -1,39 +1,40 @@
 import { fail, handleApiError, ok } from "@/server/http";
-import { getPaycrestOrder } from "@/server/paycrest";
-import { addOrderEvent, getOrder, updateOrder } from "@/server/store";
+import { getLinqOrderStatus, liveLinqEnabled } from "@/server/linq-offramp";
 import { logger } from "@/server/logger";
+import { addOrderEvent, getOrder, updateOrder } from "@/server/store";
 
 interface Params {
   params: Promise<{ id: string }>;
 }
 
+const TERMINAL = new Set(["settled", "expired", "failed", "cancelled", "refunded"]);
+
 export async function GET(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
     let order = await getOrder(id);
-    if (order?.paycrestOrderId) {
+    if (!order) return fail("Order not found.", 404);
+
+    // Only poll Linq if the order is non-terminal and has a Linq order ID
+    if (order.paycrestOrderId && liveLinqEnabled && !TERMINAL.has(order.status)) {
       try {
-        const paycrest = await getPaycrestOrder(order.paycrestOrderId);
-        order = await updateOrder(order.id, {
-          status: paycrest.status,
-          quotedRate: paycrest.quotedRate ?? order.quotedRate,
-          cryptoAmountDue: paycrest.cryptoAmountDue ?? order.cryptoAmountDue,
-          senderFee: paycrest.senderFee ?? order.senderFee,
-          transactionFee: paycrest.transactionFee ?? order.transactionFee,
-          providerReceiveAddress: paycrest.providerReceiveAddress ?? order.providerReceiveAddress,
-          validUntil: paycrest.validUntil ?? order.validUntil,
-          paycrestPayload: paycrest.raw,
-        }) ?? order;
-        await addOrderEvent(order.id, "linq", `order.refresh.${paycrest.status}`, paycrest.raw);
+        const linq = await getLinqOrderStatus(order.paycrestOrderId);
+        if (linq.status !== order.status) {
+          order = await updateOrder(order.id, {
+            status: linq.status,
+            paycrestPayload: linq.raw,
+          }) ?? order;
+          await addOrderEvent(order.id, "linq", `order.refresh.${linq.status}`, linq.raw);
+        }
       } catch (error) {
-        logger.warn("paycrest.order_refresh_failed", {
+        logger.warn("linq.order_refresh_failed", {
           orderId: order.id,
-          paycrestOrderId: order.paycrestOrderId,
-          message: error instanceof Error ? error.message : "Paycrest order refresh failed.",
+          linqOrderId: order.paycrestOrderId,
+          message: error instanceof Error ? error.message : "Linq order refresh failed.",
         });
       }
     }
-    if (!order) return fail("Order not found.", 404);
+
     return ok({ order });
   } catch (error) {
     return handleApiError(error);

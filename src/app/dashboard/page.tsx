@@ -13,8 +13,9 @@ const emptyTrend = Array.from({ length: 8 }, () => ({ value: 0 }));
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderRecord[]>([]);
-  const totalNgn = orders.reduce((sum, order) => sum + order.amountNgn, 0);
-  const trend = orders.length ? orders.slice(0, 8).reverse().map((order) => ({ value: order.amountNgn })) : emptyTrend;
+  const settledOrders = orders.filter((order) => order.status === "settled");
+  const totalNgn = settledOrders.reduce((sum, order) => sum + order.amountNgn, 0);
+  const trend = settledOrders.length ? settledOrders.slice(0, 8).reverse().map((order) => ({ value: order.amountNgn })) : emptyTrend;
 
   useEffect(() => {
     listOrders().then(({ orders }) => setOrders(orders)).catch(() => undefined);
@@ -29,7 +30,7 @@ export default function DashboardPage() {
         <div className="mt-3 flex items-end justify-between">
           <div>
             <p className="text-[38px] font-semibold tracking-[-0.06em]">{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalNgn)}</p>
-            <p className="mt-1 text-sm text-zinc-500">{orders.length} live order{orders.length === 1 ? "" : "s"}</p>
+            <p className="mt-1 text-sm text-zinc-500">{settledOrders.length} settled order{settledOrders.length === 1 ? "" : "s"}</p>
           </div>
           <ChartFrame className="h-16 w-28">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -73,7 +74,7 @@ export default function DashboardPage() {
               </div>
               <div className="text-right">
                 <p className="text-sm font-medium">+{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(payment.amountNgn)}</p>
-                <p className={cn("text-xs capitalize", payment.status === "pending" ? "text-amber-400" : "text-emerald-400")}>{payment.status}</p>
+                <p className={cn("text-xs capitalize", payment.status === "settled" ? "text-emerald-500" : payment.status === "failed" || payment.status === "expired" ? "text-red-400" : "text-amber-400")}>{payment.status}</p>
               </div>
             </div>
           ))}

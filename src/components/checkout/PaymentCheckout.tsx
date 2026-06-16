@@ -6,7 +6,7 @@ import { ArrowLeft, Banknote, Check, Copy, Landmark, Loader2, Wallet, X } from "
 import { QRCodeSVG } from "qrcode.react";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
 import { TokenIcon } from "@/components/icons/CryptoIcons";
-import { apiUrl, createOrder, getPaycrestRate, getPaycrestTokens, getPaymentLink } from "@/lib/api-client";
+import { createOrder, getOrder, getPaycrestRate, getPaycrestTokens, getPaymentLink } from "@/lib/api-client";
 import { getBankLogo } from "@/lib/banks";
 import type { FiatCurrency, PaymentMode, StablecoinSymbol } from "@/lib/payment-data";
 import { formatCurrency } from "@/lib/payment-data";
@@ -113,28 +113,17 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
   }, [networkId, token, value]);
 
   useEffect(() => {
-    if (!order || ["settled", "refunded", "expired", "failed", "cancelled"].includes(order.status)) return;
-    const wsUrl = apiUrl("/ws").replace(/^http/, "ws");
-    const orderId = order.id;
-    let ws: WebSocket | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout>;
-    function connect() {
-      ws = new WebSocket(wsUrl);
-      ws.onopen = () => ws!.send(JSON.stringify({ type: "subscribe", orderId }));
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          if (msg.type === "order_update" && msg.order) {
-            setOrder(msg.order);
-            if (["settled", "refunded", "expired", "failed", "cancelled"].includes(msg.order.status)) ws?.close();
-          }
-        } catch {}
-      };
-      ws.onclose = () => { reconnectTimer = setTimeout(connect, 5000); };
-    }
-    connect();
-    return () => { ws?.close(); clearTimeout(reconnectTimer); };
-  }, [order]);
+    const TERMINAL = ["settled", "refunded", "expired", "failed", "cancelled"];
+    if (!order?.id || TERMINAL.includes(order.status)) return;
+    const interval = window.setInterval(async () => {
+      try {
+        const { order: fresh } = await getOrder(order.id);
+        setOrder(fresh);
+        if (TERMINAL.includes(fresh.status)) window.clearInterval(interval);
+      } catch {}
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [order?.id, order?.status]);
 
   const notify = (message: string) => {
     setFeedback(message);
