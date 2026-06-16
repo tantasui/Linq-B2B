@@ -153,8 +153,8 @@ export function normalizeLinqStatus(status: string | undefined): OrderRecord["st
   const s = String(status ?? "initiated").toLowerCase();
   if (s === "initiated") return "initiated";
   if (s.startsWith("processing")) return "fulfilling";
-  if (s === "disbursed" || s === "settled in treasury") return "settled";
-  if (s.startsWith("timeout")) return "expired";
-  if (s === "failed") return "failed";
+  if (s === "settled" || s === "disbursed" || s === "settled in treasury" || s === "completed") return "settled";
+  if (s.startsWith("timeout") || s === "expired") return "expired";
+  if (s === "failed" || s === "cancelled") return "failed";
   return "pending";
 }

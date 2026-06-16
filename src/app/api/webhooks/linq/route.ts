@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     const payload = JSON.parse(raw) as {
       event?: string;
       orderId?: string;
+      id?: string;
       amountStableCoin?: number;
       amountNGN?: number;
       status?: string;
@@ -21,8 +22,9 @@ export async function POST(request: Request) {
       timestamp?: string;
     };
 
-    const linqOrderId = payload.orderId;
-    const status = normalizeLinqStatus(payload.status ?? payload.event?.replace("order.", ""));
+    const linqOrderId = payload.orderId ?? payload.id;
+    const rawStatus = payload.status ?? payload.event?.replace(/^order\./, "");
+    const status = normalizeLinqStatus(rawStatus);
 
     logger.info("linq.webhook", { event: payload.event, linqOrderId, status });
 
