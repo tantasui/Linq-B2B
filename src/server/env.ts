@@ -24,20 +24,11 @@ const rawEnv = z.object({
   LINQ_SESSION_SECRET: optionalString,
   RESEND_API_KEY: optionalString,
   EMAIL_FROM: defaultedEmailFrom,
-  UPSTASH_REDIS_REST_URL: optionalUrl,
+  UPSTASH_REDIS_REST_URL: optionalString,
   UPSTASH_REDIS_REST_TOKEN: optionalString,
   REDIS_URL: optionalString,
-  NEXT_PUBLIC_APP_URL: z.preprocess(
-    (v) => {
-      if (!v || v === "") return undefined;
-      const s = String(v).trim();
-      if (!s || s === "undefined") return undefined;
-      if (!/^https?:\/\//.test(s)) return `https://${s}`;
-      return s;
-    },
-    z.string().url().optional(),
-  ),
-  BACKEND_API_URL: optionalUrl,
+  NEXT_PUBLIC_APP_URL: optionalString,
+  BACKEND_API_URL: optionalString,
 });
 
 export const env = rawEnv.parse({
