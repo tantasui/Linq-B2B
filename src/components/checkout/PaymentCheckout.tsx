@@ -63,6 +63,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
   const [payerEmail, setPayerEmail] = useState("");
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
+  const [addressCopied, setAddressCopied] = useState(false);
   const [rate, setRate] = useState(1500);
   const [order, setOrder] = useState<OrderRecord | null>(null);
 
@@ -307,19 +308,13 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
           <div className="mx-auto mt-5 w-fit rounded-2xl border border-zinc-100 p-4"><QRCodeSVG value={order.providerReceiveAddress ?? ""} size={178} fgColor="#111111" /></div>
           <div className="mt-5 flex gap-2 rounded-xl bg-zinc-50 p-3">
             <code className="min-w-0 flex-1 truncate text-xs text-zinc-500">{order.providerReceiveAddress}</code>
-            <button onClick={() => copy(order.providerReceiveAddress ?? "", "Address")}><Copy className="h-4 w-4" /></button>
-          </div>
-          <div className="mt-2 flex gap-2 rounded-xl bg-zinc-50 p-3">
-            <p className="text-xs text-zinc-400 shrink-0">Coin type</p>
-            <code className="min-w-0 flex-1 truncate text-xs text-zinc-500">
-              {order.token === "USDC" ? "0xdba346...USDC" : "0x44f838...USDSUI"}
-            </code>
-            <button onClick={() => copy(
-              order.token === "USDC"
-                ? "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
-                : "0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI",
-              "Coin type"
-            )}><Copy className="h-4 w-4" /></button>
+            <button onClick={async () => {
+              await copy(order.providerReceiveAddress ?? "", "Address");
+              setAddressCopied(true);
+              window.setTimeout(() => setAddressCopied(false), 1500);
+            }}>
+              {addressCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+            </button>
           </div>
           <div className="mt-3 divide-y divide-zinc-100 rounded-2xl bg-zinc-50 px-4 text-sm">
             <p className="flex justify-between py-3"><span className="text-zinc-500">Status</span><span className="font-medium capitalize">{order.status}</span></p>

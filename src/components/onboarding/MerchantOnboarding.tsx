@@ -220,7 +220,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
                 setInstitutionCode("");
               }}
               className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[#8A4FFF]"
-              placeholder="Search bank name or code"
+              placeholder="Search bank name"
             />
           </label>
           <div className="max-h-56 space-y-2 overflow-y-auto rounded-2xl border border-zinc-100 bg-white p-2">
@@ -238,23 +238,11 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
                 )}
               >
                 {bank.logo ? <img src={bank.logo} alt="" loading="eager" decoding="async" className="h-8 w-8 rounded-lg object-contain" /> : <span className="h-8 w-8 rounded-lg bg-zinc-100" />}
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{bank.name}</span>
-                  <span className="text-xs text-zinc-500">Bank code {bank.code}</span>
-                </span>
+                <span className="block truncate text-sm font-medium">{bank.name}</span>
               </button>
             ))}
             {filteredBanks.length === 0 && <p className="p-3 text-xs text-zinc-500">No bank found.</p>}
           </div>
-          {selectedBank && (
-            <div className="flex items-center gap-3 rounded-xl border border-zinc-100 bg-white p-3">
-              {selectedBank.logo ? <img src={selectedBank.logo} alt="" loading="eager" decoding="async" className="h-8 w-8 rounded-lg object-contain" /> : <span className="h-8 w-8 rounded-lg bg-zinc-100" />}
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{selectedBank.name}</p>
-                <p className="text-xs text-zinc-500">Bank code {selectedBank.code}</p>
-              </div>
-            </div>
-          )}
           <div>
             <input value={accountIdentifier} onChange={(event) => setAccountIdentifier(event.target.value)} className="h-12 w-full rounded-xl border border-zinc-200 px-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Account number" />
           </div>

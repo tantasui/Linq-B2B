@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Building2, Check, Copy, CreditCard, ImagePlus, ShieldCheck, Trash2, Wallet } from "lucide-react";
+import { Bell, Building2, Check, Copy, CreditCard, ImagePlus, LogOut, ShieldCheck, Trash2, Wallet } from "lucide-react";
 import { MerchantAvatar, merchantLogoChangedEvent, merchantLogoStorageKey } from "@/components/MerchantAvatar";
 import { MerchantOnboarding } from "@/components/onboarding/MerchantOnboarding";
+import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
 import { getMerchantMe } from "@/lib/api-client";
 import { getBankLogo } from "@/lib/banks";
 import { formatWalletLabel, shortAddress } from "@/lib/wallets";
 import type { MerchantRecord } from "@/server/types";
 
 export default function SettingsPage() {
+  const dynamic = useDynamicBridge();
   const [switches, setSwitches] = useState({ notifications: true, verification: true, biometric: false });
   const [logoVersion, setLogoVersion] = useState(0);
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
@@ -127,6 +129,12 @@ export default function SettingsPage() {
           </div>
         ))}
       </section>
+      <button
+        onClick={dynamic.disconnect}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-white text-sm font-medium text-red-500 transition duration-200 hover:bg-red-50"
+      >
+        <LogOut className="h-4 w-4" /> Log out
+      </button>
     </div>
   );
 }
