@@ -1,0 +1,38 @@
+import type { Metadata } from "next";
+import "./globals.css";
+import ClientBody from "./ClientBody";
+import Script from "next/script";
+import { DynamicBridgeProvider } from "@/components/providers/DynamicBridgeProvider";
+
+export const metadata: Metadata = {
+  title: "Linq | Stablecoin Payments for Modern Businesses",
+  description: "Accept USDC and USDT payments across leading networks with payment links and instant settlement analytics.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://nigerianbanklogos.xyz" />
+        <link rel="dns-prefetch" href="https://nigerianbanklogos.xyz" />
+        <Script
+          crossOrigin="anonymous"
+          src="//unpkg.com/react-grab/dist/index.global.js"
+        />
+        <Script
+          crossOrigin="anonymous"
+          src="//unpkg.com/same-runtime/dist/index.global.js"
+        />
+      </head>
+      <body suppressHydrationWarning className="antialiased">
+        <DynamicBridgeProvider>
+          <ClientBody>{children}</ClientBody>
+        </DynamicBridgeProvider>
+      </body>
+    </html>
+  );
+}

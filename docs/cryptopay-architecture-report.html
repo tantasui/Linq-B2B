@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Linq Architecture and System Design Report</title>
+    <style>
+      :root {
+        --canvas: #000000;
+        --white: #ffffff;
+        --muted: #a8a8a8;
+        --quiet: #707070;
+        --line: rgba(255, 255, 255, 0.24);
+        --soft-line: rgba(255, 255, 255, 0.12);
+        --panel: rgba(255, 255, 255, 0.045);
+        --green: rgb(160, 224, 171);
+        --amber: rgb(255, 172, 46);
+        --rust: rgb(165, 45, 37);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--white);
+        font-family: Roobert, Inter, "Segoe UI", Arial, sans-serif;
+        line-height: 1.44;
+      }
+      .page {
+        min-height: 100vh;
+        padding: 48px 58px;
+        page-break-after: always;
+        background:
+          radial-gradient(circle at 14% 10%, rgba(160, 224, 171, 0.28), transparent 26%),
+          radial-gradient(circle at 72% 12%, rgba(255, 172, 46, 0.22), transparent 28%),
+          radial-gradient(circle at 90% 82%, rgba(165, 45, 37, 0.28), transparent 34%),
+          #000;
+      }
+      .page.plain {
+        background:
+          linear-gradient(120deg, rgba(160, 224, 171, 0.06), rgba(255, 172, 46, 0.04), rgba(165, 45, 37, 0.06)),
+          #000;
+      }
+      .kicker {
+        margin: 0 0 26px;
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      h1 {
+        max-width: 880px;
+        margin: 0 0 24px;
+        font-size: 70px;
+        font-weight: 400;
+        line-height: 0.92;
+        letter-spacing: 0;
+      }
+      h2 {
+        margin: 0 0 16px;
+        font-size: 34px;
+        font-weight: 400;
+        letter-spacing: 0;
+      }
+      h3 {
+        margin: 26px 0 8px;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      p, li, td, th {
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 13px;
+      }
+      p { margin: 0 0 12px; }
+      ul, ol { margin: 0; padding-left: 18px; }
+      li { margin: 5px 0; }
+      code {
+        color: #fff;
+        border: 1px solid var(--soft-line);
+        border-radius: 999px;
+        padding: 1px 7px;
+        font-size: 12px;
+      }
+      pre {
+        overflow: hidden;
+        white-space: pre-wrap;
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+        color: rgba(255,255,255,.8);
+        font-size: 11px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      th, td {
+        border-top: 1px solid var(--soft-line);
+        padding: 8px 6px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th { color: #fff; font-weight: 600; }
+      .lead {
+        max-width: 900px;
+        color: rgba(255,255,255,.86);
+        font-size: 18px;
+      }
+      .meta {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 42px;
+      }
+      .metric, .panel, .diagram {
+        border-top: 1px solid var(--line);
+        padding-top: 18px;
+      }
+      .metric span {
+        display: block;
+        color: var(--quiet);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .12em;
+      }
+      .metric strong {
+        display: block;
+        margin-top: 8px;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 400;
+      }
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+      .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+      .section { margin-top: 34px; }
+      .diagram {
+        margin-top: 18px;
+        border: 1px solid var(--soft-line);
+        border-radius: 20px;
+        padding: 20px;
+        background: var(--panel);
+      }
+      .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .node {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 9px 13px;
+        color: var(--white);
+        font-size: 12px;
+      }
+      .arrow { color: var(--muted); }
+      .flow {
+        display: grid;
+        gap: 9px;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: 28px 1fr;
+        gap: 10px;
+        align-items: start;
+      }
+      .num {
+        width: 26px;
+        height: 26px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        color: white;
+        font-size: 11px;
+      }
+      .small { color: var(--quiet); font-size: 11px; }
+      .diagram-title {
+        margin: 0 0 12px;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .route-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        align-items: stretch;
+      }
+      .route-card {
+        border: 1px solid var(--soft-line);
+        border-radius: 18px;
+        padding: 14px;
+        background: rgba(255,255,255,.035);
+      }
+      .route-card strong {
+        display: block;
+        margin-bottom: 7px;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .connector {
+        color: var(--muted);
+        font-size: 18px;
+        text-align: center;
+        align-self: center;
+      }
+      .status-lane {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 9px;
+        margin-top: 12px;
+      }
+      .status {
+        min-height: 54px;
+        border: 1px solid var(--soft-line);
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        padding: 8px;
+        text-align: center;
+        color: #fff;
+        font-size: 11px;
+      }
+      .branch {
+        border-left: 1px solid var(--line);
+        padding-left: 14px;
+      }
+      .callout {
+        margin-top: 18px;
+        border-left: 1px solid var(--amber);
+        padding: 12px 0 12px 18px;
+      }
+      .foot {
+        margin-top: 34px;
+        color: var(--quiet);
+        font-size: 10px;
+      }
+      @media print {
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .page { min-height: 100vh; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <p class="kicker">Linq / Architecture and System Design</p>
+      <h1>Real Backend for NGN Stablecoin Merchant Payments</h1>
+      <p class="lead">A full-stack payment system where merchants onboard with business and bank details, keep control of Dynamic-managed wallets, create NGN payment links, and settle stablecoin payments through Paycrest.</p>
+      <div class="meta">
+        <div class="metric"><span>Frontend</span><strong>Next.js App Router</strong></div>
+        <div class="metric"><span>Backend</span><strong>Route Handlers</strong></div>
+        <div class="metric"><span>Database</span><strong>Koyeb Postgres + SQL</strong></div>
+        <div class="metric"><span>Providers</span><strong>Paycrest + Dynamic</strong></div>
+      </div>
+      <div class="callout">
+        <p>The implementation is env-gated. Production credentials activate live Paycrest, Redis, Dynamic, and Koyeb Postgres paths. Local development uses deterministic fixtures so the product can be reviewed without real-money provider access.</p>
+      </div>
+      <p class="foot">Generated from the current Linq worktree. Report style follows the dark, restrained gradient reference in DESIGN (1).md.</p>
+    </main>
+
+    <section class="page plain">
+      <p class="kicker">01 / Executive Overview</p>
+      <h2>What Linq Does</h2>
+      <div class="grid-2">
+        <div>
+          <p>Linq lets a Nigerian merchant accept USDT or USDC while thinking in NGN. The merchant creates open, fixed, or static receive surfaces. Customers provide name and email, select token and network, and receive exact payment instructions.</p>
+          <p>The key separation is custody. Dynamic manages merchant wallet control. Linq stores public wallet routing metadata only. Paycrest creates settlement orders and provides receive addresses for payment/request links.</p>
+        </div>
+        <div>
+          <ul>
+            <li>NGN-first payment links and dashboard totals.</li>
+            <li>Paycrest rate refresh at payment time.</li>
+            <li>Payer details stored against each order.</li>
+            <li>15-minute cache for Paycrest tokens and rates.</li>
+            <li>Static wallet mode separated from Paycrest order mode.</li>
+            <li>Retry transfer uses the verified merchant bank account only.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Implementation Status</h2>
+        <div class="grid-3">
+          <div class="panel"><h3>Implemented</h3><p>Plain SQL schema, server modules, API routes, checkout order flow, merchant onboarding UI, order dashboard, webhook handler, cache abstraction, and report artifacts.</p></div>
+          <div class="panel"><h3>Env-Gated</h3><p>Paycrest, Redis, Koyeb Postgres, and Dynamic are activated by environment variables. Local mode keeps the app demonstrable without live credentials.</p></div>
+          <div class="panel"><h3>Caveat</h3><p>The Dynamic SDK install hung in this environment, so the app uses a bridge provider abstraction with deterministic fallback wallets. The bridge is the intended SDK swap point.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">02 / System Architecture</p>
+      <h2>Layered Design</h2>
+      <div class="callout">
+        <p>The backend can now deploy separately to Koyeb from the <code>backend/</code> directory using <code>backend/Dockerfile</code>. The frontend can call the public Koyeb backend URL while the backend connects to Koyeb Postgres through <code>DATABASE_URL</code>.</p>
+      </div>
+      <div class="diagram">
+        <div class="row">
+          <span class="node">Merchant Dashboard</span><span class="arrow">to</span>
+          <span class="node">Client API Helpers</span><span class="arrow">to</span>
+          <span class="node">Next API Routes</span><span class="arrow">to</span>
+          <span class="node">Server Modules</span><span class="arrow">to</span>
+          <span class="node">Koyeb Postgres / Paycrest / Redis</span>
+        </div>
+        <br />
+        <div class="row">
+          <span class="node">Checkout Payer</span><span class="arrow">to</span>
+          <span class="node">Link API</span><span class="arrow">to</span>
+          <span class="node">Order API</span><span class="arrow">to</span>
+          <span class="node">Paycrest Order</span><span class="arrow">to</span>
+          <span class="node">Webhook Status</span>
+        </div>
+      </div>
+      <div class="grid-2 section">
+        <div>
+          <h3>Presentation Layer</h3>
+          <p>Next.js pages and React components render the mobile-first dashboard, receive page, settings onboarding, and checkout. Business UI stays compact and operational.</p>
+          <h3>Backend API Layer</h3>
+          <p>Route handlers under <code>src/app/api</code> expose onboarding, merchant, bank, Paycrest utility, payment link, order, retry, and webhook endpoints.</p>
+        </div>
+        <div>
+          <h3>Server Domain Layer</h3>
+          <p><code>src/server</code> centralizes env parsing, validation, Paycrest requests, Redis cache behavior, webhook security, API response envelopes, and store access.</p>
+          <h3>Data Layer</h3>
+          <p>Koyeb Postgres accessed through direct SQL and the <code>pg</code> client is the intended production store. The current local store mirrors repository behavior so flows can work without a database URL.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">03 / Merchant Onboarding</p>
+      <h2>Business, Bank, and Wallet Setup</h2>
+      <div class="flow">
+        <div class="step"><span class="num">1</span><p>Merchant signs in through Dynamic and gets merchant-controlled wallet addresses.</p></div>
+        <div class="step"><span class="num">2</span><p>Settings onboarding collects business name, merchant name, business email, location, bank institution code, and account identifier.</p></div>
+        <div class="step"><span class="num">3</span><p>The backend validates and sanitizes the payload with Zod.</p></div>
+        <div class="step"><span class="num">4</span><p>Paycrest verifies the payout bank account through <code>/verify-account</code>.</p></div>
+        <div class="step"><span class="num">5</span><p>Linq stores resolved account name, verification status, public wallet addresses, and onboarding status.</p></div>
+      </div>
+      <div class="section grid-2">
+        <div class="panel"><h3>Stored Wallet Data</h3><p>Wallet id, chain, network, public address, wallet type, and token support. Private keys are never requested or stored.</p></div>
+        <div class="panel"><h3>Stored Bank Data</h3><p>Institution code, institution name, account identifier, Paycrest-resolved account name, and verification status.</p></div>
+      </div>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">04 / Payment Modes</p>
+      <h2>Open, Fixed, and Static Links</h2>
+      <table>
+        <thead><tr><th>Mode</th><th>Amount</th><th>Paycrest Order</th><th>Address Shown</th><th>Use Case</th></tr></thead>
+        <tbody>
+          <tr><td>Open</td><td>Payer enters NGN amount</td><td>Yes</td><td>Paycrest receive address</td><td>Flexible payment collection</td></tr>
+          <tr><td>Fixed</td><td>Merchant locks NGN amount</td><td>Yes</td><td>Paycrest receive address</td><td>Invoice or payment request</td></tr>
+          <tr><td>Static</td><td>No fixed settlement amount</td><td>No</td><td>Merchant Dynamic wallet address</td><td>Direct wallet receive</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <p>Static links are deliberately not Paycrest orders. This prevents the product from implying automatic NGN settlement for a transfer that goes directly to a merchant wallet.</p>
+      </div>
+      <div class="section diagram">
+        <p class="diagram-title">Receive Mode Decision Diagram</p>
+        <div class="route-grid">
+          <div class="route-card"><strong>Merchant opens Receive</strong><p>Chooses how the business wants to collect funds.</p></div>
+          <div class="route-card"><strong>Open Link</strong><p>Payer enters amount. Paycrest order is created during checkout.</p></div>
+          <div class="route-card"><strong>Fixed Request</strong><p>Merchant enters NGN amount. Paycrest order is created during checkout.</p></div>
+          <div class="route-card"><strong>Static Address</strong><p>Merchant selects token/network. Dynamic wallet address is shown directly.</p></div>
+          <div class="route-card"><strong>Payment Checkout</strong><p>Customer enters details, chooses token/network, and sees Paycrest receive address.</p></div>
+          <div class="route-card"><strong>Direct Wallet Transfer</strong><p>No Paycrest order, no automatic NGN settlement, merchant wallet receives funds.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">05 / Checkout Flow</p>
+      <h2>Customer Payment Sequence</h2>
+      <div class="flow">
+        <div class="step"><span class="num">1</span><p>Checkout opens the payment link and fetches merchant/link data from <code>GET /api/payment-links/[id]</code>.</p></div>
+        <div class="step"><span class="num">2</span><p>The payer's name and email are read from localStorage or collected once.</p></div>
+        <div class="step"><span class="num">3</span><p>Checkout loads Paycrest-supported tokens and networks from the backend.</p></div>
+        <div class="step"><span class="num">4</span><p>The payer selects USDT or USDC and a supported network.</p></div>
+        <div class="step"><span class="num">5</span><p>The backend refreshes the NGN rate for the chosen token/network/amount.</p></div>
+        <div class="step"><span class="num">6</span><p>The app creates a local order, then creates a Paycrest order.</p></div>
+        <div class="step"><span class="num">7</span><p>Checkout displays exact crypto amount, receive address, QR code, Paycrest id, status, and expiry if provided.</p></div>
+      </div>
+      <div class="section">
+        <h3>Why Local Order First</h3>
+        <p>Creating the local order before exposing transfer instructions gives Linq an internal audit trail even if the provider request, webhook, or customer session fails after the first attempt.</p>
+      </div>
+      <div class="section diagram">
+        <p class="diagram-title">Order Flow State Diagram</p>
+        <div class="status-lane">
+          <span class="status">Link Opened</span>
+          <span class="status">Payer Details</span>
+          <span class="status">Asset Selection</span>
+          <span class="status">Network Selection</span>
+          <span class="status">Rate Refresh</span>
+          <span class="status">Review</span>
+        </div>
+        <div class="status-lane">
+          <span class="status">Local Order</span>
+          <span class="status">Paycrest Order</span>
+          <span class="status">Transfer Instructions</span>
+          <span class="status">Awaiting Payment</span>
+          <span class="status">Status Polling</span>
+          <span class="status">Final State</span>
+        </div>
+        <div class="grid-3 section">
+          <div class="branch"><p><strong>Happy path:</strong> pending to deposited to validated to settling to settled.</p></div>
+          <div class="branch"><p><strong>Refund path:</strong> deposited or failed provider path to refunding to refunded.</p></div>
+          <div class="branch"><p><strong>Expiry path:</strong> pending order reaches validity window and becomes expired.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">06 / Paycrest Integration</p>
+      <h2>Provider Responsibilities</h2>
+      <div class="grid-2">
+        <div>
+          <ul>
+            <li>Fetch supported tokens through <code>/tokens</code>.</li>
+            <li>Fetch rates through <code>/rates/{network}/{token}/{amount}/{fiat}</code>.</li>
+            <li>Fallback to provider rate bands through <code>/provider/rates/{token}/{fiat}</code>.</li>
+            <li>Verify bank accounts through <code>/verify-account</code>.</li>
+            <li>Create crypto-to-fiat orders through <code>/sender/orders</code>.</li>
+            <li>Normalize statuses from Paycrest into internal order states.</li>
+          </ul>
+        </div>
+        <div>
+          <pre>{
+  amount: "50000",
+  amountIn: "fiat",
+  source: {
+    type: "crypto",
+    currency: "USDT",
+    network: "base",
+    refundAddress: "merchant_wallet"
+  },
+  destination: {
+    type: "fiat",
+    currency: "NGN",
+    recipient: {
+      institution: "GTBINGLA",
+      accountIdentifier: "1234567890"
+    }
+  }
+}</pre>
+        </div>
+      </div>
+      <div class="callout"><p>Returned Paycrest values such as amount, rate, sender fee, transaction fee, receive address, and validity window become the stored source of truth for the order.</p></div>
+      <div class="section diagram">
+        <p class="diagram-title">Paycrest Lifecycle Diagram</p>
+        <div class="status-lane">
+          <span class="status">Local Order</span>
+          <span class="status">Provider Order</span>
+          <span class="status">Pending</span>
+          <span class="status">Deposited</span>
+          <span class="status">Validated</span>
+          <span class="status">Settled</span>
+        </div>
+        <div class="grid-3 section">
+          <div class="route-card"><strong>Cancelled</strong><p>Provider or business rule cancels the order before settlement.</p></div>
+          <div class="route-card"><strong>Expired</strong><p>Payer did not complete transfer within validity window.</p></div>
+          <div class="route-card"><strong>Refunded</strong><p>Paycrest returns funds or cannot complete settlement.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">07 / Data Model</p>
+      <h2>Production Schema</h2>
+      <table>
+        <thead><tr><th>Model</th><th>Purpose</th><th>Important Fields</th></tr></thead>
+        <tbody>
+          <tr><td>User</td><td>Maps Dynamic identity to Linq ownership.</td><td>dynamicUserId, email, name, role</td></tr>
+          <tr><td>MerchantBusiness</td><td>Business profile and onboarding state.</td><td>businessName, merchantName, email, location, onboardingStatus</td></tr>
+          <tr><td>MerchantWallet</td><td>Public wallet routing metadata.</td><td>chain, network, address, walletId, walletType, tokenSupport</td></tr>
+          <tr><td>BankAccount</td><td>Verified NGN payout destination.</td><td>institutionCode, accountIdentifier, resolvedAccountName, verificationStatus</td></tr>
+          <tr><td>PaymentLink</td><td>Open, fixed, or static checkout surface.</td><td>slug, mode, amountNgn, description, status</td></tr>
+          <tr><td>Order</td><td>Central payment record.</td><td>payerName, payerEmail, amountNgn, token, network, quotedRate, cryptoAmountDue, paycrestOrderId, status</td></tr>
+          <tr><td>OrderEvent</td><td>Audit trail for app and provider events.</td><td>source, eventName, rawPayload, createdAt</td></tr>
+          <tr><td>TransferAttempt</td><td>Payout retry tracking.</td><td>attemptNumber, status, paycrestReference, resultPayload, errorMessage</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">07A / Refunds and Retry Transfers</p>
+      <h2>Refund and Recovery Flow</h2>
+      <div class="diagram">
+        <p class="diagram-title">Refund Sequence Diagram</p>
+        <div class="route-grid">
+          <div class="route-card"><strong>Paycrest Status</strong><p>Paycrest sends refunding, refunded, failed, cancelled, or expired status.</p></div>
+          <div class="route-card"><strong>Webhook Handler</strong><p>Linq verifies signature, stores raw event, and normalizes the status.</p></div>
+          <div class="route-card"><strong>Order Update</strong><p>The order record changes state and becomes visible in dashboard polling.</p></div>
+          <div class="route-card"><strong>Merchant Review</strong><p>Merchant expands the compact order row to inspect payer, token, rate, and provider details.</p></div>
+          <div class="route-card"><strong>Retry Eligibility</strong><p>Retry is only shown for failed, refunded, expired, or cancelled statuses.</p></div>
+          <div class="route-card"><strong>Verified Bank Only</strong><p>Retry creates a TransferAttempt using the already verified payout account.</p></div>
+        </div>
+      </div>
+      <div class="section grid-2">
+        <div>
+          <h3>Why Retry Is Restricted</h3>
+          <p>A payout retry can move money, so it must not let a merchant swap account numbers during a failure. The retry action always reuses the stored verified bank account to reduce fraud and support operational review.</p>
+        </div>
+        <div>
+          <h3>Audit Trail</h3>
+          <p>Every webhook creates an OrderEvent. Every retry creates a TransferAttempt with attempt number, status, reference, payload, and error message when applicable.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">08 / API Surface</p>
+      <h2>Backend Endpoints</h2>
+      <table>
+        <thead><tr><th>Endpoint</th><th>Purpose</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>POST /api/onboarding/merchant</td><td>Create/update merchant setup.</td><td>Verifies bank and stores wallets.</td></tr>
+          <tr><td>GET /api/merchant/me</td><td>Return active merchant dashboard data.</td><td>Production should bind to Dynamic auth.</td></tr>
+          <tr><td>POST /api/bank/verify</td><td>Verify bank correctness.</td><td>Rate limited.</td></tr>
+          <tr><td>GET /api/paycrest/tokens</td><td>List supported Paycrest tokens/networks.</td><td>Cached 15 minutes.</td></tr>
+          <tr><td>GET /api/paycrest/rate</td><td>Fetch current NGN rate.</td><td>Token/network/amount-aware.</td></tr>
+          <tr><td>POST /api/payment-links</td><td>Create open/fixed/static link.</td><td>Fixed links require amount.</td></tr>
+          <tr><td>GET /api/payment-links/[id]</td><td>Fetch public checkout data.</td><td>Returns link and merchant.</td></tr>
+          <tr><td>POST /api/orders</td><td>Create local and Paycrest order.</td><td>Rejects static links.</td></tr>
+          <tr><td>GET /api/orders</td><td>List merchant orders.</td><td>Includes transfer attempts.</td></tr>
+          <tr><td>GET /api/orders/[id]</td><td>Fetch one order.</td><td>Used by polling.</td></tr>
+          <tr><td>POST /api/orders/[id]/retry-transfer</td><td>Retry payout transfer.</td><td>Eligible terminal statuses only.</td></tr>
+          <tr><td>POST /api/webhooks/paycrest</td><td>Receive Paycrest status events.</td><td>HMAC verification when configured.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">09 / Security</p>
+      <h2>OWASP-Aligned Controls</h2>
+      <div class="grid-2">
+        <div>
+          <h3>Validation</h3>
+          <p>All write routes parse request data through Zod. Schemas trim text, normalize email, restrict token and network values, bound amount size, and limit field lengths.</p>
+          <h3>Webhook Integrity</h3>
+          <p>Paycrest webhooks use HMAC SHA-256 verification with timing-safe comparison when a webhook secret is configured.</p>
+          <h3>Rate Limiting</h3>
+          <p>Bank verification and public order creation have rate limits. Production should move this to Redis or edge middleware.</p>
+        </div>
+        <div>
+          <h3>Secrets</h3>
+          <p>Paycrest API keys, webhook secrets, database URLs, Redis tokens, and Dynamic server tokens stay in environment variables and never in client bundles.</p>
+          <h3>Custody</h3>
+          <p>Linq stores public wallet addresses only. It never requests or stores private keys, seed phrases, MPC recovery shares, or Dynamic recovery secrets.</p>
+          <h3>Authorization</h3>
+          <p>Production should bind merchant routes to server-verified Dynamic sessions so one merchant cannot access another merchant's links, orders, or bank records.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">10 / Operations</p>
+      <h2>Deployment and Configuration</h2>
+      <table>
+        <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>DATABASE_URL</td><td>Koyeb/Postgres connection string.</td></tr>
+          <tr><td>DATABASE_SSL</td><td>Keep true for Koyeb database TLS unless explicitly disabled.</td></tr>
+          <tr><td>DATABASE_POOL_MAX</td><td>Maximum direct pg pool size, default 5.</td></tr>
+          <tr><td>PAYCREST_API_KEY</td><td>Paycrest API authentication.</td></tr>
+          <tr><td>PAYCREST_API_URL</td><td>Paycrest base URL, defaults to v2.</td></tr>
+          <tr><td>PAYCREST_WEBHOOK_SECRET</td><td>Webhook HMAC verification.</td></tr>
+          <tr><td>NEXT_PUBLIC_DYNAMIC_ENV_ID</td><td>Dynamic frontend environment id.</td></tr>
+          <tr><td>DYNAMIC_API_TOKEN</td><td>Server-side Dynamic token if needed.</td></tr>
+          <tr><td>UPSTASH_REDIS_REST_URL</td><td>Redis cache URL.</td></tr>
+          <tr><td>UPSTASH_REDIS_REST_TOKEN</td><td>Redis cache token.</td></tr>
+          <tr><td>NEXT_PUBLIC_APP_URL</td><td>Public URL for generated links.</td></tr>
+          <tr><td>RESEND_API_KEY</td><td>Resend API key for receipt and invoice emails.</td></tr>
+          <tr><td>EMAIL_FROM</td><td>Verified sender identity for receipt email delivery, using Linq &lt;noreply@uselinq.site&gt; in production.</td></tr>
+          <tr><td>DYNAMIC_WEBHOOK_SECRET</td><td>Optional HMAC secret for Dynamic wallet incoming webhooks.</td></tr>
+        </tbody>
+      </table>
+      <div class="section">
+        <h3>Deployment Steps</h3>
+        <ol>
+          <li>Provision or attach Koyeb Postgres and Redis.</li>
+          <li>Add all environment variables.</li>
+          <li>Run <code>db/schema.sql</code> against the Koyeb database.</li>
+          <li>Configure Paycrest webhook URL and secret.</li>
+          <li>Configure Dynamic app origins.</li>
+          <li>Deploy the Next.js app.</li>
+          <li>Run a tiny live Paycrest smoke test.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">10A / Receipts and Email Notifications</p>
+      <h2>Invoice, Receipt, and Notice Generation</h2>
+      <div class="grid-2">
+        <div>
+          <p>Linq now creates branded HTML and PDF receipts for payer success, merchant fiat settlement, payout failure, Paycrest refunds, and direct merchant wallet incoming funds. The same renderer powers downloadable PDFs and Resend email attachments.</p>
+          <p>When Resend is not configured, delivery is safely recorded as skipped so development does not accidentally send email.</p>
+        </div>
+        <div>
+          <table>
+            <tbody>
+              <tr><td>Payer</td><td>Transaction success receipt</td></tr>
+              <tr><td>Merchant</td><td>Fiat received settlement receipt</td></tr>
+              <tr><td>Merchant</td><td>Payout failed, funds safe notice</td></tr>
+              <tr><td>Merchant</td><td>Paycrest refund notice</td></tr>
+              <tr><td>Merchant</td><td>Dynamic wallet incoming notice</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="section diagram">
+        <p class="diagram-title">Receipt Notification Flow</p>
+        <div class="route-grid">
+          <div class="route-card"><strong>Paycrest settled</strong><p>Email payer success receipt and merchant fiat receipt.</p></div>
+          <div class="route-card"><strong>Paycrest failed</strong><p>Email merchant that funds remain safe and retry is available.</p></div>
+          <div class="route-card"><strong>Paycrest refunded</strong><p>Email merchant Paycrest refund notice.</p></div>
+          <div class="route-card"><strong>Dynamic direct receive</strong><p>Email merchant direct wallet incoming notice.</p></div>
+          <div class="route-card"><strong>Dynamic Paycrest refund</strong><p>Email merchant refund notice, differentiated from fresh direct receive.</p></div>
+          <div class="route-card"><strong>Dashboard action</strong><p>Open receipt PDF or resend the appropriate notice from expanded order details.</p></div>
+        </div>
+      </div>
+      <div class="section">
+        <h3>Receipt Endpoints</h3>
+        <p><code>GET /api/orders/[id]/receipt</code>, <code>GET /api/orders/[id]/receipt.pdf</code>, and <code>POST /api/orders/[id]/send-receipt</code>.</p>
+      </div>
+    </section>
+
+    <section class="page plain">
+      <p class="kicker">11 / Testing and Handoff</p>
+      <h2>Verification Strategy</h2>
+      <div class="grid-2">
+        <div>
+          <h3>Automated Tests to Add</h3>
+          <ul>
+            <li>Validation schemas for onboarding, bank, links, orders, and retries.</li>
+            <li>Paycrest payload construction and status normalization.</li>
+            <li>Rate conversion and crypto amount calculation.</li>
+            <li>Webhook signature verification and event persistence.</li>
+            <li>Retry transfer eligibility rules.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Manual Smoke Script</h3>
+          <ol>
+            <li>Submit merchant onboarding.</li>
+            <li>Create fixed 50,000 NGN payment request.</li>
+            <li>Open checkout preview.</li>
+            <li>Enter payer name and email.</li>
+            <li>Select USDT and Base.</li>
+            <li>Create manual transfer order.</li>
+            <li>Confirm QR, address, order id, and status.</li>
+            <li>Open dashboard orders and expand the new order.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="section">
+        <h3>Known Next Steps</h3>
+        <p>Install real Dynamic SDK packages, replace the local store with direct SQL repository functions through <code>src/server/db.ts</code>, enforce server-side Dynamic authorization, move rate limits to Redis, add webhook idempotency keys, and add full automated test coverage.</p>
+      </div>
+      <p class="foot">Current evidence: `npm run build` passed after the backend routes, Koyeb SQL schema, checkout flow, dashboard, and report artifacts were added.</p>
+    </section>
+  </body>
+</html>
