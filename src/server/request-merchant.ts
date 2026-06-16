@@ -20,5 +20,5 @@ export async function getRequestMerchant(request: Request) {
     if (merchant) return merchant;
   }
 
-  return getDefaultMerchant();
+  return undefined;
 }

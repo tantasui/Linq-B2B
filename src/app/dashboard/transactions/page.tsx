@@ -117,7 +117,7 @@ export default function TransactionsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <p><span className="block text-zinc-500">Order</span><span className="font-medium">{payment.id}</span></p>
                     <p><span className="block text-zinc-500">Paycrest</span><span className="font-medium">{payment.paycrestOrderId ?? "Pending"}</span></p>
-                    <p><span className="block text-zinc-500">Token</span><span className="font-medium">{payment.cryptoAmountDue.toFixed(6)} {payment.token}</span></p>
+                    <p><span className="block text-zinc-500">Token</span><span className="font-medium">{payment.cryptoAmountDue.toFixed(2)} {payment.token}</span></p>
                     <p><span className="block text-zinc-500">Network</span><span className="font-medium capitalize">{payment.network.replaceAll("-", " ")}</span></p>
                     <p><span className="block text-zinc-500">Rate</span><span className="font-medium">{formatNaira(payment.quotedRate)}</span></p>
                     <p><span className="block text-zinc-500">Created</span><span className="font-medium">{new Date(payment.createdAt).toLocaleString()}</span></p>

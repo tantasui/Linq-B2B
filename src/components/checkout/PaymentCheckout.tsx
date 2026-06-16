@@ -288,7 +288,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
         <BottomSheet onClose={() => setStage("asset")}>
           <div className="mb-5 flex items-center gap-3"><button onClick={() => setStage("asset")}><ArrowLeft /></button><h2 className="text-xl font-semibold">Payment details</h2></div>
           <p className="text-center text-3xl font-semibold">{formatNaira(value)}</p>
-          <p className="mt-2 text-center text-sm text-zinc-500">Estimated {cryptoDue.toFixed(3)} {token}</p>
+          <p className="mt-2 text-center text-sm text-zinc-500">Estimated {cryptoDue.toFixed(2)} {token}</p>
           <div className="mt-7 divide-y divide-zinc-100 rounded-2xl bg-zinc-50 px-4">
             {[["Payer", payerName], ["Merchant", activeMerchant.businessName], ["Asset", token], ["Network", "Sui"], ["Rate", `₦${rate.toLocaleString()} / ${token}`]].map(([label, answer]) => (
               <div key={label} className="flex justify-between gap-4 py-4 text-sm"><span className="text-zinc-500">{label}</span><span className="text-right font-medium capitalize">{answer}</span></div>
@@ -303,7 +303,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
       {stage === "transfer" && order && (
         <BottomSheet onClose={() => setStage("review")}>
           <div className="mb-5 flex items-center gap-3"><button onClick={() => setStage("review")}><ArrowLeft /></button><h2 className="text-xl font-semibold">Manual transfer</h2></div>
-          <p className="text-center text-sm text-zinc-500">Send exactly {order.cryptoAmountDue.toFixed(6)} {order.token} on Sui</p>
+          <p className="text-center text-sm text-zinc-500">Send exactly {order.cryptoAmountDue.toFixed(2)} {order.token} on Sui</p>
           <div className="mx-auto mt-5 w-fit rounded-2xl border border-zinc-100 p-4"><QRCodeSVG value={order.providerReceiveAddress ?? ""} size={178} fgColor="#111111" /></div>
           <div className="mt-5 flex gap-2 rounded-xl bg-zinc-50 p-3">
             <code className="min-w-0 flex-1 truncate text-xs text-zinc-500">{order.providerReceiveAddress}</code>
