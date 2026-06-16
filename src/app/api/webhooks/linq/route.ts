@@ -9,7 +9,13 @@ export async function POST(request: Request) {
   try {
     const raw = await request.text();
     const signature = request.headers.get("x-linq-signature");
-    if (!verifyLinqWebhookSignature(raw, signature)) return fail("Invalid webhook signature.", 401);
+
+    logger.info("linq.webhook.received", { bodyLength: raw.length, hasSignature: Boolean(signature), raw });
+
+    if (!verifyLinqWebhookSignature(raw, signature)) {
+      logger.warn("linq.webhook.signature_invalid", { signature, raw });
+      return fail("Invalid webhook signature.", 401);
+    }
 
     const payload = JSON.parse(raw) as {
       event?: string;
@@ -26,19 +32,22 @@ export async function POST(request: Request) {
     const rawStatus = payload.status ?? payload.event?.replace(/^order\./, "");
     const status = normalizeLinqStatus(rawStatus);
 
-    logger.info("linq.webhook", { event: payload.event, linqOrderId, status });
+    logger.info("linq.webhook.parsed", { event: payload.event, linqOrderId, rawStatus, status, txHash: payload.txHash });
 
     const order = linqOrderId ? await getOrder(linqOrderId) : undefined;
-    if (order) {
-      await updateOrder(order.id, { status, paycrestPayload: payload });
-      await addOrderEvent(order.id, "linq", payload.event ?? `order.${status}`, payload);
-      const receipts = await notifyForOrderStatus({ ...order, status });
-      return ok({ received: true, order: { ...order, status }, receipts });
+    if (!order) {
+      logger.warn("linq.webhook.order_not_found", { linqOrderId, event: payload.event });
+      await addOrderEvent(undefined, "linq", payload.event ?? `order.${status}`, payload);
+      return ok({ received: true });
     }
 
-    await addOrderEvent(undefined, "linq", payload.event ?? `order.${status}`, payload);
-    return ok({ received: true });
+    await updateOrder(order.id, { status, paycrestPayload: payload });
+    await addOrderEvent(order.id, "linq", payload.event ?? `order.${status}`, payload);
+    logger.info("linq.webhook.order_updated", { orderId: order.id, linqOrderId, prevStatus: order.status, newStatus: status });
+    const receipts = await notifyForOrderStatus({ ...order, status });
+    return ok({ received: true, order: { ...order, status }, receipts });
   } catch (error) {
+    logger.error("linq.webhook.error", { error: error instanceof Error ? error.message : String(error) });
     return handleApiError(error);
   }
 }
