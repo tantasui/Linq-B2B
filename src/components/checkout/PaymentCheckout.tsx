@@ -6,7 +6,6 @@ import { ArrowLeft, Banknote, Check, Copy, Landmark, Loader2, Wallet, X } from "
 import { QRCodeSVG } from "qrcode.react";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
 import { TokenIcon } from "@/components/icons/CryptoIcons";
-import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
 import { apiUrl, createOrder, getPaycrestRate, getPaycrestTokens, getPaymentLink } from "@/lib/api-client";
 import { getBankLogo } from "@/lib/banks";
 import type { FiatCurrency, PaymentMode, StablecoinSymbol } from "@/lib/payment-data";
@@ -53,7 +52,6 @@ function formatNaira(value: number) {
 }
 
 export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: initialCurrency, description }: PaymentCheckoutProps) {
-  const dynamic = useDynamicBridge();
   const [stage, setStage] = useState<Stage>(null);
   const [link, setLink] = useState<PaymentLinkRecord | null>(null);
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
@@ -65,7 +63,6 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
   const [payerEmail, setPayerEmail] = useState("");
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
-  const [walletConnected, setWalletConnected] = useState(false);
   const [rate, setRate] = useState(1500);
   const [order, setOrder] = useState<OrderRecord | null>(null);
 
@@ -139,18 +136,29 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
     return () => { ws?.close(); clearTimeout(reconnectTimer); };
   }, [order]);
 
-  useEffect(() => {
-    setWalletConnected(dynamic.connected);
-  }, [dynamic.connected]);
-
   const notify = (message: string) => {
     setFeedback(message);
     window.setTimeout(() => setFeedback(""), 1700);
   };
 
   const copy = async (text: string, name: string) => {
-    await navigator.clipboard.writeText(text);
-    notify(`${name} copied`);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const el = document.createElement("textarea");
+        el.value = text;
+        el.style.position = "fixed";
+        el.style.opacity = "0";
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }
+      notify(`${name} copied`);
+    } catch {
+      notify("Copy failed — select and copy manually");
+    }
   };
 
   const startCrypto = () => {
@@ -185,16 +193,6 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
     } finally {
       setBusy(false);
     }
-  };
-
-  const connectWallet = async () => {
-    await dynamic.connect();
-    if (dynamic.connected) {
-      setWalletConnected(true);
-      notify("Wallet connected");
-      return;
-    }
-    notify(dynamic.enabled ? "Complete wallet connection" : "Wallet connection is not configured yet.");
   };
 
   return (
@@ -307,11 +305,9 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
               <div key={label} className="flex justify-between gap-4 py-4 text-sm"><span className="text-zinc-500">{label}</span><span className="text-right font-medium capitalize">{answer}</span></div>
             ))}
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <button onClick={createPaymentOrder} disabled={busy} className="h-14 rounded-xl border border-[#8A4FFF] text-sm font-medium text-[#8A4FFF] disabled:opacity-60">{busy ? "Creating..." : "Manual transfer"}</button>
-            <button onClick={connectWallet} className="h-14 rounded-xl bg-[#8A4FFF] text-sm font-medium text-white"><Wallet className="mr-1 inline h-4 w-4" />{walletConnected ? "Wallet ready" : "Connect wallet"}</button>
-          </div>
-          {walletConnected && <button onClick={createPaymentOrder} disabled={busy} className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#f3edff] text-sm font-medium text-[#8A4FFF]">{busy && <Loader2 className="h-4 w-4 animate-spin" />}Create payment order</button>}
+          <button onClick={createPaymentOrder} disabled={busy} className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#8A4FFF] text-sm font-medium text-white disabled:opacity-60">
+            {busy ? <><Loader2 className="h-4 w-4 animate-spin" />Creating order...</> : <><Wallet className="h-4 w-4" />Get payment address</>}
+          </button>
         </BottomSheet>
       )}
 
