@@ -84,8 +84,6 @@ export async function createLinqOrder(input: {
   payerName: string;
   idempotencyKey: string;
 }) {
-  const { rate } = await getLinqRate();
-  const amountStableCoin = Number((input.amountNgn / rate).toFixed(6));
   const coin = linqCoinId(input.token);
   const response = await requestLinq<{
     id: string;
@@ -100,7 +98,7 @@ export async function createLinqOrder(input: {
   }>("/b2b/offramp", {
     method: "POST",
     body: JSON.stringify({
-      amountStableCoin,
+      amountNGN: input.amountNgn,
       coin,
       bankAccount: input.bank.accountIdentifier,
       bankCode: input.bank.institutionCode,
