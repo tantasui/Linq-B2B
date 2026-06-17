@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Building2, Check, CreditCard, Loader2, Mail, ShieldCheck } from "lucide-react";
-import { getActiveBusinessId, getActiveDynamicUserId, getActiveSessionToken, getMerchantMe, onboardMerchant, setActiveBusinessId, setActiveDynamicUserId } from "@/lib/api-client";
+import { getActiveBusinessId, getActiveDynamicUserId, getActiveSessionToken, getMerchantMe, onboardMerchant, setActiveBusinessId, setActiveDynamicUserId, verifyBank } from "@/lib/api-client";
 import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
 import { cn } from "@/lib/utils";
 import { getBankByCode, nigerianBanks } from "@/lib/banks";
@@ -28,6 +28,9 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
   const [institutionCode, setInstitutionCode] = useState("");
   const [bankQuery, setBankQuery] = useState("");
   const [accountIdentifier, setAccountIdentifier] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifiedName, setVerifiedName] = useState<string | undefined>(undefined);
+  const [verifyError, setVerifyError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -73,6 +76,25 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
     };
   }, [dynamic.user?.id, onCompleteHref, router]);
 
+  useEffect(() => {
+    setVerifiedName(undefined);
+    setVerifyError("");
+    if (!institutionCode || accountIdentifier.length !== 10) return;
+    setVerifying(true);
+    const timer = window.setTimeout(() => {
+      verifyBank(institutionCode, accountIdentifier)
+        .then((result) => {
+          setVerifiedName(result.accountName ?? undefined);
+          setVerifyError(result.accountName ? "" : "Could not resolve account name.");
+        })
+        .catch((error) => {
+          setVerifyError(error instanceof Error ? error.message : "Verification failed.");
+        })
+        .finally(() => setVerifying(false));
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [institutionCode, accountIdentifier]);
+
   const startSignIn = async () => {
     setFeedback("");
     try {
@@ -107,7 +129,15 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
     }
     if (step === "bank") {
       if (!institutionCode.trim() || !accountIdentifier.trim()) {
-        setFeedback("Add payout bank code and account number.");
+        setFeedback("Select a bank and enter your account number.");
+        return;
+      }
+      if (verifying) {
+        setFeedback("Please wait for account verification to complete.");
+        return;
+      }
+      if (!verifiedName) {
+        setFeedback("Account verification failed. Check your account number and try again.");
         return;
       }
       setStep("review");
@@ -144,6 +174,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
           institutionCode,
           accountIdentifier,
           institutionName: selectedBank?.name,
+          resolvedAccountName: verifiedName,
         },
         wallets,
       });
@@ -243,8 +274,17 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
             ))}
             {filteredBanks.length === 0 && <p className="p-3 text-xs text-zinc-500">No bank found.</p>}
           </div>
-          <div>
-            <input value={accountIdentifier} onChange={(event) => setAccountIdentifier(event.target.value)} className="h-12 w-full rounded-xl border border-zinc-200 px-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Account number" />
+          <div className="space-y-2">
+            <input value={accountIdentifier} onChange={(event) => setAccountIdentifier(event.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" className="h-12 w-full rounded-xl border border-zinc-200 px-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Account number" />
+            {verifying && (
+              <p className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Verifying account...</p>
+            )}
+            {verifiedName && !verifying && (
+              <p className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700"><Check className="h-3.5 w-3.5" /> {verifiedName}</p>
+            )}
+            {verifyError && !verifying && (
+              <p className="text-xs text-red-500">{verifyError}</p>
+            )}
           </div>
         </div>
       )}

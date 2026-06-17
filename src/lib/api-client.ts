@@ -162,6 +162,13 @@ export function getPaycrestRate(params: { network: string; token: StablecoinSymb
   return api<{ marketRate: number; minimumRate?: number; maximumRate?: number; cacheTtlSeconds: number }>(`/api/paycrest/rate?${query}`);
 }
 
+export function verifyBank(institutionCode: string, accountIdentifier: string) {
+  return api<{ accountName?: string; institutionCode: string; accountIdentifier: string; verified: boolean; bypassed?: boolean }>("/api/bank/verify", {
+    method: "POST",
+    body: JSON.stringify({ institutionCode, accountIdentifier }),
+  });
+}
+
 export function onboardMerchant(input: unknown) {
   return api<{ merchant: MerchantRecord; bankVerification: unknown; sessionToken?: string }>("/api/onboarding/merchant", {
     method: "POST",
