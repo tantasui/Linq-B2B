@@ -22,7 +22,7 @@ export default function Home() {
             <a href="#pricing">Pricing</a>
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <Link href="/onboarding" className="hidden px-4 py-2 text-sm sm:block">Setup</Link>
+            <Link href="/login" className="hidden px-4 py-2 text-sm text-zinc-600 sm:block">Log in</Link>
             <Link href="/onboarding" className="rounded-full bg-[#8A4FFF] px-5 py-3 text-sm font-medium text-white">Start now</Link>
           </div>
         </div>
