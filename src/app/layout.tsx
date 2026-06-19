@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import ClientBody from "./ClientBody";
-import Script from "next/script";
 import { DynamicBridgeProvider } from "@/components/providers/DynamicBridgeProvider";
 
 export const metadata: Metadata = {
@@ -19,14 +18,6 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://nigerianbanklogos.xyz" />
         <link rel="dns-prefetch" href="https://nigerianbanklogos.xyz" />
-        <Script
-          crossOrigin="anonymous"
-          src="//unpkg.com/react-grab/dist/index.global.js"
-        />
-        <Script
-          crossOrigin="anonymous"
-          src="//unpkg.com/same-runtime/dist/index.global.js"
-        />
       </head>
       <body suppressHydrationWarning className="antialiased">
         <DynamicBridgeProvider>
