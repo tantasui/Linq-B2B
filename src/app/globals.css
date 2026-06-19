@@ -68,6 +68,13 @@
   }
 }
 
+/* Hide Dynamic Labs floating widget */
+dynamic-widget,
+.dynamic-widget,
+[data-dynamic-widget] {
+  display: none !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

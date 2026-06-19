@@ -73,6 +73,7 @@ export function DynamicBridgeProvider({ children }: { children: React.ReactNode 
         appName: "Linq",
         environmentId,
         walletConnectors: [SuiWalletConnectors],
+        cssOverrides: "dynamic-widget { display: none !important; }",
       }}
     >
       <LiveDynamicBridgeProvider>{children}</LiveDynamicBridgeProvider>
