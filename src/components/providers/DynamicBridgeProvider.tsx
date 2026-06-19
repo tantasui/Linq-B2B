@@ -70,7 +70,7 @@ export function DynamicBridgeProvider({ children }: { children: React.ReactNode 
   return (
     <DynamicContextProvider
       settings={{
-        appName: "Linq",
+        appName: "LinqSwitch",
         environmentId,
         walletConnectors: [SuiWalletConnectors],
         cssOverrides: ".dynamic-widget-inline-controls { display: none !important; }",

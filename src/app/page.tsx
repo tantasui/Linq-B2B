@@ -14,7 +14,7 @@ export default function Home() {
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#8A4FFF] text-white">
               <Command className="h-5 w-5" />
             </span>
-            Linq
+            LinqSwitch
           </Link>
           <div className="ml-16 hidden items-center gap-9 text-sm text-zinc-600 md:flex">
             <a href="#products">Products</a>
@@ -75,7 +75,7 @@ export default function Home() {
                 </div>
                 <div className="mt-7 grid gap-3 sm:grid-cols-2">
                   {[
-                    ["No live order yet", "Create a link", "Paycrest"],
+                    ["No live order yet", "Create a link", "LinqSwitch"],
                     ["No payout yet", "Verify bank", "Wallet"],
                   ].map(([client, total, chain]) => (
                     <div key={client} className="rounded-2xl border border-zinc-100 bg-white p-4">

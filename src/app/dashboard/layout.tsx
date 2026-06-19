@@ -67,7 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#8A4FFF] text-white">
             <Command className="h-4 w-4" />
           </span>
-          Linq
+          LinqSwitch
         </Link>
 
         <div className="mb-6 flex items-center gap-3 rounded-2xl bg-zinc-50 p-3">
@@ -119,7 +119,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
               </>
             ) : (
-              <p className="text-sm font-medium text-[#8A4FFF]">Linq</p>
+              <p className="text-sm font-medium text-[#8A4FFF]">LinqSwitch</p>
             )}
           </Link>
           <button aria-label="Notifications" className="relative rounded-full border border-zinc-100 bg-white p-3 text-zinc-600 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md">

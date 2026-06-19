@@ -31,7 +31,7 @@ export function Footer() {
                   <path d="M2 12l10 5 10-5" />
                 </svg>
               </div>
-              <span className="text-xl font-bold text-white">Linq</span>
+              <span className="text-xl font-bold text-white">LinqSwitch</span>
             </Link>
             <p className="text-zinc-500 text-sm max-w-xs mb-6">
               The simplest way to accept crypto payments and convert them to fiat instantly.
@@ -73,7 +73,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-zinc-500 text-sm">
-            © 2026 Linq. All rights reserved.
+            © 2026 LinqSwitch. All rights reserved.
           </div>
           <div className="flex gap-6">
             <Link href="#" className="text-zinc-500 hover:text-white transition-colors">

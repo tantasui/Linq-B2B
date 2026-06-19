@@ -33,7 +33,7 @@ export function Navbar() {
                 <path d="M2 12l10 5 10-5" />
               </svg>
             </div>
-            <span className="text-xl font-bold text-white">Linq</span>
+            <span className="text-xl font-bold text-white">LinqSwitch</span>
           </Link>
 
           {/* Desktop Navigation */}

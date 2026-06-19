@@ -240,7 +240,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
         <div className="grid gap-3">
           <div className="rounded-2xl bg-zinc-50 p-4">
             <p className="text-sm font-medium">Verified Naira payout</p>
-            <p className="mt-2 text-xs leading-5 text-zinc-500">Paycrest verifies this account during save. Transfers and retries will use this same account.</p>
+            <p className="mt-2 text-xs leading-5 text-zinc-500">We verify this account during save. Transfers and retries will use this same account.</p>
           </div>
           <label className="block">
             <span className="mb-2 block text-xs text-zinc-500">Bank</span>

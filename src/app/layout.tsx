@@ -4,7 +4,7 @@ import ClientBody from "./ClientBody";
 import { DynamicBridgeProvider } from "@/components/providers/DynamicBridgeProvider";
 
 export const metadata: Metadata = {
-  title: "Linq | Stablecoin Payments for Modern Businesses",
+  title: "LinqSwitch | Stablecoin Payments for Modern Businesses",
   description: "Accept USDC and USDT payments across leading networks with payment links and instant settlement analytics.",
 };
 

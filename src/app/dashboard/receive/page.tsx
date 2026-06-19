@@ -195,7 +195,7 @@ export default function ReceivePage() {
       <div>
         <p className="text-xs uppercase tracking-[0.2em] text-[#a985ff]">Receive</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Collect payment</h1>
-        <p className="mt-2 text-sm text-zinc-500">Share a Paycrest checkout link or charge a set amount.</p>
+        <p className="mt-2 text-sm text-zinc-500">Share a checkout link or charge a set amount.</p>
       </div>
 
       <div className="grid grid-cols-2 rounded-2xl bg-[#f3effb] p-1">
@@ -217,7 +217,7 @@ export default function ReceivePage() {
               <span className="rounded-xl bg-[#f3edff] p-3 text-[#8A4FFF]"><Link2 className="h-5 w-5" /></span>
               <div>
                 <p className="text-sm font-medium">Open receive link</p>
-                <p className="mt-1 text-xs leading-5 text-zinc-500">Customers enter the amount at checkout, choose USDC or USDT, and Paycrest handles the crypto-to-Naira payment flow.</p>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">Customers enter the amount at checkout, choose a stablecoin, and we handle the crypto-to-Naira payment flow.</p>
               </div>
             </div>
             <button onClick={regenerate} disabled={creating} className="mt-4 h-12 w-full rounded-xl bg-[#8A4FFF] text-sm font-medium text-white disabled:opacity-60">
@@ -264,7 +264,7 @@ export default function ReceivePage() {
                 {description && <p className="mt-1 text-center text-sm text-zinc-500">{description}</p>}
               </>
             ) : (
-              <p className="mt-3 text-center text-sm text-zinc-500">Customer enters the amount and pays through Paycrest checkout.</p>
+              <p className="mt-3 text-center text-sm text-zinc-500">Customer enters the amount and pays through LinqSwitch checkout.</p>
             )}
             <div className="mt-4 flex gap-2 rounded-xl bg-zinc-50 p-3">
               <span className="min-w-0 flex-1 truncate text-xs text-zinc-500">{publicLink}</span>

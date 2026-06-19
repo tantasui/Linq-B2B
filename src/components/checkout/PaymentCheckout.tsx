@@ -189,7 +189,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
     <main className="mx-auto min-h-screen w-full max-w-[460px] bg-[#fdfcfb] text-zinc-950 shadow-[0_0_50px_rgba(0,0,0,.1)]">
       <div className="flex items-center justify-between px-5 pt-7">
         <button aria-label="Back" className="rounded-xl border border-zinc-200 p-2.5"><ArrowLeft className="h-5 w-5" /></button>
-        <p className="text-sm font-medium text-[#8A4FFF]">Linq</p>
+        <p className="text-sm font-medium text-[#8A4FFF]">LinqSwitch</p>
         <span className="w-10" />
       </div>
       <section className="px-5 pb-8 pt-10 text-center">
@@ -221,7 +221,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
         </div>
       </section>
       <footer className="fixed bottom-0 left-1/2 w-full max-w-[460px] -translate-x-1/2 border-t border-zinc-100 bg-white/95 py-5 text-center text-sm text-zinc-500">
-        Powered by <span className="font-medium text-[#8A4FFF]">Linq</span>
+        Powered by <span className="font-medium text-[#8A4FFF]">LinqSwitch</span>
       </footer>
 
       {stage === "naira" && (

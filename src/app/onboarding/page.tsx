@@ -11,7 +11,7 @@ export default function OnboardingPage() {
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#8A4FFF] text-white">
               <Command className="h-5 w-5" />
             </span>
-            Linq
+            LinqSwitch
           </Link>
           <Link href="/dashboard" className="text-sm text-zinc-500">Dashboard</Link>
         </header>

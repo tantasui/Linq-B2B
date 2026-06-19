@@ -22,13 +22,13 @@ function statusCopy(kind: ReceiptKind) {
       return {
         title: "Payment receipt",
         headline: "Your transaction went through",
-        summary: "The merchant has been notified and the payment is being reconciled through Linq.",
+        summary: "The merchant has been notified and the payment is being reconciled through LinqSwitch.",
       };
     case "merchant_fiat_received":
       return {
         title: "Settlement receipt",
         headline: "Fiat settlement received",
-        summary: "Paycrest has confirmed that fiat value reached your verified payout account.",
+        summary: "LinqSwitch has confirmed that fiat value reached your verified payout account.",
       };
     case "merchant_payout_failed":
       return {
@@ -38,9 +38,9 @@ function statusCopy(kind: ReceiptKind) {
       };
     case "merchant_linq_refund":
       return {
-        title: "Paycrest refund notice",
-        headline: "Refund from Paycrest detected",
-        summary: "This incoming value is marked as a Paycrest refund, not a fresh customer direct receive.",
+        title: "LinqSwitch refund notice",
+        headline: "Refund from LinqSwitch detected",
+        summary: "This incoming value is marked as a LinqSwitch refund, not a fresh customer direct receive.",
       };
     case "merchant_wallet_incoming":
       return {
