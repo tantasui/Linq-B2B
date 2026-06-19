@@ -71,7 +71,9 @@
 /* Hide Dynamic Labs floating widget */
 dynamic-widget,
 .dynamic-widget,
-[data-dynamic-widget] {
+[data-dynamic-widget],
+.dynamic-widget-inline-controls,
+.dynamic-shadow-dom-content .dynamic-widget-inline-controls {
   display: none !important;
 }
 
