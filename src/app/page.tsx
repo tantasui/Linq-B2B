@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Check, Command, Link2, QrCode, ShieldCheck, Waypoints } from "lucide-react";
 import { AuthRedirect } from "@/components/AuthRedirect";
 
-const networks = ["Ethereum", "Base", "Arbitrum", "Tron", "BNB Chain"];
+const networks = ["USDC on Sui", "USDsui"];
 
 export default function Home() {
   return (
@@ -41,7 +41,7 @@ export default function Home() {
               Money moves at internet speed.
             </h1>
             <p className="mt-7 max-w-lg text-lg leading-8 text-zinc-600">
-              Create payment links and accept USDC or USDT across every network your customers already use.
+              Create payment links that accept USDC or USDsui from your customers.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
               <Link href="/onboarding" className="inline-flex items-center gap-2 rounded-full bg-[#8A4FFF] px-7 py-4 text-sm font-medium text-white">
@@ -97,7 +97,7 @@ export default function Home() {
 
       <section id="network" className="border-b border-black/[0.06] bg-white/45 px-6 py-8 lg:px-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 text-sm text-zinc-500 lg:flex-row lg:items-center lg:justify-between">
-          <span>Settle on networks customers trust</span>
+          <span>Settle on Sui stablecoins</span>
           <div className="flex flex-wrap gap-x-9 gap-y-3 font-medium text-zinc-700">
             {networks.map((network) => <span key={network}>{network}</span>)}
           </div>
@@ -112,7 +112,7 @@ export default function Home() {
         <div className="mt-14 grid gap-4 lg:grid-cols-3">
           {[
             { icon: Link2, title: "Payment links", body: "Price an invoice once. Let customers select wallet, stablecoin, and route." },
-            { icon: QrCode, title: "Wallet deposits", body: "Generate network-specific QR destinations for USDC and USDT collections." },
+            { icon: QrCode, title: "Wallet deposits", body: "Generate network-specific QR destinations for USDC and USDsui collections." },
             { icon: Waypoints, title: "Operations analytics", body: "Measure incoming flow, conversion, and settlement quality in real time." },
           ].map((feature) => (
             <div key={feature.title} className="rounded-[26px] border border-black/[0.07] bg-white p-8">
@@ -132,7 +132,7 @@ export default function Home() {
             <p className="mt-5 text-zinc-600">No setup cost. No monthly fee. No minimum volume.</p>
           </div>
           <div className="rounded-[28px] border border-zinc-100 bg-white p-7 shadow-[0_20px_60px_rgba(70,35,120,.08)] sm:w-96">
-            {["Payment links and QR receive", "USDC and USDT support", "Nine supported networks", "Analytics included"].map((line) => (
+            {["Payment links and QR receive", "USDC and USDsui support", "Analytics included"].map((line) => (
               <p key={line} className="flex items-center gap-3 border-b border-zinc-100 py-4 text-sm text-zinc-600 last:border-0">
                 <ShieldCheck className="h-4 w-4 text-[#8A4FFF]" />
                 {line}
