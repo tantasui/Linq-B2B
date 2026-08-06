@@ -27,8 +27,8 @@ export async function POST(request: Request) {
     const parsed = dynamicWalletIncomingSchema.parse({
       businessId,
       walletAddress,
-      network: data.network ?? data.chain ?? "base",
-      token: data.token ?? data.asset ?? "USDSUI",
+      network: data.network ?? data.chain ?? "sui",
+      token: data.token ?? data.asset ?? "USDC",
       amountToken,
       reason: data.reason ?? data.metadata?.reason ?? "merchant_direct_receive",
       transactionHash: data.transactionHash ?? data.hash,

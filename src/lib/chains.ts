@@ -1,0 +1,166 @@
+import type { StablecoinSymbol } from "@/lib/payment-data";
+
+/**
+ * Single source of truth for every chain the platform supports.
+ *
+ * Design notes (multi-chain support):
+ * - The platform is a crypto -> NGN offramp. A chain is only "real" when the
+ *   Linq offramp backend can issue a receive address on it and settle NGN.
+ *   Adding a chain here surfaces it in the UI *and* tells the backend which
+ *   `network` value to send to Linq's /b2b/offramp.
+ * - `linqNetwork` is the exact string sent to Linq. It is kept separate from the
+ *   canonical `id` so the wire value can be adjusted in ONE place if Linq expects
+ *   a different identifier (e.g. "bsc" vs "bnb") without touching the rest of the app.
+ * - USDSUI is a Sui-native coin and only exists on Sui. Every other chain offers
+ *   USDC only. This is enforced by `tokens` per chain.
+ * - Dynamic (wallet auth) has connectors for Sui, EVM and Solana only. Tron has no
+ *   embedded connector, so merchants cannot hold embedded Tron wallets
+ *   (`hasWalletConnector: false`); Tron is payer-deposit + external-address only.
+ * - Chains enabled here are settled by Linq (the upstream offramp). `linqNetwork` is
+ *   the exact chain string sent to Linq's /b2b/offramp; adjust it in one place if Linq
+ *   expects a different identifier for a given chain.
+ */
+
+export type ChainFamily = "sui" | "evm" | "solana" | "tron";
+
+export interface ChainConfig {
+  /** Canonical network key used across the app (DB `network`, order.network, URLs). */
+  id: string;
+  name: string;
+  shortName: string;
+  family: ChainFamily;
+  /** Stablecoins accepted on this chain. */
+  tokens: StablecoinSymbol[];
+  /** Exact `network` value sent to Linq's /b2b/offramp. */
+  linqNetwork: string;
+  /** Whether Dynamic can provide an embedded/external connector for this chain. */
+  hasWalletConnector: boolean;
+  /** Loose address shape check for UI/validation hints. */
+  addressPattern: RegExp;
+  /** Brand color used for network badges in the UI. */
+  color: string;
+  enabled: boolean;
+}
+
+export const CHAINS: ChainConfig[] = [
+  {
+    id: "sui",
+    name: "Sui",
+    shortName: "Sui",
+    family: "sui",
+    tokens: ["USDSUI", "USDC"],
+    linqNetwork: "sui",
+    hasWalletConnector: true,
+    addressPattern: /^0x[a-fA-F0-9]{40,64}$/,
+    color: "#4DA2FF",
+    enabled: true,
+  },
+  {
+    id: "ethereum",
+    name: "Ethereum",
+    shortName: "ETH",
+    family: "evm",
+    tokens: ["USDC"],
+    linqNetwork: "ethereum",
+    hasWalletConnector: true,
+    addressPattern: /^0x[a-fA-F0-9]{40}$/,
+    color: "#627EEA",
+    enabled: true,
+  },
+  {
+    id: "base",
+    name: "Base",
+    shortName: "Base",
+    family: "evm",
+    tokens: ["USDC"],
+    linqNetwork: "base",
+    hasWalletConnector: true,
+    addressPattern: /^0x[a-fA-F0-9]{40}$/,
+    color: "#0052FF",
+    enabled: true,
+  },
+  {
+    id: "bnb",
+    name: "BNB Smart Chain",
+    shortName: "BNB",
+    family: "evm",
+    tokens: ["USDC"],
+    linqNetwork: "bnb",
+    hasWalletConnector: true,
+    addressPattern: /^0x[a-fA-F0-9]{40}$/,
+    color: "#F0B90B",
+    enabled: true,
+  },
+  {
+    id: "solana",
+    name: "Solana",
+    shortName: "SOL",
+    family: "solana",
+    tokens: ["USDC"],
+    linqNetwork: "solana",
+    hasWalletConnector: true,
+    addressPattern: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
+    color: "#14F195",
+    enabled: true,
+  },
+  {
+    id: "tron",
+    name: "Tron",
+    shortName: "TRX",
+    family: "tron",
+    tokens: ["USDC"],
+    linqNetwork: "tron",
+    hasWalletConnector: false,
+    addressPattern: /^T[1-9A-HJ-NP-Za-km-z]{33}$/,
+    color: "#EF0027",
+    enabled: true,
+  },
+];
+
+export function normalizeNetworkKey(network?: string) {
+  return String(network ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-");
+}
+
+/** Aliases so historical / connector-provided network strings resolve to a canonical chain. */
+const NETWORK_ALIASES: Record<string, string> = {
+  "sui-mainnet": "sui",
+  eth: "ethereum",
+  "eth-mainnet": "ethereum",
+  mainnet: "ethereum",
+  "base-mainnet": "base",
+  bsc: "bnb",
+  "binance-smart-chain": "bnb",
+  "bnb-smart-chain": "bnb",
+  sol: "solana",
+  "solana-mainnet": "solana",
+  trx: "tron",
+};
+
+export function getChain(network?: string): ChainConfig | undefined {
+  const key = normalizeNetworkKey(network);
+  const canonical = NETWORK_ALIASES[key] ?? key;
+  return CHAINS.find((chain) => chain.id === canonical);
+}
+
+export const ENABLED_CHAINS = CHAINS.filter((chain) => chain.enabled);
+
+export function chainSupportsToken(network: string, token: StablecoinSymbol) {
+  const chain = getChain(network);
+  return Boolean(chain?.tokens.includes(token));
+}
+
+export function tokensForNetwork(network: string): StablecoinSymbol[] {
+  return getChain(network)?.tokens ?? [];
+}
+
+export function linqNetworkFor(network: string): string {
+  return getChain(network)?.linqNetwork ?? normalizeNetworkKey(network);
+}
+
+export function chainDisplayName(network?: string) {
+  return getChain(network)?.name ?? String(network ?? "").replace(/-/g, " ");
+}

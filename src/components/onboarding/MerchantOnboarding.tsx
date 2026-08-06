@@ -7,6 +7,7 @@ import { getActiveBusinessId, getActiveDynamicUserId, getActiveSessionToken, get
 import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
 import { cn } from "@/lib/utils";
 import { getBankByCode, nigerianBanks } from "@/lib/banks";
+import { tokensForNetwork } from "@/lib/chains";
 
 type Step = "account" | "business" | "bank" | "review";
 
@@ -52,7 +53,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
     network: wallet.network,
     address: wallet.address,
     walletType: wallet.walletType,
-    tokenSupport: ["USDSUI", "USDC"],
+    tokenSupport: tokensForNetwork(wallet.network).length ? tokensForNetwork(wallet.network) : ["USDC"],
   }));
 
   useEffect(() => {

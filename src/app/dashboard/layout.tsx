@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Bell, Command, Home, LogOut, QrCode, ReceiptText, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getMerchantMe, setActiveBusinessId, setActiveDynamicUserId, syncMerchantWallets } from "@/lib/api-client";
+import { tokensForNetwork } from "@/lib/chains";
 import type { MerchantRecord, StablecoinSymbol } from "@/server/types";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
 import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
@@ -33,7 +34,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         network: wallet.network,
         address: wallet.address,
         walletType: wallet.walletType,
-        tokenSupport: ["USDSUI", "USDC"] satisfies StablecoinSymbol[],
+        tokenSupport: (tokensForNetwork(wallet.network).length ? tokensForNetwork(wallet.network) : ["USDC"]) as StablecoinSymbol[],
       })),
     [dynamic.wallets],
   );
