@@ -85,7 +85,8 @@ export const CHAINS: ChainConfig[] = [
     shortName: "BNB",
     family: "evm",
     tokens: ["USDC"],
-    linqNetwork: "bnb",
+    // Linq's backend calls BNB Smart Chain "bsc" (see CoinType.Bsc); wire value must match.
+    linqNetwork: "bsc",
     hasWalletConnector: true,
     addressPattern: /^0x[a-fA-F0-9]{40}$/,
     color: "#F0B90B",
