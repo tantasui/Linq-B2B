@@ -1,9 +1,12 @@
 "use client";
 
 import { DynamicContextProvider, useDynamicContext, useRefreshUser, useUserWallets } from "@dynamic-labs/sdk-react-core";
+import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
+import { SolanaWalletConnectors } from "@dynamic-labs/solana";
 import { SuiWalletConnectors } from "@dynamic-labs/sui";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { clearActiveSession, setActiveDynamicUserId } from "@/lib/api-client";
+import { getChain } from "@/lib/chains";
 
 export interface DynamicWalletView {
   id: string;
@@ -24,10 +27,23 @@ type DynamicBridge = {
 
 const Context = createContext<DynamicBridge | null>(null);
 
+// EVM chain ids Dynamic may report for connected/embedded wallets.
+const EVM_CHAIN_IDS: Record<string, string> = {
+  "8453": "base",
+  "56": "bnb",
+};
+
+// Map whatever Dynamic reports (family label like "EVM"/"SOL"/"SUI", a numeric
+// EVM chain id, or a network slug) to a canonical chain id from our config.
+// Generic EVM connections default to Base (a supported EVM chain).
 function normalizeWalletNetwork(value: unknown) {
-  const normalized = String(value ?? "sui").trim().toLowerCase();
-  if (!normalized || normalized.includes("embedded") || normalized.includes("turnkey")) return "sui";
-  return normalized;
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw || raw.includes("embedded") || raw.includes("turnkey")) return "";
+  if (EVM_CHAIN_IDS[raw]) return EVM_CHAIN_IDS[raw];
+  if (raw === "evm" || raw === "eth" || raw.startsWith("ethereum")) return "base";
+  if (raw.startsWith("sol")) return "solana";
+  if (raw.startsWith("sui")) return "sui";
+  return getChain(raw)?.id ?? raw;
 }
 
 async function resolveWalletAddress(rawWallet: Record<string, unknown>, connector?: Record<string, unknown>) {
@@ -72,7 +88,7 @@ export function DynamicBridgeProvider({ children }: { children: React.ReactNode 
       settings={{
         appName: "LinqSwitch",
         environmentId,
-        walletConnectors: [SuiWalletConnectors],
+        walletConnectors: [SuiWalletConnectors, EthereumWalletConnectors, SolanaWalletConnectors],
         cssOverrides: ".dynamic-widget-inline-controls { display: none !important; }",
       }}
     >
@@ -116,8 +132,8 @@ function LiveDynamicBridgeProvider({ children }: { children: React.ReactNode }) 
           const rawWallet = wallet as unknown as Record<string, unknown>;
           const connector = rawWallet.connector as Record<string, unknown> | undefined;
           const address = await resolveWalletAddress(rawWallet, connector);
-          const chain = normalizeWalletNetwork(rawWallet.chain ?? connector?.connectedChain ?? "sui");
-          const network = normalizeWalletNetwork(rawWallet.network ?? connector?.connectedNetwork ?? chain);
+          const chain = normalizeWalletNetwork(rawWallet.chain ?? connector?.connectedChain) || "sui";
+          const network = normalizeWalletNetwork(rawWallet.network ?? connector?.connectedNetwork) || chain;
           const key = String(connector?.key ?? rawWallet.key ?? "");
           const walletType: DynamicWalletView["walletType"] =
             key.toLowerCase().includes("embedded") || key.toLowerCase().includes("turnkey") ? "EMBEDDED" : "EXTERNAL";

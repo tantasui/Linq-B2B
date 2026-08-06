@@ -1,3 +1,4 @@
+import { chainSupportsToken, getChain } from "@/lib/chains";
 import { fail, handleApiError, ok } from "@/server/http";
 import { createLinqOrder } from "@/server/linq-offramp";
 import { getRequestMerchant } from "@/server/request-merchant";
@@ -31,8 +32,15 @@ export async function POST(request: Request) {
     const bank = merchant.bankAccounts.find((entry) => entry.verificationStatus === "verified");
     if (!bank) return fail("Merchant payout bank is not verified.", 409);
 
-    const idempotencyKey = `lnq-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
     const token = input.token ?? "USDSUI";
+    const network = input.network ?? "sui";
+    const chain = getChain(network);
+    if (!chain || !chain.enabled) return fail(`Unsupported network: ${network}.`, 422);
+    if (!chainSupportsToken(network, token)) {
+      return fail(`${token} is not supported on ${chain.name}.`, 422);
+    }
+
+    const idempotencyKey = `lnq-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
     let order = await createOrder({
       businessId: merchant.id,
       paymentLinkId: link.id,
@@ -41,19 +49,21 @@ export async function POST(request: Request) {
       payerEmail: input.payerEmail,
       amountNgn,
       token,
-      network: "sui",
+      network: chain.id,
       quotedRate: 0,
       cryptoAmountDue: 0,
       status: "initiated",
     });
-    await addOrderEvent(order.id, "app", "order.initiated", { idempotencyKey, paymentLinkId: link.id, token, network: "sui", amountNgn });
+    await addOrderEvent(order.id, "app", "order.initiated", { idempotencyKey, paymentLinkId: link.id, token, network: chain.id, amountNgn });
     try {
       const linq = await createLinqOrder({
         idempotencyKey,
         amountNgn,
         token,
+        network: chain.id,
         bank,
         payerName: input.payerName,
+        refundAddress: input.refundAddress,
       });
       order = await updateOrder(order.id, {
         quotedRate: linq.quotedRate,

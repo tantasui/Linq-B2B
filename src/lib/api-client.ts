@@ -127,6 +127,7 @@ export function createOrder(input: {
   amountNgn?: number;
   token: StablecoinSymbol;
   network: string;
+  refundAddress?: string;
 }) {
   return api<{ order: OrderRecord }>("/api/orders", {
     method: "POST",

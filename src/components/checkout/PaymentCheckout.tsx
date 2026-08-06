@@ -5,13 +5,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Banknote, Check, Copy, Landmark, Loader2, Wallet, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
-import { TokenIcon } from "@/components/icons/CryptoIcons";
+import { NetworkIcon, TokenIcon } from "@/components/icons/CryptoIcons";
 import { createOrder, getOrder, getPaycrestRate, getPaycrestTokens, getPaymentLink } from "@/lib/api-client";
 import { getBankLogo } from "@/lib/banks";
+import { chainDisplayName, ENABLED_CHAINS, getChain } from "@/lib/chains";
 import type { FiatCurrency, PaymentMode, StablecoinSymbol } from "@/lib/payment-data";
 import { formatCurrency } from "@/lib/payment-data";
 import type { MerchantRecord, OrderRecord, PaymentLinkRecord, TokenNetworkRecord } from "@/server/types";
-type Stage = null | "naira" | "customer" | "asset" | "token" | "review" | "transfer" | "success";
+type Stage = null | "naira" | "customer" | "asset" | "network" | "token" | "review" | "transfer" | "success";
 
 interface PaymentCheckoutProps {
   linkId: string;
@@ -61,6 +62,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
   const [tokens, setTokens] = useState<TokenNetworkRecord[]>([]);
   const [payerName, setPayerName] = useState("");
   const [payerEmail, setPayerEmail] = useState("");
+  const [payerWallet, setPayerWallet] = useState("");
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
@@ -84,9 +86,10 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
     const saved = window.localStorage.getItem(payerStorageKey);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved) as { name?: string; email?: string };
+        const parsed = JSON.parse(saved) as { name?: string; email?: string; wallet?: string };
         setPayerName(parsed.name ?? "");
         setPayerEmail(parsed.email ?? "");
+        setPayerWallet(parsed.wallet ?? "");
       } catch {
         window.localStorage.removeItem(payerStorageKey);
       }
@@ -97,20 +100,21 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
       if (remoteLink.amountNgn) setAmount(String(remoteLink.amountNgn));
     }).catch(() => undefined);
     getPaycrestTokens().then(({ tokens: supported }) => {
-      setTokens(supported.filter((entry) => entry.symbol === "USDSUI"));
+      setTokens(supported);
     }).catch(() => undefined);
   }, [linkId]);
 
+  // Keep the selected token valid for the selected network (e.g. USDSUI only exists on Sui).
   useEffect(() => {
-    if (!tokens.length) return;
-    if (!tokens.some((entry) => entry.symbol === token && entry.network === networkId)) {
-      setNetworkId(tokens.find((entry) => entry.symbol === token)?.network ?? "base");
+    const chain = getChain(networkId);
+    if (chain && !chain.tokens.includes(token)) {
+      setToken(chain.tokens[0]);
     }
-  }, [networkId, token, tokens]);
+  }, [networkId, token]);
 
   useEffect(() => {
     if (!value || !networkId) return;
-    getPaycrestRate({ network: "sui", token: "USDSUI", amountNgn: value }).then((data) => setRate(data.marketRate || 1500)).catch(() => setRate(1500));
+    getPaycrestRate({ network: networkId, token, amountNgn: value }).then((data) => setRate(data.marketRate || 1500)).catch(() => setRate(1500));
   }, [networkId, token, value]);
 
   useEffect(() => {
@@ -161,7 +165,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
       notify("Enter a valid name and email");
       return;
     }
-    window.localStorage.setItem(payerStorageKey, JSON.stringify({ name: payerName.trim(), email: payerEmail.trim().toLowerCase() }));
+    window.localStorage.setItem(payerStorageKey, JSON.stringify({ name: payerName.trim(), email: payerEmail.trim().toLowerCase(), wallet: payerWallet.trim() }));
     setStage("asset");
   };
 
@@ -175,6 +179,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
         amountNgn: locked ? undefined : value,
         token,
         network: networkId,
+        refundAddress: payerWallet.trim() || undefined,
       });
       setOrder(response.order);
       setStage("transfer");
@@ -213,10 +218,11 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
           </button>
           <button onClick={startCrypto} className="flex h-32 flex-col items-center justify-center gap-3 rounded-2xl border border-zinc-200 bg-white">
             <div className="flex -space-x-2">
-              <TokenIcon token="USDSUI" size={36} />
-              <TokenIcon token="USDC" size={36} />
+              {ENABLED_CHAINS.slice(0, 4).map((chain) => (
+                <NetworkIcon key={chain.id} network={chain.id} size={32} />
+              ))}
             </div>
-            <span className="text-sm text-zinc-600">Pay with Sui</span>
+            <span className="text-sm text-zinc-600">Pay with Crypto</span>
           </button>
         </div>
       </section>
@@ -248,6 +254,8 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
           <div className="space-y-3">
             <input value={payerName} onChange={(event) => setPayerName(event.target.value)} className="h-13 w-full rounded-xl border border-zinc-200 px-4 py-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Name" />
             <input value={payerEmail} onChange={(event) => setPayerEmail(event.target.value)} className="h-13 w-full rounded-xl border border-zinc-200 px-4 py-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Email" inputMode="email" />
+            <input value={payerWallet} onChange={(event) => setPayerWallet(event.target.value)} className="h-13 w-full rounded-xl border border-zinc-200 px-4 py-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Your wallet address (optional — for refunds)" autoComplete="off" spellCheck={false} />
+            <p className="px-1 text-xs text-zinc-400">If a payout ever fails, we refund your crypto to this address. Use the wallet you'll send from.</p>
           </div>
           <button onClick={savePayer} className="mt-6 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white">Continue</button>
         </BottomSheet>
@@ -266,15 +274,34 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
             </div>
           )}
           {locked && <p className="rounded-2xl border border-zinc-200 p-4 text-2xl font-semibold">{formatNaira(value)}</p>}
-          <button disabled={!canContinue} onClick={() => setStage("token")} className="mt-5 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white disabled:opacity-40">Continue</button>
+          <button disabled={!canContinue} onClick={() => setStage("network")} className="mt-5 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white disabled:opacity-40">Continue</button>
+        </BottomSheet>
+      )}
+
+      {stage === "network" && (
+        <BottomSheet onClose={() => setStage(null)}>
+          <div className="mb-5 flex items-center gap-3"><button onClick={() => setStage("asset")}><ArrowLeft /></button><h2 className="text-xl font-semibold">Select network</h2></div>
+          <div className="grid grid-cols-3 gap-3">
+            {ENABLED_CHAINS.map((chain) => (
+              <button
+                key={chain.id}
+                onClick={() => setNetworkId(chain.id)}
+                className={`flex h-24 flex-col items-center justify-center gap-2 rounded-xl border transition-colors ${networkId === chain.id ? "border-[#8A4FFF] bg-[#f6f2ff]" : "border-zinc-200"}`}
+              >
+                <NetworkIcon network={chain.id} size={34} />
+                <span className="text-xs font-medium">{chain.name}</span>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setStage("token")} className="mt-5 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white">Continue</button>
         </BottomSheet>
       )}
 
       {stage === "token" && (
         <BottomSheet onClose={() => setStage(null)}>
-          <div className="mb-5 flex items-center gap-3"><button onClick={() => setStage("asset")}><ArrowLeft /></button><h2 className="text-xl font-semibold">Select token</h2></div>
+          <div className="mb-5 flex items-center gap-3"><button onClick={() => setStage("network")}><ArrowLeft /></button><h2 className="text-xl font-semibold">Select token</h2></div>
           <div className="grid grid-cols-2 gap-3">
-            {(["USDSUI", "USDC"] as const).map((symbol) => (
+            {(getChain(networkId)?.tokens ?? []).map((symbol) => (
               <button
                 key={symbol}
                 onClick={() => setToken(symbol)}
@@ -285,7 +312,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
               </button>
             ))}
           </div>
-          <p className="mt-3 text-center text-xs text-zinc-400">Both on Sui network</p>
+          <p className="mt-3 text-center text-xs text-zinc-400">On {chainDisplayName(networkId)} network</p>
           <button onClick={() => setStage("review")} className="mt-5 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white">Continue</button>
         </BottomSheet>
       )}
@@ -297,7 +324,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
           <p className="text-center text-3xl font-semibold">{formatNaira(value)}</p>
           <p className="mt-2 text-center text-sm text-zinc-500">Estimated {cryptoDue.toFixed(2)} {token}</p>
           <div className="mt-7 divide-y divide-zinc-100 rounded-2xl bg-zinc-50 px-4">
-            {[["Payer", payerName], ["Merchant", activeMerchant.businessName], ["Asset", token], ["Network", "Sui"], ["Rate", `₦${rate.toLocaleString()} / ${token}`]].map(([label, answer]) => (
+            {[["Payer", payerName], ["Merchant", activeMerchant.businessName], ["Asset", token], ["Network", chainDisplayName(networkId)], ["Rate", `₦${rate.toLocaleString()} / ${token}`]].map(([label, answer]) => (
               <div key={label} className="flex justify-between gap-4 py-4 text-sm"><span className="text-zinc-500">{label}</span><span className="text-right font-medium capitalize">{answer}</span></div>
             ))}
           </div>
@@ -310,7 +337,8 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
       {stage === "transfer" && order && (
         <BottomSheet onClose={() => setStage("review")}>
           <div className="mb-5 flex items-center gap-3"><button onClick={() => setStage("review")}><ArrowLeft /></button><h2 className="text-xl font-semibold">Manual transfer</h2></div>
-          <p className="text-center text-sm text-zinc-500">Send exactly {order.cryptoAmountDue.toFixed(2)} {order.token} on Sui</p>
+          <p className="text-center text-sm text-zinc-500">Send ≈ {order.cryptoAmountDue.toFixed(2)} {order.token} on {chainDisplayName(order.network)}</p>
+          <p className="mt-1 text-center text-xs text-zinc-400">Suggested amount — your payout follows whatever you actually send.</p>
           <div className="mx-auto mt-5 w-fit rounded-2xl border border-zinc-100 p-4"><QRCodeSVG value={order.providerReceiveAddress ?? ""} size={178} fgColor="#111111" /></div>
           <div className="mt-5 flex gap-2 rounded-xl bg-zinc-50 p-3">
             <code className="min-w-0 flex-1 truncate text-xs text-zinc-500">{order.providerReceiveAddress}</code>
@@ -327,7 +355,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
             <p className="flex justify-between py-3"><span className="text-zinc-500">Order</span><span className="font-medium">{order.paycrestOrderId}</span></p>
             {order.validUntil && <p className="flex justify-between py-3"><span className="text-zinc-500">Expires</span><span className="font-medium">{new Date(order.validUntil).toLocaleTimeString()}</span></p>}
           </div>
-          <p className="mt-4 text-xs text-zinc-500">Only send {order.token} on the Sui network. You have 10 minutes to complete the transfer.</p>
+          <p className="mt-4 text-xs text-zinc-500">Only send {order.token} on the {chainDisplayName(order.network)} network. You have 10 minutes to complete the transfer. The NGN payout is reconciled to the exact amount received.</p>
           <button onClick={() => setStage("success")} className="mt-6 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white">I have paid</button>
         </BottomSheet>
       )}

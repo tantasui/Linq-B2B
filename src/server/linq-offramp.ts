@@ -1,3 +1,4 @@
+import { linqNetworkFor } from "@/lib/chains";
 import { cached } from "./cache";
 import { env, liveLinqEnabled } from "./env";
 import { ApiError } from "./http";
@@ -80,11 +81,24 @@ export async function verifyLinqBankAccount(bankCode: string, accountNumber: str
 export async function createLinqOrder(input: {
   amountNgn: number;
   token: StablecoinSymbol;
+  network: string;
   bank: BankAccountRecord;
   payerName: string;
   idempotencyKey: string;
+  /**
+   * Manual-deposit mode: the payer copies the address and sends from their own
+   * wallet, so the sent amount is whatever they choose. Linq then reconciles the
+   * NGN payout to the amount that actually arrives (`actual deposit × locked rate`)
+   * — overpayment scales the payout up, underpayment scales it down. Defaults to
+   * true because this checkout is always a copy-address flow. See docs-main/offramp-api.md.
+   */
+  manualDeposit?: boolean;
+  /** Sui wallet to refund to if the bank payout fails. Strongly recommended by Linq. */
+  refundAddress?: string;
 }) {
   const coin = linqCoinId(input.token);
+  const network = linqNetworkFor(input.network);
+  const manualDeposit = input.manualDeposit ?? true;
   const response = await requestLinq<{
     id: string;
     walletAddress: string;
@@ -100,11 +114,14 @@ export async function createLinqOrder(input: {
     body: JSON.stringify({
       amountNGN: input.amountNgn,
       coin,
+      network,
+      manualDeposit,
       bankAccount: input.bank.accountIdentifier,
       bankCode: input.bank.institutionCode,
       bankName: input.bank.institutionName ?? "",
       accountName: input.bank.resolvedAccountName ?? input.payerName,
       currency: "NGN",
+      ...(input.refundAddress ? { refundAddress: input.refundAddress } : {}),
       customerRef: `linq-${input.idempotencyKey}`,
       idempotencyKey: input.idempotencyKey,
     }),
@@ -113,12 +130,15 @@ export async function createLinqOrder(input: {
     id: response.id,
     walletAddress: response.walletAddress,
     coin,
+    network,
+    manualDeposit,
     amountStableCoin: response.amountStableCoin,
   });
   return {
     linqOrderId: response.id,
     providerReceiveAddress: response.walletAddress,
-    coinType: response.coinType ?? coinTypeForToken(input.token),
+    // coinType is a Sui move-type; only meaningful on Sui. Trust Linq's value elsewhere.
+    coinType: response.coinType ?? (network === "sui" ? coinTypeForToken(input.token) : ""),
     quotedRate: response.rate,
     cryptoAmountDue: response.amountStableCoin,
     amountNgn: response.amountNGN,
