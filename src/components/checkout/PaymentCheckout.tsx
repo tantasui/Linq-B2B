@@ -62,6 +62,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
   const [tokens, setTokens] = useState<TokenNetworkRecord[]>([]);
   const [payerName, setPayerName] = useState("");
   const [payerEmail, setPayerEmail] = useState("");
+  const [payerWallet, setPayerWallet] = useState("");
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
@@ -85,9 +86,10 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
     const saved = window.localStorage.getItem(payerStorageKey);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved) as { name?: string; email?: string };
+        const parsed = JSON.parse(saved) as { name?: string; email?: string; wallet?: string };
         setPayerName(parsed.name ?? "");
         setPayerEmail(parsed.email ?? "");
+        setPayerWallet(parsed.wallet ?? "");
       } catch {
         window.localStorage.removeItem(payerStorageKey);
       }
@@ -163,7 +165,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
       notify("Enter a valid name and email");
       return;
     }
-    window.localStorage.setItem(payerStorageKey, JSON.stringify({ name: payerName.trim(), email: payerEmail.trim().toLowerCase() }));
+    window.localStorage.setItem(payerStorageKey, JSON.stringify({ name: payerName.trim(), email: payerEmail.trim().toLowerCase(), wallet: payerWallet.trim() }));
     setStage("asset");
   };
 
@@ -177,6 +179,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
         amountNgn: locked ? undefined : value,
         token,
         network: networkId,
+        refundAddress: payerWallet.trim() || undefined,
       });
       setOrder(response.order);
       setStage("transfer");
@@ -251,6 +254,8 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
           <div className="space-y-3">
             <input value={payerName} onChange={(event) => setPayerName(event.target.value)} className="h-13 w-full rounded-xl border border-zinc-200 px-4 py-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Name" />
             <input value={payerEmail} onChange={(event) => setPayerEmail(event.target.value)} className="h-13 w-full rounded-xl border border-zinc-200 px-4 py-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Email" inputMode="email" />
+            <input value={payerWallet} onChange={(event) => setPayerWallet(event.target.value)} className="h-13 w-full rounded-xl border border-zinc-200 px-4 py-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Your wallet address (optional — for refunds)" autoComplete="off" spellCheck={false} />
+            <p className="px-1 text-xs text-zinc-400">If a payout ever fails, we refund your crypto to this address. Use the wallet you'll send from.</p>
           </div>
           <button onClick={savePayer} className="mt-6 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white">Continue</button>
         </BottomSheet>

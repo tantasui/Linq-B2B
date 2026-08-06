@@ -80,6 +80,9 @@ export const orderCreateSchema = z.object({
   amountNgn: amountNgnSchema.optional(),
   token: tokenSchema,
   network: networkSchema,
+  // Optional wallet the payer sends from — Linq refunds here if the bank payout fails.
+  // Kept loose because address formats differ per chain (Sui/EVM/Solana/Tron).
+  refundAddress: z.string().trim().min(20).max(128).optional(),
 });
 
 export const retryTransferSchema = z.object({

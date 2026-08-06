@@ -63,6 +63,7 @@ export async function POST(request: Request) {
         network: chain.id,
         bank,
         payerName: input.payerName,
+        refundAddress: input.refundAddress,
       });
       order = await updateOrder(order.id, {
         quotedRate: linq.quotedRate,
