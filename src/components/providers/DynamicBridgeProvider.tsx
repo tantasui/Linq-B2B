@@ -29,18 +29,18 @@ const Context = createContext<DynamicBridge | null>(null);
 
 // EVM chain ids Dynamic may report for connected/embedded wallets.
 const EVM_CHAIN_IDS: Record<string, string> = {
-  "1": "ethereum",
   "8453": "base",
   "56": "bnb",
 };
 
 // Map whatever Dynamic reports (family label like "EVM"/"SOL"/"SUI", a numeric
 // EVM chain id, or a network slug) to a canonical chain id from our config.
+// Generic EVM connections default to Base (a supported EVM chain).
 function normalizeWalletNetwork(value: unknown) {
   const raw = String(value ?? "").trim().toLowerCase();
   if (!raw || raw.includes("embedded") || raw.includes("turnkey")) return "";
   if (EVM_CHAIN_IDS[raw]) return EVM_CHAIN_IDS[raw];
-  if (raw === "evm" || raw === "eth" || raw.startsWith("ethereum")) return "ethereum";
+  if (raw === "evm" || raw === "eth" || raw.startsWith("ethereum")) return "base";
   if (raw.startsWith("sol")) return "solana";
   if (raw.startsWith("sui")) return "sui";
   return getChain(raw)?.id ?? raw;

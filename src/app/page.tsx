@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Check, Command, Link2, QrCode, ShieldCheck, Waypoints } from "lucide-react";
 import { AuthRedirect } from "@/components/AuthRedirect";
 
-const networks = ["Sui", "Ethereum", "Base", "BNB", "Solana", "Tron"];
+const networks = ["Sui", "Base", "BNB", "Solana", "Tron"];
 
 export default function Home() {
   return (
@@ -41,7 +41,7 @@ export default function Home() {
               Money moves at internet speed.
             </h1>
             <p className="mt-7 max-w-lg text-lg leading-8 text-zinc-600">
-              Create payment links that accept USDC and USDsui across Sui, Ethereum, Base, BNB, Solana and Tron.
+              Create payment links that accept USDC and USDsui across Sui, Base, BNB, Solana and Tron.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
               <Link href="/onboarding" className="inline-flex items-center gap-2 rounded-full bg-[#8A4FFF] px-7 py-4 text-sm font-medium text-white">

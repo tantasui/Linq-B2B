@@ -56,18 +56,6 @@ export const CHAINS: ChainConfig[] = [
     enabled: true,
   },
   {
-    id: "ethereum",
-    name: "Ethereum",
-    shortName: "ETH",
-    family: "evm",
-    tokens: ["USDC"],
-    linqNetwork: "ethereum",
-    hasWalletConnector: true,
-    addressPattern: /^0x[a-fA-F0-9]{40}$/,
-    color: "#627EEA",
-    enabled: true,
-  },
-  {
     id: "base",
     name: "Base",
     shortName: "Base",
@@ -129,9 +117,6 @@ export function normalizeNetworkKey(network?: string) {
 /** Aliases so historical / connector-provided network strings resolve to a canonical chain. */
 const NETWORK_ALIASES: Record<string, string> = {
   "sui-mainnet": "sui",
-  eth: "ethereum",
-  "eth-mainnet": "ethereum",
-  mainnet: "ethereum",
   "base-mainnet": "base",
   bsc: "bnb",
   "binance-smart-chain": "bnb",

@@ -89,7 +89,7 @@ export default function SettingsPage() {
       <section className="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm transition duration-200 hover:shadow-md">
         <h2 className="mb-4 flex items-center gap-2 font-medium"><Wallet className="h-4 w-4 text-[#a985ff]" /> Settlement defaults</h2>
         <div className="flex justify-between border-b border-zinc-100 py-3 text-sm"><span className="text-zinc-500">Currency</span><span>NGN</span></div>
-        <div className="flex justify-between border-b border-zinc-100 py-3 text-sm"><span className="text-zinc-500">Stablecoin</span><span>USDSUI (Sui) · USDC (Sui, ETH, Base, BNB, Solana, Tron)</span></div>
+        <div className="flex justify-between border-b border-zinc-100 py-3 text-sm"><span className="text-zinc-500">Stablecoin</span><span>USDSUI (Sui) · USDC (Sui, Base, BNB, Solana, Tron)</span></div>
         <div className="space-y-2 py-3">
           <p className="text-xs text-zinc-500">Saved business wallets</p>
           {merchant?.wallets.length ? (
