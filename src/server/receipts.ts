@@ -36,6 +36,12 @@ function statusCopy(kind: ReceiptKind) {
         headline: "Payout failed, funds remain safe",
         summary: "The payout did not complete. Your funds are still tracked and you can retry the transfer from your dashboard.",
       };
+    case "payer_order_expired":
+      return {
+        title: "Payment window closed",
+        headline: "This payment expired",
+        summary: "The 10-minute window to send funds closed before a deposit arrived. Nothing was charged. If you already sent funds, contact the merchant — deposits that land late are held safely and reconciled manually.",
+      };
     case "merchant_linq_refund":
       return {
         title: "LinqSwitch refund notice",
@@ -228,6 +234,10 @@ export async function notifyForOrderStatus(order: OrderRecord) {
   }
   if (order.status === "failed" || order.status === "expired" || order.status === "cancelled") {
     notices.push(await createAndSendReceipt({ kind: "merchant_payout_failed", audience: "merchant", order, merchant, recipientEmail: merchant.businessEmail }));
+  }
+  // The payer is told too when the deposit window closed, so they don't send late.
+  if (order.status === "expired") {
+    notices.push(await createAndSendReceipt({ kind: "payer_order_expired", audience: "payer", order, merchant, recipientEmail: order.payerEmail }));
   }
   if (order.status === "refunded" || order.status === "refunding") {
     notices.push(await createAndSendReceipt({ kind: "merchant_linq_refund", audience: "merchant", order, merchant, recipientEmail: merchant.businessEmail }));

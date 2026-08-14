@@ -120,7 +120,8 @@ export type ReceiptKind =
   | "merchant_fiat_received"
   | "merchant_payout_failed"
   | "merchant_linq_refund"
-  | "merchant_wallet_incoming";
+  | "merchant_wallet_incoming"
+  | "payer_order_expired";
 
 export type ReceiptAudience = "payer" | "merchant";
 
