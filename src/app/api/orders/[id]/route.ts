@@ -2,6 +2,7 @@ import { fail, handleApiError, ok } from "@/server/http";
 import { liveLinqEnabled } from "@/server/env";
 import { getLinqOrderStatus } from "@/server/linq-offramp";
 import { logger } from "@/server/logger";
+import { expireOrderIfDue } from "@/server/order-expiry";
 import { addOrderEvent, getOrder, updateOrder } from "@/server/store";
 
 interface Params {
@@ -35,6 +36,9 @@ export async function GET(_request: Request, { params }: Params) {
         });
       }
     }
+
+    // Close the deposit window if it elapsed without a deposit, notifying both sides.
+    order = await expireOrderIfDue(order);
 
     return ok({ order });
   } catch (error) {

@@ -51,7 +51,9 @@ export const CHAINS: ChainConfig[] = [
     tokens: ["USDSUI", "USDC"],
     linqNetwork: "sui",
     hasWalletConnector: true,
-    addressPattern: /^0x[a-fA-F0-9]{40,64}$/,
+    // Sui addresses are exactly 32 bytes (64 hex). Kept strict so a 40-hex EVM
+    // address cannot pass as a Sui address in isAddressValidForNetwork().
+    addressPattern: /^0x[a-fA-F0-9]{64}$/,
     color: "#4DA2FF",
     enabled: true,
   },
@@ -149,4 +151,37 @@ export function linqNetworkFor(network: string): string {
 
 export function chainDisplayName(network?: string) {
   return getChain(network)?.name ?? String(network ?? "").replace(/-/g, " ");
+}
+
+/**
+ * True when `address` has the on-chain format expected by `network`.
+ *
+ * This is a safety net around the offramp provider: a deposit address returned
+ * for the wrong chain (e.g. a Sui address handed back for a Solana order) would
+ * send the payer's funds somewhere unrecoverable. Callers should refuse to show
+ * an address that fails this check rather than display it.
+ */
+export function isAddressValidForNetwork(address: string, network: string) {
+  const chain = getChain(network);
+  if (!chain) return false;
+  return chain.addressPattern.test(String(address ?? "").trim());
+}
+
+/**
+ * Chain-selection booleans understood by the Linq order model (CoinType).
+ * Linq generates a fresh deposit wallet per chain based on these flags, so the
+ * flag set here determines which chain's address comes back.
+ */
+export function linqCoinFlags(network: string): Record<string, boolean> {
+  const chain = getChain(network);
+  const key = chain?.linqNetwork ?? normalizeNetworkKey(network);
+  return {
+    sui: key === "sui",
+    base: key === "base",
+    solana: key === "solana",
+    ethereum: key === "ethereum",
+    aptos: key === "aptos",
+    bsc: key === "bsc",
+    tron: key === "tron",
+  };
 }

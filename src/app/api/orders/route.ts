@@ -1,6 +1,7 @@
 import { chainSupportsToken, getChain } from "@/lib/chains";
 import { fail, handleApiError, ok } from "@/server/http";
 import { createLinqOrder } from "@/server/linq-offramp";
+import { DEPOSIT_WINDOW_MS, expireOrderIfDue } from "@/server/order-expiry";
 import { getRequestMerchant } from "@/server/request-merchant";
 import { getClientKey, rateLimit } from "@/server/security";
 import { addOrderEvent, createOrder, getMerchant, getPaymentLink, listOrders, updateOrder } from "@/server/store";
@@ -11,7 +12,9 @@ export async function GET(request: Request) {
     const merchant = await getRequestMerchant(request);
     if (!merchant) return ok({ orders: [] });
     const orders = await listOrders(merchant.id);
-    return ok({ orders });
+    // Surface expired orders correctly in the merchant list.
+    const settled = await Promise.all(orders.map((entry) => expireOrderIfDue(entry)));
+    return ok({ orders: settled });
   } catch (error) {
     return handleApiError(error);
   }
@@ -63,13 +66,14 @@ export async function POST(request: Request) {
         network: chain.id,
         bank,
         payerName: input.payerName,
-        refundAddress: input.refundAddress,
       });
       order = await updateOrder(order.id, {
         quotedRate: linq.quotedRate,
         cryptoAmountDue: linq.cryptoAmountDue,
         paycrestOrderId: linq.linqOrderId,
         providerReceiveAddress: linq.providerReceiveAddress,
+        // Linq only watches the deposit wallet for 10 minutes.
+        validUntil: new Date(Date.now() + DEPOSIT_WINDOW_MS).toISOString(),
         status: linq.status,
         paycrestPayload: linq.raw,
       }) ?? order;

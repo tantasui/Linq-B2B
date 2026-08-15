@@ -1,4 +1,4 @@
-import { linqNetworkFor } from "@/lib/chains";
+import { chainDisplayName, isAddressValidForNetwork, linqCoinFlags, linqNetworkFor } from "@/lib/chains";
 import { cached } from "./cache";
 import { env, liveLinqEnabled } from "./env";
 import { ApiError } from "./http";
@@ -113,8 +113,13 @@ export async function createLinqOrder(input: {
     method: "POST",
     body: JSON.stringify({
       amountNGN: input.amountNgn,
+      // `coin` names the stablecoin; `chain`/`network` and the CoinType flag set
+      // name the chain. Linq generates a fresh deposit wallet per chain from these,
+      // which is why all three are sent — the flags are what its order model reads.
       coin,
+      chain: network,
       network,
+      coinFlags: linqCoinFlags(input.network),
       manualDeposit,
       bankAccount: input.bank.accountIdentifier,
       bankCode: input.bank.institutionCode,
@@ -134,6 +139,24 @@ export async function createLinqOrder(input: {
     manualDeposit,
     amountStableCoin: response.amountStableCoin,
   });
+
+  // Fund-safety gate: never surface a deposit address that isn't valid for the
+  // chain the payer chose. If the provider echoes an address from another chain
+  // (e.g. a Sui address for a Solana order), the payer's funds would be lost, so
+  // fail the order loudly instead.
+  if (!isAddressValidForNetwork(response.walletAddress, input.network)) {
+    logger.error("linq.address_chain_mismatch", {
+      linqOrderId: response.id,
+      requestedNetwork: input.network,
+      linqNetwork: network,
+      walletAddress: response.walletAddress,
+    });
+    throw new ApiError(
+      `The offramp provider returned a deposit address that is not valid on ${chainDisplayName(input.network)}. This order was stopped to protect your funds.`,
+      502,
+      { provider: "linq", requestedNetwork: input.network, walletAddress: response.walletAddress },
+    );
+  }
   return {
     linqOrderId: response.id,
     providerReceiveAddress: response.walletAddress,

@@ -24,6 +24,15 @@ interface PaymentCheckoutProps {
 
 const payerStorageKey = "linq:payer";
 
+// Order states where no further deposit is expected.
+const EXPIRED_OR_DONE = ["settled", "refunded", "expired", "failed", "cancelled"];
+
+function formatCountdown(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function BottomSheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <AnimatePresence>
@@ -58,16 +67,18 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
   const [amount, setAmount] = useState(initialAmount ? String(initialAmount) : "");
   const [token, setToken] = useState<StablecoinSymbol>("USDSUI");
-  const [networkId, setNetworkId] = useState("sui");
+  // No pre-selected network: the payer must actively choose one, so they never
+  // send on a chain they didn't pick.
+  const [networkId, setNetworkId] = useState("");
   const [tokens, setTokens] = useState<TokenNetworkRecord[]>([]);
   const [payerName, setPayerName] = useState("");
   const [payerEmail, setPayerEmail] = useState("");
-  const [payerWallet, setPayerWallet] = useState("");
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
   const [rate, setRate] = useState(1500);
   const [order, setOrder] = useState<OrderRecord | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
   const activeMerchant = merchant ?? {
     businessName: "Loading merchant",
@@ -86,10 +97,9 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
     const saved = window.localStorage.getItem(payerStorageKey);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved) as { name?: string; email?: string; wallet?: string };
+        const parsed = JSON.parse(saved) as { name?: string; email?: string };
         setPayerName(parsed.name ?? "");
         setPayerEmail(parsed.email ?? "");
-        setPayerWallet(parsed.wallet ?? "");
       } catch {
         window.localStorage.removeItem(payerStorageKey);
       }
@@ -118,7 +128,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
   }, [networkId, token, value]);
 
   useEffect(() => {
-    const TERMINAL = ["settled", "refunded", "expired", "failed", "cancelled"];
+    const TERMINAL = EXPIRED_OR_DONE;
     if (!order?.id || TERMINAL.includes(order.status)) return;
     const interval = window.setInterval(async () => {
       try {
@@ -129,6 +139,27 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
     }, 5000);
     return () => window.clearInterval(interval);
   }, [order?.id, order?.status]);
+
+  // Countdown to the deposit deadline. Linq only watches the deposit wallet for
+  // 10 minutes, so the payer must see how long they have left.
+  useEffect(() => {
+    if (!order?.validUntil) {
+      setSecondsLeft(null);
+      return;
+    }
+    const deadline = new Date(order.validUntil).getTime();
+    const tick = () => setSecondsLeft(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
+    tick();
+    const interval = window.setInterval(tick, 1000);
+    return () => window.clearInterval(interval);
+  }, [order?.validUntil]);
+
+  // When the window closes, ask the server to finalise the order so the merchant
+  // and payer both get the expiry notification.
+  useEffect(() => {
+    if (secondsLeft !== 0 || !order?.id || EXPIRED_OR_DONE.includes(order.status)) return;
+    getOrder(order.id).then(({ order: fresh }) => setOrder(fresh)).catch(() => undefined);
+  }, [secondsLeft, order?.id, order?.status]);
 
   const notify = (message: string) => {
     setFeedback(message);
@@ -165,7 +196,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
       notify("Enter a valid name and email");
       return;
     }
-    window.localStorage.setItem(payerStorageKey, JSON.stringify({ name: payerName.trim(), email: payerEmail.trim().toLowerCase(), wallet: payerWallet.trim() }));
+    window.localStorage.setItem(payerStorageKey, JSON.stringify({ name: payerName.trim(), email: payerEmail.trim().toLowerCase() }));
     setStage("asset");
   };
 
@@ -179,7 +210,6 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
         amountNgn: locked ? undefined : value,
         token,
         network: networkId,
-        refundAddress: payerWallet.trim() || undefined,
       });
       setOrder(response.order);
       setStage("transfer");
@@ -254,8 +284,6 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
           <div className="space-y-3">
             <input value={payerName} onChange={(event) => setPayerName(event.target.value)} className="h-13 w-full rounded-xl border border-zinc-200 px-4 py-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Name" />
             <input value={payerEmail} onChange={(event) => setPayerEmail(event.target.value)} className="h-13 w-full rounded-xl border border-zinc-200 px-4 py-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Email" inputMode="email" />
-            <input value={payerWallet} onChange={(event) => setPayerWallet(event.target.value)} className="h-13 w-full rounded-xl border border-zinc-200 px-4 py-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Your wallet address (optional — for refunds)" autoComplete="off" spellCheck={false} />
-            <p className="px-1 text-xs text-zinc-400">If a payout ever fails, we refund your crypto to this address. Use the wallet you'll send from.</p>
           </div>
           <button onClick={savePayer} className="mt-6 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white">Continue</button>
         </BottomSheet>
@@ -293,7 +321,9 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
               </button>
             ))}
           </div>
-          <button onClick={() => setStage("token")} className="mt-5 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white">Continue</button>
+          <button disabled={!networkId} onClick={() => setStage("token")} className="mt-5 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white disabled:opacity-40">
+            {networkId ? "Continue" : "Select a network"}
+          </button>
         </BottomSheet>
       )}
 
@@ -339,6 +369,17 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
           <div className="mb-5 flex items-center gap-3"><button onClick={() => setStage("review")}><ArrowLeft /></button><h2 className="text-xl font-semibold">Manual transfer</h2></div>
           <p className="text-center text-sm text-zinc-500">Send ≈ {order.cryptoAmountDue.toFixed(2)} {order.token} on {chainDisplayName(order.network)}</p>
           <p className="mt-1 text-center text-xs text-zinc-400">Suggested amount — your payout follows whatever you actually send.</p>
+          {order.status === "expired" || secondsLeft === 0 ? (
+            <div className="mt-4 rounded-2xl bg-red-50 p-4 text-center">
+              <p className="text-sm font-semibold text-red-700">This payment window has expired</p>
+              <p className="mt-1 text-xs text-red-600">Do not send funds to this address. Start a new payment to get a fresh address.</p>
+            </div>
+          ) : secondsLeft !== null ? (
+            <div className={`mt-4 rounded-2xl p-3 text-center ${secondsLeft <= 60 ? "bg-red-50" : "bg-zinc-50"}`}>
+              <p className={`text-xs ${secondsLeft <= 60 ? "text-red-600" : "text-zinc-500"}`}>Time left to send</p>
+              <p className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${secondsLeft <= 60 ? "text-red-700" : "text-zinc-900"}`}>{formatCountdown(secondsLeft)}</p>
+            </div>
+          ) : null}
           <div className="mx-auto mt-5 w-fit rounded-2xl border border-zinc-100 p-4"><QRCodeSVG value={order.providerReceiveAddress ?? ""} size={178} fgColor="#111111" /></div>
           <div className="mt-5 flex gap-2 rounded-xl bg-zinc-50 p-3">
             <code className="min-w-0 flex-1 truncate text-xs text-zinc-500">{order.providerReceiveAddress}</code>
