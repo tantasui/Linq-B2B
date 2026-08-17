@@ -1,18 +1,30 @@
 import { getChain } from "@/lib/chains";
 
 /**
- * Brand marks for the supported chains, inlined as SVG.
+ * Brand marks for the supported chains.
  *
- * Inlined rather than pulled from an icon CDN so the logos render offline, can't
- * break when a remote asset moves, and add no runtime dependency. Each mark is
- * drawn inside a 24x24 viewBox on the chain's brand-coloured disc.
+ * Most are inlined as SVG so they render offline, can't break when a remote
+ * asset moves, and add no runtime dependency; each is drawn inside a 24x24
+ * viewBox on the chain's brand-coloured disc. A few chains are served from a
+ * URL instead — see REMOTE_LOGOS below, which layers over these and falls back
+ * to them when the fetch fails.
  */
 
 type LogoProps = { size: number };
 
-function Disc({ color, size, children }: { color: string; size: number; children: React.ReactNode }) {
+function Disc({
+  color,
+  size,
+  children,
+}: { color: string; size: number; children: React.ReactNode }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" role="presentation" style={{ display: "block", borderRadius: "50%" }}>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      role="presentation"
+      style={{ display: "block", borderRadius: "50%" }}
+    >
       <circle cx="12" cy="12" r="12" fill={color} />
       {children}
     </svg>
@@ -63,7 +75,14 @@ function SolanaLogo({ size }: LogoProps) {
     <Disc color="#000000" size={size}>
       {/* Three slanted bars */}
       <defs>
-        <linearGradient id="sol-g" x1="4" y1="18" x2="20" y2="6" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="sol-g"
+          x1="4"
+          y1="18"
+          x2="20"
+          y2="6"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop stopColor="#9945FF" />
           <stop offset="1" stopColor="#14F195" />
         </linearGradient>
@@ -81,7 +100,10 @@ function TronLogo({ size }: LogoProps) {
   return (
     <Disc color="#EF0027" size={size}>
       {/* Angular delta mark */}
-      <path d="M5.4 6.2 18 8.6l-5.7 10.4L5.4 6.2Zm2.4 2 3.6 6.6.3-5.6-3.9-1Zm5.1 1.2-.3 5.3 3.1-5.7-2.8.4Z" fill="#fff" />
+      <path
+        d="M5.4 6.2 18 8.6l-5.7 10.4L5.4 6.2Zm2.4 2 3.6 6.6.3-5.6-3.9-1Zm5.1 1.2-.3 5.3 3.1-5.7-2.8.4Z"
+        fill="#fff"
+      />
     </Disc>
   );
 }
@@ -94,20 +116,33 @@ const LOGOS: Record<string, (props: LogoProps) => React.ReactElement> = {
   tron: TronLogo,
 };
 
-/** Renders the brand logo for a chain, falling back to a coloured initial disc. */
-export function NetworkLogo({ network, size = 32 }: { network: string; size?: number }) {
-  const chain = getChain(network);
-  const Logo = chain ? LOGOS[chain.id] : undefined;
-  if (Logo) return <Logo size={size} />;
+/**
+ * Chains whose mark is loaded from a URL instead of the inlined SVG above.
+ *
+ * These take priority over LOGOS. They carry the tradeoffs the inlined marks
+ * were chosen to avoid — they need the network, and they break if the remote
+ * asset moves — so each renders on top of whatever LOGOS has for that chain and
+ * hides itself on error. A failed load therefore falls back to the inlined mark
+ * where one exists, and to the lettered disc otherwise, never to a gap.
+ */
+const REMOTE_LOGOS: Record<string, string> = {
+  stellar: "https://cryptologos.cc/logos/stellar-xlm-logo.png",
+  bnb: "https://cryptologos.cc/logos/bnb-bnb-logo.svg",
+  sui: "https://imagedelivery.net/cBNDGgkrsEA-b_ixIp9SkQ/sui-coin.svg/public",
+};
 
-  const label = chain?.shortName ?? String(network ?? "?").slice(0, 3).toUpperCase();
+/** Coloured disc showing the chain's short name — the fallback for every path. */
+function InitialDisc({
+  label,
+  color,
+  size,
+}: { label: string; color: string; size: number }) {
   return (
     <span
-      aria-label={chain?.name ?? network}
       style={{
         width: size,
         height: size,
-        background: chain?.color ?? "#8A4FFF",
+        background: color,
         color: "#fff",
         borderRadius: "50%",
         display: "flex",
@@ -118,6 +153,74 @@ export function NetworkLogo({ network, size = 32 }: { network: string; size?: nu
       }}
     >
       {label}
+    </span>
+  );
+}
+
+/** Renders the brand logo for a chain, falling back to a coloured initial disc. */
+export function NetworkLogo({
+  network,
+  size = 32,
+}: { network: string; size?: number }) {
+  const chain = getChain(network);
+  const label =
+    chain?.shortName ??
+    String(network ?? "?")
+      .slice(0, 3)
+      .toUpperCase();
+  const color = chain?.color ?? "#8A4FFF";
+
+  const Inline = chain ? LOGOS[chain.id] : undefined;
+
+  const remote = chain ? REMOTE_LOGOS[chain.id] : undefined;
+  if (remote) {
+    return (
+      <span
+        aria-label={chain?.name ?? network}
+        style={{
+          position: "relative",
+          display: "inline-block",
+          width: size,
+          height: size,
+        }}
+      >
+        {/* Sits under the remote mark, so if that fails to load we land on the
+            inlined SVG where there is one rather than on bare initials. */}
+        {Inline ? (
+          <Inline size={size} />
+        ) : (
+          <InitialDisc label={label} color={color} size={size} />
+        )}
+        <img
+          src={remote}
+          alt=""
+          width={size}
+          height={size}
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            objectFit: "contain",
+            // Most of these marks are transparent PNG/SVG, so they need a ground
+            // of their own rather than sitting on the disc's colour.
+            background: "#fff",
+          }}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
+        />
+      </span>
+    );
+  }
+
+  if (Inline) return <Inline size={size} />;
+
+  return (
+    <span
+      aria-label={chain?.name ?? network}
+      style={{ display: "inline-block" }}
+    >
+      <InitialDisc label={label} color={color} size={size} />
     </span>
   );
 }
