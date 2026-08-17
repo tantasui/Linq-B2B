@@ -87,7 +87,7 @@ export const CHAINS: ChainConfig[] = [
     name: "Solana",
     shortName: "SOL",
     family: "solana",
-    tokens: ["USDC"],
+    tokens: ["USDC", "USDT"],
     linqNetwork: "solana",
     hasWalletConnector: true,
     addressPattern: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
@@ -99,7 +99,8 @@ export const CHAINS: ChainConfig[] = [
     name: "Tron",
     shortName: "TRX",
     family: "tron",
-    tokens: ["USDC"],
+    // Tron is USDT-only: Linq's Tron watcher tracks TRC20 USDT.
+    tokens: ["USDT"],
     linqNetwork: "tron",
     hasWalletConnector: false,
     addressPattern: /^T[1-9A-HJ-NP-Za-km-z]{33}$/,

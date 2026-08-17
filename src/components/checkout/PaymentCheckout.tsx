@@ -6,7 +6,7 @@ import { ArrowLeft, Banknote, Check, Copy, Landmark, Loader2, Wallet, X } from "
 import { QRCodeSVG } from "qrcode.react";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
 import { NetworkIcon, TokenIcon } from "@/components/icons/CryptoIcons";
-import { createOrder, getOrder, getPaycrestRate, getPaycrestTokens, getPaymentLink } from "@/lib/api-client";
+import { createOrder, getOrder, getPaycrestRate, getPaycrestTokens, getPaymentLink, verifyBank } from "@/lib/api-client";
 import { getBankLogo } from "@/lib/banks";
 import { chainDisplayName, ENABLED_CHAINS, getChain } from "@/lib/chains";
 import type { FiatCurrency, PaymentMode, StablecoinSymbol } from "@/lib/payment-data";
@@ -110,6 +110,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
   const [rate, setRate] = useState(1500);
   const [order, setOrder] = useState<OrderRecord | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [resolvedPayoutName, setResolvedPayoutName] = useState("");
 
   const activeMerchant = merchant ?? {
     businessName: "Loading merchant",
@@ -117,7 +118,10 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
     bankAccounts: [],
     wallets: [],
   };
-  const payoutBank = activeMerchant.bankAccounts.find((entry) => entry.verificationStatus === "verified");
+  // Prefer a verified account; fall back to the first configured one so the
+  // payer still sees transfer details.
+  const payoutBank =
+    activeMerchant.bankAccounts.find((entry) => entry.verificationStatus === "verified") ?? activeMerchant.bankAccounts[0];
   const payoutBankLogo = getBankLogo(payoutBank?.institutionCode, payoutBank?.institutionName);
   const locked = (link?.mode ?? mode) === "fixed";
   const value = Number(link?.amountNgn ?? (amount || 0));
@@ -191,6 +195,21 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
     if (secondsLeft !== 0 || !order?.id || EXPIRED_OR_DONE.includes(order.status)) return;
     getOrder(order.id).then(({ order: fresh }) => setOrder(fresh)).catch(() => undefined);
   }, [secondsLeft, order?.id, order?.status]);
+
+  // Resolve the merchant's payout account name for display when it isn't stored,
+  // so the payer can confirm who they are transferring to before sending Naira.
+  useEffect(() => {
+    if (stage !== "naira" || !payoutBank || payoutBank.resolvedAccountName) return;
+    let cancelled = false;
+    verifyBank(payoutBank.institutionCode, payoutBank.accountIdentifier)
+      .then((result) => {
+        if (!cancelled && result.accountName) setResolvedPayoutName(result.accountName);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [stage, payoutBank?.institutionCode, payoutBank?.accountIdentifier, payoutBank?.resolvedAccountName]);
 
   const notify = (message: string) => {
     setFeedback(message);
@@ -299,7 +318,7 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
             {payoutBank ? (
               <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3">
                 {payoutBankLogo ? <img src={payoutBankLogo} alt="" className="h-8 w-8 rounded-lg object-contain" /> : <Landmark className="h-8 w-8 text-[#8A4FFF]" />}
-                <div className="min-w-0 flex-1"><p className="text-sm font-medium">{payoutBank.resolvedAccountName}</p><p className="text-xs text-zinc-500">{payoutBank.accountIdentifier} - {payoutBank.institutionName ?? payoutBank.institutionCode}</p></div>
+                <div className="min-w-0 flex-1"><p className="text-sm font-medium">{payoutBank.resolvedAccountName || resolvedPayoutName || "Resolving account name…"}</p><p className="text-xs text-zinc-500">{payoutBank.accountIdentifier} - {payoutBank.institutionName ?? payoutBank.institutionCode}</p></div>
                 <button onClick={() => copy(payoutBank.accountIdentifier, "Account number")}><Copy className="h-5 w-5 text-zinc-500" /></button>
               </div>
             ) : (

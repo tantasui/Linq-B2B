@@ -4,6 +4,7 @@ import type { StablecoinSymbol } from "@/lib/payment-data";
 const ICON_URLS: Record<StablecoinSymbol, string> = {
   USDSUI: "https://token-metadata.bridge.xyz/images/usd_sui.png",
   USDC: "https://6778953.fs1.hubspotusercontent-na1.net/hubfs/6778953/Brand/USDC/USDC_Icon.svg",
+  USDT: "https://cryptologos.cc/logos/tether-usdt-logo.svg",
 };
 
 export function NetworkIcon({ network, size = 40 }: { network: string; size?: number }) {

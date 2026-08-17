@@ -12,11 +12,14 @@ export const USDC_SUI_COIN_TYPE =
   "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
 
 export function coinTypeForToken(token: StablecoinSymbol): string {
+  // Sui move-types only; USDT is not a Sui-native coin here.
   return token === "USDC" ? USDC_SUI_COIN_TYPE : USDSUI_COIN_TYPE;
 }
 
 function linqCoinId(token: StablecoinSymbol): string {
-  return token === "USDC" ? "usdc" : "usdsui";
+  if (token === "USDC") return "usdc";
+  if (token === "USDT") return "usdt";
+  return "usdsui";
 }
 
 async function requestLinq<T>(path: string, init?: RequestInit): Promise<T> {
@@ -114,12 +117,9 @@ export async function createLinqOrder(input: {
     body: JSON.stringify({
       amountNGN: input.amountNgn,
       coin,
-      // Chain selection. NOTE: as of the current Linq b2b service,
-      // CreateB2BOfframpRequest has no chain/network field and the handler always
-      // calls the Sui wallet helper, so these are ignored server-side and every
-      // order returns a Sui address. They are sent so the correct chain is
-      // requested the moment Linq adds support; until then the address check
-      // below fails non-Sui orders rather than showing a wrong-chain address.
+      // Chain selection. Linq generates a fresh deposit wallet on the requested
+      // chain from this (verified live: a Solana order returns a Solana address).
+      // Both keys are sent because the field name differs across Linq versions.
       chain: network,
       network,
       manualDeposit,
