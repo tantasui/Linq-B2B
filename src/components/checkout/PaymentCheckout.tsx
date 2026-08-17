@@ -12,7 +12,7 @@ import { chainDisplayName, ENABLED_CHAINS, getChain } from "@/lib/chains";
 import { buildStellarUsdcPayUri } from "@/lib/sep7";
 import type { FiatCurrency, PaymentMode, StablecoinSymbol } from "@/lib/payment-data";
 import { formatCurrency } from "@/lib/payment-data";
-import type { MerchantRecord, OrderRecord, PaymentLinkRecord, TokenNetworkRecord } from "@/server/types";
+import type { MerchantRecord, OrderRecord, OrderStatus, PaymentLinkRecord, TokenNetworkRecord } from "@/server/types";
 type Stage = null | "naira" | "customer" | "asset" | "network" | "token" | "review" | "transfer" | "success";
 
 interface PaymentCheckoutProps {
@@ -32,6 +32,62 @@ function formatCountdown(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/**
+ * How the confirmation screen reads for a given order status.
+ *
+ * Tapping "I have paid" only means the payer believes they sent it — the order
+ * is still `initiated` at that moment. Showing a green tick and "Payment
+ * submitted" there tells them it worked before anyone has checked, so a payment
+ * that later expires or fails still looks successful. The screen instead
+ * reflects whatever the poll last returned, and only claims success on `settled`.
+ */
+function confirmationView(status: OrderStatus | undefined, merchantName: string) {
+  switch (status) {
+    case "settled":
+      return {
+        tone: "done" as const,
+        title: "Payment successful",
+        body: `Your transfer is confirmed and the payout to ${merchantName} has settled.`,
+      };
+    case "expired":
+      return {
+        tone: "failed" as const,
+        title: "Payment window closed",
+        body: "The deposit window ended before a transfer arrived. If you already sent funds, contact support with your order reference — do not send again.",
+      };
+    case "failed":
+    case "cancelled":
+      return {
+        tone: "failed" as const,
+        title: "Payment failed",
+        body: "This payment could not be completed. If funds left your wallet, contact support with your order reference.",
+      };
+    case "refunding":
+    case "refunded":
+      return {
+        tone: "failed" as const,
+        title: "Payment refunded",
+        body: "The payout could not be completed, so your transfer is being returned to you.",
+      };
+    case "deposited":
+    case "fulfilling":
+    case "fulfilled":
+    case "validated":
+    case "settling":
+      return {
+        tone: "pending" as const,
+        title: "Transfer received",
+        body: `We have your transfer and are settling the payout to ${merchantName}. This usually takes a moment.`,
+      };
+    default:
+      return {
+        tone: "pending" as const,
+        title: "Waiting for your transfer",
+        body: "We're watching the deposit address. This screen updates by itself once your transfer lands — you can leave it open.",
+      };
+  }
 }
 
 /**
@@ -434,20 +490,33 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
         </BottomSheet>
       )}
 
-      {stage === "success" && (
+      {stage === "success" && (() => {
+        const view = confirmationView(order?.status, activeMerchant.businessName);
+        const badge =
+          view.tone === "done" ? "bg-emerald-50 text-emerald-600"
+          : view.tone === "failed" ? "bg-red-50 text-red-600"
+          : "bg-[#8A4FFF]/10 text-[#8A4FFF]";
+        return (
         <BottomSheet onClose={() => setStage(null)}>
           <div className="py-8 text-center">
-            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#8A4FFF]/10 text-[#8A4FFF]"><Check className="h-8 w-8" /></span>
-            <h2 className="mt-5 text-2xl font-semibold">Payment submitted</h2>
-            <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-zinc-500">We’ll monitor the deposit and notify {activeMerchant.businessName} once Linq confirms the transfer and initiates the NGN payout.</p>
+            <span className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${badge}`}>
+              {view.tone === "done" ? <Check className="h-8 w-8" />
+                : view.tone === "failed" ? <X className="h-8 w-8" />
+                : <Loader2 className="h-8 w-8 animate-spin" />}
+            </span>
+            <h2 className="mt-5 text-2xl font-semibold">{view.title}</h2>
+            <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-zinc-500">{view.body}</p>
             <div className="mt-7 rounded-2xl bg-zinc-50 p-4 text-left text-sm">
               <p className="flex justify-between py-2"><span className="text-zinc-500">Request</span><span>#{linkId.toUpperCase()}</span></p>
               <p className="flex justify-between py-2"><span className="text-zinc-500">Amount</span><span>{formatCurrency(value, initialCurrency)}</span></p>
+              {order?.status && <p className="flex justify-between py-2"><span className="text-zinc-500">Status</span><span className="capitalize">{order.status}</span></p>}
+              {order?.paycrestOrderId && <p className="flex justify-between py-2"><span className="text-zinc-500">Order</span><span>{order.paycrestOrderId}</span></p>}
             </div>
             <button onClick={() => setStage(null)} className="mt-7 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white">Done</button>
           </div>
         </BottomSheet>
-      )}
+        );
+      })()}
       {feedback && <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#8A4FFF] px-4 py-2 text-xs text-white shadow-lg">{feedback}</div>}
     </main>
   );
