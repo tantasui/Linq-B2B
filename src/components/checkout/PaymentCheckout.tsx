@@ -27,6 +27,37 @@ const payerStorageKey = "linq:payer";
 // Order states where no further deposit is expected.
 const EXPIRED_OR_DONE = ["settled", "refunded", "expired", "failed", "cancelled"];
 
+/**
+ * Live view of an order's lifecycle for the payer.
+ *
+ * The order is polled after submission, so this screen must reflect the real
+ * status rather than a fixed "submitted" message — the payer needs to see the
+ * deposit actually being detected, processed and settled.
+ */
+function paymentStatusView(status?: OrderRecord["status"]) {
+  switch (status) {
+    case "deposited":
+    case "validated":
+      return { tone: "progress" as const, title: "Payment received", body: "We've detected your deposit and are processing the payout to the merchant." };
+    case "fulfilling":
+    case "fulfilled":
+    case "settling":
+      return { tone: "progress" as const, title: "Processing payout", body: "Your deposit is confirmed. The merchant's Naira payout is on its way." };
+    case "settled":
+      return { tone: "done" as const, title: "Payment complete", body: "The merchant has been paid. Thank you." };
+    case "expired":
+      return { tone: "error" as const, title: "Payment expired", body: "The deposit window closed before funds arrived. If you already sent funds, they are held safely — contact the merchant." };
+    case "failed":
+    case "cancelled":
+      return { tone: "error" as const, title: "Payment failed", body: "This payment could not be completed. Any funds received are held safely and will be reconciled." };
+    case "refunding":
+    case "refunded":
+      return { tone: "error" as const, title: "Payment refunded", body: "This payment was refunded to the sending wallet." };
+    default:
+      return { tone: "waiting" as const, title: "Waiting for your deposit", body: "We're watching the deposit address. This updates automatically once your transfer is detected on-chain." };
+  }
+}
+
 function formatCountdown(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -403,16 +434,30 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
 
       {stage === "success" && (
         <BottomSheet onClose={() => setStage(null)}>
+          {(() => {
+            const view = paymentStatusView(order?.status);
+            const tone = {
+              waiting: { bg: "bg-[#8A4FFF]/10", fg: "text-[#8A4FFF]" },
+              progress: { bg: "bg-amber-100", fg: "text-amber-600" },
+              done: { bg: "bg-emerald-100", fg: "text-emerald-600" },
+              error: { bg: "bg-red-100", fg: "text-red-600" },
+            }[view.tone];
+            return (
           <div className="py-8 text-center">
-            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#8A4FFF]/10 text-[#8A4FFF]"><Check className="h-8 w-8" /></span>
-            <h2 className="mt-5 text-2xl font-semibold">Payment submitted</h2>
-            <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-zinc-500">We’ll monitor the deposit and notify {activeMerchant.businessName} once Linq confirms the transfer and initiates the NGN payout.</p>
+            <span className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${tone.bg} ${tone.fg}`}>
+              {view.tone === "waiting" || view.tone === "progress" ? <Loader2 className="h-8 w-8 animate-spin" /> : view.tone === "done" ? <Check className="h-8 w-8" /> : <X className="h-8 w-8" />}
+            </span>
+            <h2 className="mt-5 text-2xl font-semibold">{view.title}</h2>
+            <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-zinc-500">{view.body}</p>
             <div className="mt-7 rounded-2xl bg-zinc-50 p-4 text-left text-sm">
               <p className="flex justify-between py-2"><span className="text-zinc-500">Request</span><span>#{linkId.toUpperCase()}</span></p>
               <p className="flex justify-between py-2"><span className="text-zinc-500">Amount</span><span>{formatCurrency(value, initialCurrency)}</span></p>
+              {order && <p className="flex justify-between py-2"><span className="text-zinc-500">Status</span><span className="font-medium capitalize">{order.status}</span></p>}
             </div>
             <button onClick={() => setStage(null)} className="mt-7 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white">Done</button>
           </div>
+            );
+          })()}
         </BottomSheet>
       )}
       {feedback && <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#8A4FFF] px-4 py-2 text-xs text-white shadow-lg">{feedback}</div>}

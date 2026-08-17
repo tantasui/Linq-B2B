@@ -167,21 +167,3 @@ export function isAddressValidForNetwork(address: string, network: string) {
   return chain.addressPattern.test(String(address ?? "").trim());
 }
 
-/**
- * Chain-selection booleans understood by the Linq order model (CoinType).
- * Linq generates a fresh deposit wallet per chain based on these flags, so the
- * flag set here determines which chain's address comes back.
- */
-export function linqCoinFlags(network: string): Record<string, boolean> {
-  const chain = getChain(network);
-  const key = chain?.linqNetwork ?? normalizeNetworkKey(network);
-  return {
-    sui: key === "sui",
-    base: key === "base",
-    solana: key === "solana",
-    ethereum: key === "ethereum",
-    aptos: key === "aptos",
-    bsc: key === "bsc",
-    tron: key === "tron",
-  };
-}

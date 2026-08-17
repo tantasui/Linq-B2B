@@ -1,4 +1,4 @@
-import { chainDisplayName, isAddressValidForNetwork, linqCoinFlags, linqNetworkFor } from "@/lib/chains";
+import { chainDisplayName, isAddressValidForNetwork, linqNetworkFor } from "@/lib/chains";
 import { cached } from "./cache";
 import { env, liveLinqEnabled } from "./env";
 import { ApiError } from "./http";
@@ -113,13 +113,15 @@ export async function createLinqOrder(input: {
     method: "POST",
     body: JSON.stringify({
       amountNGN: input.amountNgn,
-      // `coin` names the stablecoin; `chain`/`network` and the CoinType flag set
-      // name the chain. Linq generates a fresh deposit wallet per chain from these,
-      // which is why all three are sent — the flags are what its order model reads.
       coin,
+      // Chain selection. NOTE: as of the current Linq b2b service,
+      // CreateB2BOfframpRequest has no chain/network field and the handler always
+      // calls the Sui wallet helper, so these are ignored server-side and every
+      // order returns a Sui address. They are sent so the correct chain is
+      // requested the moment Linq adds support; until then the address check
+      // below fails non-Sui orders rather than showing a wrong-chain address.
       chain: network,
       network,
-      coinFlags: linqCoinFlags(input.network),
       manualDeposit,
       bankAccount: input.bank.accountIdentifier,
       bankCode: input.bank.institutionCode,
