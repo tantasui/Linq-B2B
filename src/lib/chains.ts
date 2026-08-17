@@ -21,7 +21,7 @@ import type { StablecoinSymbol } from "@/lib/payment-data";
  *   expects a different identifier for a given chain.
  */
 
-export type ChainFamily = "sui" | "evm" | "solana" | "tron";
+export type ChainFamily = "sui" | "evm" | "solana" | "tron" | "stellar";
 
 export interface ChainConfig {
   /** Canonical network key used across the app (DB `network`, order.network, URLs). */
@@ -95,6 +95,22 @@ export const CHAINS: ChainConfig[] = [
     enabled: true,
   },
   {
+    id: "stellar",
+    name: "Stellar",
+    shortName: "XLM",
+    family: "stellar",
+    tokens: ["USDC"],
+    linqNetwork: "stellar",
+    // Dynamic has no Stellar connector, so merchants cannot hold an embedded
+    // Stellar wallet; this is payer-deposit only, like Tron.
+    hasWalletConnector: false,
+    // Stellar public keys are 56 chars of base32 (RFC4648, no 0/1/8) starting
+    // with G. Strict enough that no other chain's address shape can pass.
+    addressPattern: /^G[A-Z2-7]{55}$/,
+    color: "#7D00FF",
+    enabled: true,
+  },
+  {
     id: "tron",
     name: "Tron",
     shortName: "TRX",
@@ -127,6 +143,9 @@ const NETWORK_ALIASES: Record<string, string> = {
   sol: "solana",
   "solana-mainnet": "solana",
   trx: "tron",
+  xlm: "stellar",
+  "stellar-mainnet": "stellar",
+  pubnet: "stellar",
 };
 
 export function getChain(network?: string): ChainConfig | undefined {
@@ -168,3 +187,22 @@ export function isAddressValidForNetwork(address: string, network: string) {
   return chain.addressPattern.test(String(address ?? "").trim());
 }
 
+/**
+ * Chain-selection booleans understood by the Linq order model (CoinType).
+ * Linq generates a fresh deposit wallet per chain based on these flags, so the
+ * flag set here determines which chain's address comes back.
+ */
+export function linqCoinFlags(network: string): Record<string, boolean> {
+  const chain = getChain(network);
+  const key = chain?.linqNetwork ?? normalizeNetworkKey(network);
+  return {
+    sui: key === "sui",
+    base: key === "base",
+    solana: key === "solana",
+    ethereum: key === "ethereum",
+    aptos: key === "aptos",
+    bsc: key === "bsc",
+    tron: key === "tron",
+    stellar: key === "stellar",
+  };
+}

@@ -5,6 +5,7 @@ import {
   NetworkBase,
   NetworkBinanceSmartChain,
   NetworkSolana,
+  NetworkStellar,
   NetworkSui,
   NetworkTron,
 } from "@web3icons/react";
@@ -13,14 +14,16 @@ import { getChain } from "@/lib/chains";
 /**
  * Official chain brand marks, from the @web3icons/react set.
  *
- * Using the maintained icon package rather than hand-authored paths so the marks
- * are the real brand artwork and stay correct as brands update.
+ * Using the maintained icon package rather than hand-authored paths or hosted
+ * URLs: the marks are the real brand artwork, they render offline with no
+ * remote asset to break, and they stay correct as brands update.
  */
 const LOGOS: Record<string, React.ComponentType<IconComponentProps>> = {
   sui: NetworkSui,
   base: NetworkBase,
   bnb: NetworkBinanceSmartChain,
   solana: NetworkSolana,
+  stellar: NetworkStellar,
   tron: NetworkTron,
 };
 

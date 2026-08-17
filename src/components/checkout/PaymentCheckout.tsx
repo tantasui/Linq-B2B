@@ -9,9 +9,10 @@ import { NetworkIcon, TokenIcon } from "@/components/icons/CryptoIcons";
 import { createOrder, getOrder, getPaycrestRate, getPaycrestTokens, getPaymentLink, verifyBank } from "@/lib/api-client";
 import { getBankLogo } from "@/lib/banks";
 import { chainDisplayName, ENABLED_CHAINS, getChain } from "@/lib/chains";
+import { buildStellarUsdcPayUri } from "@/lib/sep7";
 import type { FiatCurrency, PaymentMode, StablecoinSymbol } from "@/lib/payment-data";
 import { formatCurrency } from "@/lib/payment-data";
-import type { MerchantRecord, OrderRecord, PaymentLinkRecord, TokenNetworkRecord } from "@/server/types";
+import type { MerchantRecord, OrderRecord, OrderStatus, PaymentLinkRecord, TokenNetworkRecord } from "@/server/types";
 type Stage = null | "naira" | "customer" | "asset" | "network" | "token" | "review" | "transfer" | "success";
 
 interface PaymentCheckoutProps {
@@ -62,6 +63,84 @@ function formatCountdown(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/**
+ * How the confirmation screen reads for a given order status.
+ *
+ * Tapping "I have paid" only means the payer believes they sent it — the order
+ * is still `initiated` at that moment. Showing a green tick and "Payment
+ * submitted" there tells them it worked before anyone has checked, so a payment
+ * that later expires or fails still looks successful. The screen instead
+ * reflects whatever the poll last returned, and only claims success on `settled`.
+ */
+function confirmationView(status: OrderStatus | undefined, merchantName: string) {
+  switch (status) {
+    case "settled":
+      return {
+        tone: "done" as const,
+        title: "Payment successful",
+        body: `Your transfer is confirmed and the payout to ${merchantName} has settled.`,
+      };
+    case "expired":
+      return {
+        tone: "failed" as const,
+        title: "Payment window closed",
+        body: "The deposit window ended before a transfer arrived. If you already sent funds, contact support with your order reference — do not send again.",
+      };
+    case "failed":
+    case "cancelled":
+      return {
+        tone: "failed" as const,
+        title: "Payment failed",
+        body: "This payment could not be completed. If funds left your wallet, contact support with your order reference.",
+      };
+    case "refunding":
+    case "refunded":
+      return {
+        tone: "failed" as const,
+        title: "Payment refunded",
+        body: "The payout could not be completed, so your transfer is being returned to you.",
+      };
+    case "deposited":
+    case "fulfilling":
+    case "fulfilled":
+    case "validated":
+    case "settling":
+      return {
+        tone: "pending" as const,
+        title: "Transfer received",
+        body: `We have your transfer and are settling the payout to ${merchantName}. This usually takes a moment.`,
+      };
+    default:
+      return {
+        tone: "pending" as const,
+        title: "Waiting for your transfer",
+        body: "We're watching the deposit address. This screen updates by itself once your transfer lands — you can leave it open.",
+      };
+  }
+}
+
+/**
+ * What the payment QR encodes.
+ *
+ * Stellar gets a SEP-7 `web+stellar:pay` URI so a scanning wallet knows the
+ * destination, that the asset is USDC rather than XLM, and how much to send.
+ * Other chains get the bare address, which is the convention their wallets
+ * expect. The address shown and copied below the QR is always the raw address.
+ */
+function qrValue(order: OrderRecord): string {
+  const address = order.providerReceiveAddress ?? "";
+  if (!address || getChain(order.network)?.id !== "stellar") return address;
+
+  return buildStellarUsdcPayUri({
+    destination: address,
+    // Suggested, not enforced: these orders are manual-deposit, so the payout
+    // reconciles to whatever actually arrives.
+    amount: order.cryptoAmountDue,
+    msg: `Payment ${order.id}`,
+    originDomain: typeof window === "undefined" ? undefined : window.location.hostname,
+  });
 }
 
 function BottomSheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
@@ -430,7 +509,17 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
               <p className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${secondsLeft <= 60 ? "text-red-700" : "text-zinc-900"}`}>{formatCountdown(secondsLeft)}</p>
             </div>
           ) : null}
-          <div className="mx-auto mt-5 w-fit rounded-2xl border border-zinc-100 p-4"><QRCodeSVG value={order.providerReceiveAddress ?? ""} size={178} fgColor="#111111" /></div>
+          {/* On Stellar the QR is a SEP-7 pay URI rather than a bare address, so
+              scanning it fills in destination, asset and amount in the payer's
+              wallet. Scanning a bare address on Stellar is how people end up
+              sending XLM instead of USDC, or the wrong amount. Every other chain
+              keeps the plain address, which is what their wallets expect. */}
+          <div className="mx-auto mt-5 w-fit rounded-2xl border border-zinc-100 p-4">
+            <QRCodeSVG value={qrValue(order)} size={178} fgColor="#111111" />
+          </div>
+          {getChain(order.network)?.id === "stellar" ? (
+            <p className="mt-2 text-center text-xs text-zinc-400">Scan with a Stellar wallet to prefill this payment</p>
+          ) : null}
           <div className="mt-5 flex gap-2 rounded-xl bg-zinc-50 p-3">
             <code className="min-w-0 flex-1 truncate text-xs text-zinc-500">{order.providerReceiveAddress}</code>
             <button onClick={async () => {
@@ -451,7 +540,13 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
         </BottomSheet>
       )}
 
-      {stage === "success" && (
+      {stage === "success" && (() => {
+        const view = confirmationView(order?.status, activeMerchant.businessName);
+        const badge =
+          view.tone === "done" ? "bg-emerald-50 text-emerald-600"
+          : view.tone === "failed" ? "bg-red-50 text-red-600"
+          : "bg-[#8A4FFF]/10 text-[#8A4FFF]";
+        return (
         <BottomSheet onClose={() => setStage(null)}>
           {(() => {
             const view = paymentStatusView(order?.status);
@@ -471,14 +566,16 @@ export function PaymentCheckout({ linkId, mode, initialAmount = 0, currency: ini
             <div className="mt-7 rounded-2xl bg-zinc-50 p-4 text-left text-sm">
               <p className="flex justify-between py-2"><span className="text-zinc-500">Request</span><span>#{linkId.toUpperCase()}</span></p>
               <p className="flex justify-between py-2"><span className="text-zinc-500">Amount</span><span>{formatCurrency(value, initialCurrency)}</span></p>
-              {order && <p className="flex justify-between py-2"><span className="text-zinc-500">Status</span><span className="font-medium capitalize">{order.status}</span></p>}
+              {order?.status && <p className="flex justify-between py-2"><span className="text-zinc-500">Status</span><span className="font-medium capitalize">{order.status}</span></p>}
+              {order?.paycrestOrderId && <p className="flex justify-between py-2"><span className="text-zinc-500">Order</span><span>{order.paycrestOrderId}</span></p>}
             </div>
             <button onClick={() => setStage(null)} className="mt-7 h-14 w-full rounded-xl bg-[#8A4FFF] font-medium text-white">Done</button>
           </div>
             );
           })()}
         </BottomSheet>
-      )}
+        );
+      })()}
       {feedback && <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#8A4FFF] px-4 py-2 text-xs text-white shadow-lg">{feedback}</div>}
     </main>
   );

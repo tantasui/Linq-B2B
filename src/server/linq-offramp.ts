@@ -1,4 +1,4 @@
-import { chainDisplayName, isAddressValidForNetwork, linqNetworkFor } from "@/lib/chains";
+import { chainDisplayName, isAddressValidForNetwork, linqCoinFlags, linqNetworkFor } from "@/lib/chains";
 import { cached } from "./cache";
 import { env, liveLinqEnabled } from "./env";
 import { ApiError } from "./http";
@@ -122,6 +122,7 @@ export async function createLinqOrder(input: {
       // Both keys are sent because the field name differs across Linq versions.
       chain: network,
       network,
+      coinFlags: linqCoinFlags(input.network),
       manualDeposit,
       bankAccount: input.bank.accountIdentifier,
       bankCode: input.bank.institutionCode,
