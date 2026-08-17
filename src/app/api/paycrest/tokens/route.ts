@@ -6,11 +6,12 @@ import type { StablecoinSymbol } from "@/server/types";
 const TOKEN_NAMES: Record<StablecoinSymbol, string> = {
   USDSUI: "USD SUI",
   USDC: "USD Coin",
+  USDT: "Tether USD",
 };
 
 // Sui move-types are the only on-chain contract identifiers we hardcode; other
 // chains' USDC contract addresses are resolved by the offramp provider.
-const SUI_CONTRACTS: Record<StablecoinSymbol, string> = {
+const SUI_CONTRACTS: Partial<Record<StablecoinSymbol, string>> = {
   USDSUI: USDSUI_COIN_TYPE,
   USDC: USDC_SUI_COIN_TYPE,
 };

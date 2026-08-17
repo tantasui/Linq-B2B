@@ -1,5 +1,5 @@
 export type FiatCurrency = "NGN" | "USD";
-export type StablecoinSymbol = "USDSUI" | "USDC";
+export type StablecoinSymbol = "USDSUI" | "USDC" | "USDT";
 export type PaymentMode = "open" | "fixed";
 
 export interface MerchantProfile {
