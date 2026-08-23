@@ -16,6 +16,7 @@ import { Field, Input } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createOrder, getOrder, getPaycrestRate, getPaymentLink } from "@/lib/api-client";
+import { buildStellarUsdcPayUri } from "@/lib/sep7";
 import { chainDisplayName, ENABLED_CHAINS, getChain, isAddressValidForNetwork } from "@/lib/chains";
 import type { FiatCurrency, PaymentMode, StablecoinSymbol } from "@/lib/payment-data";
 import type { MerchantRecord, OrderRecord, PaymentLinkRecord } from "@/server/types";
@@ -46,6 +47,28 @@ function formatNaira(value: number) {
 
 function formatCountdown(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/**
+ * What the payment QR encodes.
+ *
+ * Stellar gets a SEP-7 `web+stellar:pay` URI so a scanning wallet knows the
+ * destination, that the asset is USDC rather than XLM, and how much to send.
+ * Other chains get the bare address, which is the convention their wallets
+ * expect. The address shown and copied below the QR is always the raw address.
+ */
+function qrValue(order: OrderRecord): string {
+  const address = order.providerReceiveAddress ?? "";
+  if (!address || getChain(order.network)?.id !== "stellar") return address;
+
+  return buildStellarUsdcPayUri({
+    destination: address,
+    // Suggested, not enforced: these orders are manual-deposit, so the payout
+    // reconciles to whatever actually arrives.
+    amount: order.cryptoAmountDue,
+    msg: `Payment ${order.id}`,
+    originDomain: typeof window === "undefined" ? undefined : window.location.hostname,
+  });
 }
 
 /** A large, tappable choice tile — network and token pickers share the shape. */
@@ -512,9 +535,18 @@ export function PaymentCheckout({
 
             {expired ? null : addressTrusted ? (
               <>
+                {/* On Stellar the QR is a SEP-7 pay URI rather than a bare
+                    address, so the asset and amount arrive prefilled in the
+                    wallet — scanning a bare address is how people end up
+                    sending XLM instead of USDC. */}
                 <div className="mx-auto mt-6 w-fit rounded-lg bg-white p-4 ring-1 ring-line">
-                  <QRCodeSVG value={depositAddress} size={172} fgColor="#09090d" bgColor="#ffffff" />
+                  <QRCodeSVG value={qrValue(order)} size={172} fgColor="#09090d" bgColor="#ffffff" />
                 </div>
+                {getChain(order.network)?.id === "stellar" ? (
+                  <p className="mt-3 text-center text-xs text-text-muted">
+                    Scan with a Stellar wallet to prefill this payment
+                  </p>
+                ) : null}
                 <div className="mt-5 flex items-center gap-2 rounded-md bg-surface-2 py-1 pl-4 pr-1">
                   <code className="min-w-0 flex-1 truncate font-mono text-xs text-text-muted">
                     {depositAddress}
