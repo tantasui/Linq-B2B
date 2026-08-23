@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Command, Loader2, Mail } from "lucide-react";
+import { ArrowRight, Mail } from "lucide-react";
 import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
 import { getMerchantMe, hasActiveSessionHint, setActiveBusinessId, setActiveDynamicUserId } from "@/lib/api-client";
+import { LinqLoader, LinqMark, LinqWordmark } from "@/components/brand/LinqMark";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -67,56 +70,57 @@ export default function LoginPage() {
 
   if (checking) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f6f3fb]">
-        <Loader2 className="h-6 w-6 animate-spin text-[#8A4FFF]" />
+      <main className="flex min-h-screen items-center justify-center bg-bg">
+        <LinqLoader size={44} label="Checking your session" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f3fb] px-5 py-6 text-zinc-950">
+    <main className="min-h-screen bg-bg px-5 py-6 text-text">
       <div className="mx-auto w-full max-w-[460px]">
-        <header className="mb-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 text-lg font-semibold tracking-[-0.04em]">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#8A4FFF] text-white">
-              <Command className="h-5 w-5" />
-            </span>
-            LinqSwitch
+        <header className="mb-8">
+          <Link href="/" className="inline-flex items-center gap-2.5 text-accent">
+            <LinqMark size={30} />
+            <LinqWordmark size={17} />
           </Link>
         </header>
 
-        <section className="mb-8">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#a985ff]">Welcome back</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Log in to your account</h1>
-          <p className="mt-2 text-sm leading-6 text-zinc-500">Sign in with the same email or Google account you used to set up your merchant profile.</p>
+        <section className="mb-7">
+          <p className="text-micro uppercase tracking-[0.16em] text-accent-text">Welcome back</p>
+          <h1 className="mt-2 text-hero font-semibold">Log in to your account</h1>
+          <p className="mt-3 text-sm leading-6 text-text-muted">
+            Use the same email or Google account you set your merchant profile up with.
+          </p>
         </section>
 
-        <div className="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm">
-          <button
-            onClick={signIn}
-            disabled={busy}
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#8A4FFF] text-sm font-medium text-white disabled:opacity-60"
-          >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-            {busy ? "Signing in..." : "Continue with email or Google"}
-          </button>
+        <Card className="p-5">
+          <Button size="lg" className="w-full" loading={busy} onClick={signIn}>
+            {busy ? null : <Mail className="h-4 w-4" />}
+            {busy ? "Signing in…" : "Continue with email or Google"}
+          </Button>
 
-          {error && (
-            <div className="mt-4 rounded-xl bg-red-50 p-3 text-xs text-red-600">
+          {error ? (
+            <div className="linq-fade-in mt-4 rounded-md bg-danger-soft px-4 py-3 text-xs leading-5 text-danger">
               {error}
-              {error.includes("setup") && (
-                <Link href="/onboarding" className="ml-1 font-medium underline">Go to setup</Link>
-              )}
+              {error.includes("setup") ? (
+                <Link href="/onboarding" className="ml-1 font-medium underline underline-offset-2">
+                  Go to setup
+                </Link>
+              ) : null}
             </div>
-          )}
+          ) : null}
 
-          <p className="mt-5 text-center text-xs text-zinc-400">
+          <p className="mt-6 text-center text-xs text-text-muted">
             Don&apos;t have an account?{" "}
-            <Link href="/onboarding" className="font-medium text-[#8A4FFF]">
+            <Link
+              href="/onboarding"
+              className="font-medium text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
+            >
               Set up now <ArrowRight className="inline h-3 w-3" />
             </Link>
           </p>
-        </div>
+        </Card>
       </div>
     </main>
   );

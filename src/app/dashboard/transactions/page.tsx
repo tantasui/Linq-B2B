@@ -1,146 +1,336 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Filter, RefreshCcw, Search } from "lucide-react";
-import { TokenIcon } from "@/components/icons/CryptoIcons";
-import { apiUrl, listOrders, retryTransfer, sendOrderReceipt } from "@/lib/api-client";
-import type { OrderRecord } from "@/server/types";
+import { Download, Mail, RefreshCcw, RotateCcw, Search } from "lucide-react";
+import { apiUrl, getMerchantMe, listOrders, retryTransfer, sendOrderReceipt } from "@/lib/api-client";
+import { chainDisplayName } from "@/lib/chains";
+import type { MerchantRecord, OrderRecord } from "@/server/types";
+import { NetworkLogo } from "@/components/icons/NetworkLogos";
+import { Receipt } from "@/components/brand/Receipt";
+import { Button, buttonClasses } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { DateCarousel } from "@/components/ui/date-carousel";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Select } from "@/components/ui/select";
+import { Sheet } from "@/components/ui/sheet";
+import { RowSkeleton } from "@/components/ui/skeleton";
+import { StatusPill } from "@/components/ui/status";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
-const retryable = new Set(["failed", "refunded", "expired", "cancelled"]);
+const naira = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 0,
+});
 
-function formatNaira(value: number) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+/** States where the Naira leg can be attempted again. */
+const RETRYABLE = new Set(["failed", "refunded", "expired", "cancelled"]);
+
+const isoDay = (value: string | Date) =>
+  (typeof value === "string" ? new Date(value) : value).toISOString().slice(0, 10);
 
 export default function TransactionsPage() {
   const [query, setQuery] = useState("");
-  const [network, setNetwork] = useState("All");
-  const [status, setStatus] = useState("All");
+  const [network, setNetwork] = useState("all");
+  const [status, setStatus] = useState("all");
   const [orders, setOrders] = useState<OrderRecord[]>([]);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState("");
+  const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [openOrder, setOpenOrder] = useState<OrderRecord | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Null means "all time" — the scrubber narrows to a day only once used.
+  const [day, setDay] = useState<Date | null>(null);
+  const { toast } = useToast();
 
   const refresh = async () => {
     const data = await listOrders();
     setOrders(data.orders);
+    // Keep an open receipt in sync with polling rather than freezing a stale copy.
+    setOpenOrder((current) =>
+      current ? data.orders.find((order) => order.id === current.id) ?? current : current,
+    );
   };
 
   useEffect(() => {
-    refresh().catch(() => undefined);
+    refresh()
+      .catch(() => undefined)
+      .finally(() => setLoading(false));
+    getMerchantMe()
+      .then((data) => setMerchant(data.merchant))
+      .catch(() => undefined);
     const timer = window.setInterval(() => refresh().catch(() => undefined), 12000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const networks = useMemo(() => ["All", ...Array.from(new Set(orders.map((item) => item.network)))], [orders]);
-  const statuses = useMemo(() => ["All", ...Array.from(new Set(orders.map((item) => item.status)))], [orders]);
-  const filtered = useMemo(() => orders.filter((item) => {
-    const search = `${item.id} ${item.payerName} ${item.payerEmail} ${item.token} ${item.network} ${item.paycrestOrderId}`.toLowerCase().includes(query.toLowerCase());
-    return search && (network === "All" || item.network === network) && (status === "All" || item.status === status);
-  }), [network, orders, query, status]);
-  const settled = orders.filter((order) => order.status === "settled").reduce((sum, order) => sum + order.amountNgn, 0);
-  const pending = orders.filter((order) => !["settled", "failed", "refunded", "cancelled"].includes(order.status)).reduce((sum, order) => sum + order.amountNgn, 0);
+  const networks = useMemo(
+    () => Array.from(new Set(orders.map((order) => order.network))),
+    [orders],
+  );
+  const statuses = useMemo(
+    () => Array.from(new Set(orders.map((order) => order.status))),
+    [orders],
+  );
+
+  /** Orders per day, so the scrubber can show where activity actually is. */
+  const countsByDay = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const order of orders) {
+      const key = isoDay(order.createdAt);
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return counts;
+  }, [orders]);
+
+  const filtered = useMemo(
+    () =>
+      orders.filter((order) => {
+        const haystack =
+          `${order.id} ${order.payerName} ${order.payerEmail} ${order.token} ${order.network} ${order.paycrestOrderId ?? ""}`.toLowerCase();
+        return (
+          haystack.includes(query.toLowerCase()) &&
+          (network === "all" || order.network === network) &&
+          (status === "all" || order.status === status) &&
+          (!day || isoDay(order.createdAt) === isoDay(day))
+        );
+      }),
+    [day, network, orders, query, status],
+  );
+
+  const settledTotal = orders
+    .filter((order) => order.status === "settled")
+    .reduce((sum, order) => sum + order.amountNgn, 0);
+  const pendingTotal = orders
+    .filter((order) => !["settled", "failed", "refunded", "cancelled", "expired"].includes(order.status))
+    .reduce((sum, order) => sum + order.amountNgn, 0);
 
   const retry = async (order: OrderRecord) => {
+    setBusy(true);
     try {
       const response = await retryTransfer(order.id);
-      setFeedback(response.message);
+      toast(response.message ?? "Retry queued");
       await refresh();
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Retry failed");
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "Retry failed", "error");
+    } finally {
+      setBusy(false);
     }
   };
 
-  const sendReceipt = async (order: OrderRecord, kind: "payer_transaction_success" | "merchant_fiat_received" | "merchant_payout_failed") => {
+  const emailReceipt = async (
+    order: OrderRecord,
+    kind: "payer_transaction_success" | "merchant_fiat_received" | "merchant_payout_failed",
+  ) => {
+    setBusy(true);
     try {
       await sendOrderReceipt(order.id, {
         kind,
         audience: kind === "payer_transaction_success" ? "payer" : "merchant",
       });
-      setFeedback("Receipt email queued. If Resend is not configured, it was recorded locally.");
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Could not send receipt");
+      toast("Receipt queued for delivery");
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "Could not send receipt", "error");
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
-    <div className="space-y-5">
-      <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-[#a985ff]">Orders</p>
-        <h1 className="mt-2 text-3xl font-semibold">Payments</h1>
-      </div>
-      <label className="flex h-12 items-center gap-3 rounded-xl border border-zinc-100 bg-white px-4 text-zinc-500 shadow-sm">
-        <Search className="h-4 w-4" />
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search payer, order, wallet" className="w-full bg-transparent text-sm text-zinc-950 outline-none" />
-      </label>
-      <div className="flex gap-2 overflow-x-auto pb-1 text-xs">
-        <label className="flex shrink-0 items-center gap-2 rounded-full border border-zinc-100 bg-white px-3 py-2 shadow-sm">
-          <Filter className="h-3.5 w-3.5 text-[#a985ff]" />
-          <select value={network} onChange={(event) => setNetwork(event.target.value)} className="bg-transparent capitalize outline-none">
-            {networks.map((item) => <option key={item}>{item}</option>)}
-          </select>
-        </label>
-        <label className="shrink-0 rounded-full border border-zinc-100 bg-white px-3 py-2 shadow-sm">
-          <select value={status} onChange={(event) => setStatus(event.target.value)} className="bg-transparent capitalize outline-none">
-            {statuses.map((item) => <option key={item}>{item}</option>)}
-          </select>
-        </label>
-        <button onClick={() => refresh()} className="flex shrink-0 items-center gap-2 rounded-full border border-zinc-100 bg-white px-3 py-2 shadow-sm"><RefreshCcw className="h-3.5 w-3.5" /> Refresh</button>
-      </div>
+    <div className="space-y-6">
+      <header>
+        <p className="text-micro uppercase tracking-[0.16em] text-accent-text">Orders</p>
+        <h1 className="mt-2 text-hero font-semibold">Payments</h1>
+      </header>
+
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm"><p className="text-xs text-zinc-500">Settled</p><p className="mt-2 text-xl font-medium">{formatNaira(settled)}</p></div>
-        <div className="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm"><p className="text-xs text-zinc-500">Pending</p><p className="mt-2 text-xl font-medium">{formatNaira(pending)}</p></div>
+        <Card>
+          <p className="text-xs text-text-muted">Settled</p>
+          <p className="tnum mt-2.5 text-xl font-semibold">{naira.format(settledTotal)}</p>
+        </Card>
+        <Card>
+          <p className="text-xs text-text-muted">In flight</p>
+          <p className="tnum mt-2.5 text-xl font-semibold text-accent-text">
+            {naira.format(pendingTotal)}
+          </p>
+        </Card>
       </div>
-      <section className="space-y-3">
-        {filtered.map((payment) => {
-          const open = expanded === payment.id;
-          return (
-            <article key={payment.id} className="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm">
-              <button onClick={() => setExpanded(open ? null : payment.id)} className="flex w-full items-center gap-3 text-left">
-                <TokenIcon token={payment.token} size={38} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{payment.payerName}</p>
-                  <p className="truncate text-xs text-zinc-500">{payment.payerEmail}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">{formatNaira(payment.amountNgn)}</p>
-                  <p className={cn("text-xs capitalize", payment.status === "settled" ? "text-emerald-500" : payment.status === "pending" ? "text-amber-500" : "text-zinc-500")}>{payment.status}</p>
-                </div>
-                <ChevronDown className={cn("h-4 w-4 text-zinc-400 transition-transform", open && "rotate-180")} />
+
+      {/* Period scrubber — the selected day animates to the centre. */}
+      <Card className="px-0 py-3">
+        <div className="mb-1 flex items-center justify-between px-5">
+          <p className="text-xs text-text-muted">
+            {day
+              ? day.toLocaleDateString(undefined, { dateStyle: "full" })
+              : "All time"}
+          </p>
+          {day ? (
+            <button
+              type="button"
+              onClick={() => setDay(null)}
+              className="text-xs text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
+        <DateCarousel value={day ?? new Date()} onChange={setDay} counts={countsByDay} />
+      </Card>
+
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <label className="flex h-12 flex-1 items-center gap-3 rounded-md bg-surface px-4 text-text-muted ring-1 ring-line focus-within:ring-2 focus-within:ring-accent">
+          <Search className="h-4 w-4 shrink-0" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search payer, order or wallet"
+            className="w-full bg-transparent text-sm text-text outline-none placeholder:text-text-subtle"
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-3 sm:w-[340px]">
+          <Select
+            value={network}
+            onChange={setNetwork}
+            options={[
+              { value: "all", label: "All networks" },
+              ...networks.map((entry) => ({
+                value: entry,
+                label: chainDisplayName(entry),
+                adornment: <NetworkLogo network={entry} size={20} />,
+              })),
+            ]}
+          />
+          <Select
+            value={status}
+            onChange={setStatus}
+            options={[
+              { value: "all", label: "All statuses" },
+              ...statuses.map((entry) => ({
+                value: entry,
+                label: entry.charAt(0).toUpperCase() + entry.slice(1),
+              })),
+            ]}
+          />
+        </div>
+      </div>
+
+      <section>
+        {loading ? (
+          <RowSkeleton rows={4} />
+        ) : filtered.length === 0 ? (
+          <Card className="p-0">
+            <EmptyState
+              title={orders.length ? "Nothing matches those filters" : "No transactions yet"}
+              body={
+                orders.length
+                  ? "Try a different day, network or status."
+                  : "Your first settled payment will appear here."
+              }
+              art={orders.length ? "none" : "coin"}
+              action={
+                orders.length ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setQuery("");
+                      setNetwork("all");
+                      setStatus("all");
+                      setDay(null);
+                    }}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" /> Clear filters
+                  </Button>
+                ) : undefined
+              }
+            />
+          </Card>
+        ) : (
+          <div className="space-y-2.5">
+            {filtered.map((order) => (
+              <button
+                key={order.id}
+                type="button"
+                onClick={() => setOpenOrder(order)}
+                className="block w-full text-left"
+              >
+                <Card interactive className="flex items-center gap-3.5 py-4">
+                  <NetworkLogo network={order.network} size={34} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{order.payerName}</p>
+                    <p className="truncate text-xs text-text-muted">
+                      {order.cryptoAmountDue.toFixed(2)} {order.token} ·{" "}
+                      {new Date(order.createdAt).toLocaleDateString(undefined, {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <p className="tnum text-sm font-medium">{naira.format(order.amountNgn)}</p>
+                    <StatusPill status={order.status} />
+                  </div>
+                </Card>
               </button>
-              {open && (
-                <div className="mt-4 space-y-3 border-t border-zinc-100 pt-4 text-xs">
-                  <div className="grid grid-cols-2 gap-3">
-                    <p><span className="block text-zinc-500">Order</span><span className="font-medium">{payment.id}</span></p>
-                    <p><span className="block text-zinc-500">Paycrest</span><span className="font-medium">{payment.paycrestOrderId ?? "Pending"}</span></p>
-                    <p><span className="block text-zinc-500">Token</span><span className="font-medium">{payment.cryptoAmountDue.toFixed(2)} {payment.token}</span></p>
-                    <p><span className="block text-zinc-500">Network</span><span className="font-medium capitalize">{payment.network.replaceAll("-", " ")}</span></p>
-                    <p><span className="block text-zinc-500">Rate</span><span className="font-medium">{formatNaira(payment.quotedRate)}</span></p>
-                    <p><span className="block text-zinc-500">Created</span><span className="font-medium">{new Date(payment.createdAt).toLocaleString()}</span></p>
-                  </div>
-                  {payment.providerReceiveAddress && <code className="block truncate rounded-xl bg-zinc-50 p-3 text-zinc-500">{payment.providerReceiveAddress}</code>}
-                  <div className="grid grid-cols-2 gap-2">
-                    <a href={apiUrl(`/api/orders/${payment.id}/receipt.pdf?kind=payer_transaction_success`)} target="_blank" className="flex h-10 items-center justify-center rounded-xl border border-zinc-200 text-xs text-zinc-700">Open receipt PDF</a>
-                    <button onClick={() => sendReceipt(payment, "payer_transaction_success")} className="h-10 rounded-xl border border-zinc-200 text-xs text-zinc-700">Email payer receipt</button>
-                    <button onClick={() => sendReceipt(payment, payment.status === "settled" ? "merchant_fiat_received" : "merchant_payout_failed")} className="col-span-2 h-10 rounded-xl border border-zinc-200 text-xs text-zinc-700">Email merchant invoice/notice</button>
-                  </div>
-                  {retryable.has(payment.status) && (
-                    <button onClick={() => retry(payment)} className="h-10 w-full rounded-xl bg-[#8A4FFF] text-xs font-medium text-white">
-                      Retry transfer to verified bank account
-                    </button>
-                  )}
-                </div>
-              )}
-            </article>
-          );
-        })}
-        {!filtered.length && <p className="rounded-2xl border border-zinc-100 bg-white p-8 text-center text-sm text-zinc-500">No matching payments.</p>}
+            ))}
+          </div>
+        )}
       </section>
-      {feedback && <p className="rounded-2xl bg-[#f3edff] p-3 text-center text-xs text-[#8A4FFF]">{feedback}</p>}
+
+      {/* Tapping a row opens its receipt — the same ticket the payer received. */}
+      <Sheet
+        open={Boolean(openOrder)}
+        onClose={() => setOpenOrder(null)}
+        title="Transaction"
+        className="bg-bg"
+      >
+        {openOrder ? (
+          <>
+            <Receipt order={openOrder} merchant={merchant} />
+
+            <div className="mt-7 grid grid-cols-2 gap-2">
+              <a
+                href={apiUrl(`/api/orders/${openOrder.id}/receipt.pdf?kind=payer_transaction_success`)}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonClasses({ variant: "secondary", size: "sm" })}
+              >
+                <Download className="h-3.5 w-3.5" /> Download PDF
+              </a>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={busy}
+                onClick={() => emailReceipt(openOrder, "payer_transaction_success")}
+              >
+                <Mail className="h-3.5 w-3.5" /> Email payer
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={busy}
+                className="col-span-2"
+                onClick={() =>
+                  emailReceipt(
+                    openOrder,
+                    openOrder.status === "settled" ? "merchant_fiat_received" : "merchant_payout_failed",
+                  )
+                }
+              >
+                <Mail className="h-3.5 w-3.5" /> Email myself the invoice
+              </Button>
+              {RETRYABLE.has(openOrder.status) ? (
+                <Button
+                  className={cn("col-span-2")}
+                  loading={busy}
+                  onClick={() => retry(openOrder)}
+                >
+                  <RefreshCcw className="h-4 w-4" /> Retry payout to verified account
+                </Button>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+      </Sheet>
     </div>
   );
 }

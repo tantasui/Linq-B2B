@@ -22,7 +22,7 @@ export function MerchantAvatar({ className, imageClassName }: { className?: stri
   }, []);
 
   return (
-    <span className={cn("flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-100 bg-white text-zinc-500 shadow-sm", className)}>
+    <span className={cn("flex shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-2 text-text-subtle ring-1 ring-line", className)}>
       {logo ? (
         <img src={logo} alt="Merchant profile" loading="eager" decoding="async" className={cn("h-full w-full object-cover", imageClassName)} />
       ) : (

@@ -2,14 +2,10 @@
 
 import { useEffect } from "react";
 
-export default function ClientBody({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  // Remove any extension-added classes during hydration
+export default function ClientBody({ children }: { children: React.ReactNode }) {
+  // Browser extensions inject classes onto <body> before hydration; resetting
+  // after mount keeps React from warning about the mismatch.
   useEffect(() => {
-    // This runs only on the client after hydration
     document.body.className = "antialiased";
   }, []);
 

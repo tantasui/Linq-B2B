@@ -2,12 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Building2, Check, CreditCard, Loader2, Mail, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Mail, Search, ShieldCheck } from "lucide-react";
 import { getActiveBusinessId, getActiveDynamicUserId, getActiveSessionToken, getMerchantMe, onboardMerchant, setActiveBusinessId, setActiveDynamicUserId, verifyBank } from "@/lib/api-client";
 import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
 import { cn } from "@/lib/utils";
 import { getBankByCode, nigerianBanks } from "@/lib/banks";
 import { tokensForNetwork } from "@/lib/chains";
+import { SegmentedBar } from "@/components/brand/SegmentedBar";
+import { LinqMark } from "@/components/brand/LinqMark";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Field, Input } from "@/components/ui/field";
 
 type Step = "account" | "business" | "bank" | "review";
 
@@ -189,142 +194,221 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
   };
 
   return (
-    <section className="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm">
-      <div className="mb-5 flex items-start gap-3">
-        <span className="rounded-2xl bg-[#f3edff] p-3 text-[#8A4FFF]"><Building2 className="h-5 w-5" /></span>
+    <Card className="p-5 sm:p-6">
+      <div className="mb-6 flex items-start gap-3">
+        <LinqMark size={30} className="mt-0.5 shrink-0 text-accent" />
         <div>
-          <h2 className="font-medium">Merchant onboarding</h2>
-          <p className="mt-1 text-xs leading-5 text-zinc-500">Create your merchant account, add business details, and verify the Naira payout account.</p>
+          <h2 className="text-sm font-medium">Merchant setup</h2>
+          <p className="mt-1 text-xs leading-5 text-text-muted">
+            Four steps to start accepting stablecoins and settling in Naira.
+          </p>
         </div>
       </div>
 
-      <div className="mb-5 grid grid-cols-4 gap-2">
+      {/* Step progress uses the brand's segmented bar rather than a percentage. */}
+      <SegmentedBar value={stepIndex + 1} segments={steps.length} className="mb-3" />
+      <div className="mb-7 flex justify-between">
         {steps.map((entry, index) => (
-          <div key={entry.id} className="space-y-2">
-            <div className={cn("h-1.5 rounded-full", index <= stepIndex ? "bg-[#8A4FFF]" : "bg-zinc-100")} />
-            <p className={cn("text-[11px]", entry.id === step ? "font-medium text-[#8A4FFF]" : "text-zinc-400")}>{entry.label}</p>
-          </div>
+          <p
+            key={entry.id}
+            className={cn(
+              "text-micro transition-colors duration-fast ease-linq",
+              index === stepIndex
+                ? "font-medium text-accent-text"
+                : index < stepIndex
+                  ? "text-text-muted"
+                  : "text-text-subtle",
+            )}
+          >
+            {entry.label}
+          </p>
         ))}
       </div>
 
-      {step === "account" && (
+      {step === "account" ? (
         <div className="space-y-4">
-          <div className="rounded-2xl bg-zinc-50 p-4">
-            <p className="text-sm font-medium">{accountSignedIn ? "Account verified" : "Sign in or create your account"}</p>
-            <p className="mt-2 text-xs leading-5 text-zinc-500">
-              {accountSignedIn ? "Signed in. You can continue to the next step." : "Use email or Google to create your merchant account."}
+          <div className="rounded-md bg-surface-2 p-4">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <Mail className="h-4 w-4 text-accent-text" />
+              {accountSignedIn ? "Signed in" : "Create your account"}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-text-muted">
+              {accountSignedIn
+                ? `Signed in as ${dynamic.user?.email}. Continue to your business details.`
+                : "Use email or Google. This is also how you will log in later."}
             </p>
           </div>
-          {dynamic.connected ? (
-            <div className="rounded-2xl border border-zinc-100 p-4">
-              <p className="text-sm font-medium">{dynamic.user?.email ?? "Account ready"}</p>
-              <p className="mt-1 text-xs text-zinc-500">Account verified — continue to set up your business.</p>
-            </div>
+
+          {accountSignedIn ? (
+            <p className="flex items-center gap-2 text-xs text-success">
+              <Check className="h-3.5 w-3.5" /> Account ready
+            </p>
           ) : (
-            <button onClick={startSignIn} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#8A4FFF] text-sm font-medium text-white">
+            <Button size="lg" className="w-full" onClick={startSignIn}>
               <Mail className="h-4 w-4" /> Continue with email or Google
-            </button>
+            </Button>
           )}
         </div>
-      )}
+      ) : null}
 
-      {step === "business" && (
-        <div className="grid gap-3">
-          <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Business name" />
-          <input value={merchantName} onChange={(event) => setMerchantName(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Merchant name" />
-          <input value={businessEmail} onChange={(event) => setBusinessEmail(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Business email" />
-          <input value={location} onChange={(event) => setLocation(event.target.value)} className="h-12 rounded-xl border border-zinc-200 px-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Business location" />
-        </div>
-      )}
-
-      {step === "bank" && (
-        <div className="grid gap-3">
-          <div className="rounded-2xl bg-zinc-50 p-4">
-            <p className="text-sm font-medium">Verified Naira payout</p>
-            <p className="mt-2 text-xs leading-5 text-zinc-500">We verify this account during save. Transfers and retries will use this same account.</p>
-          </div>
-          <label className="block">
-            <span className="mb-2 block text-xs text-zinc-500">Bank</span>
-            <input
-              value={bankQuery}
-              onChange={(event) => {
-                setBankQuery(event.target.value);
-                setInstitutionCode("");
-              }}
-              className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-[#8A4FFF]"
-              placeholder="Search bank name"
+      {step === "business" ? (
+        <div className="space-y-4">
+          <Field label="Business name">
+            <Input
+              value={businessName}
+              onChange={(event) => setBusinessName(event.target.value)}
+              placeholder="Mama Tolu Foods"
             />
-          </label>
-          <div className="max-h-56 space-y-2 overflow-y-auto rounded-2xl border border-zinc-100 bg-white p-2">
+          </Field>
+          <Field label="Merchant name" hint="The person responsible for this account.">
+            <Input
+              value={merchantName}
+              onChange={(event) => setMerchantName(event.target.value)}
+              placeholder="Tolu Adeyemi"
+            />
+          </Field>
+          <Field label="Business email">
+            <Input
+              value={businessEmail}
+              onChange={(event) => setBusinessEmail(event.target.value)}
+              placeholder="hello@mamatolu.ng"
+              inputMode="email"
+            />
+          </Field>
+          <Field label="Location">
+            <Input
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+              placeholder="Lagos, Nigeria"
+            />
+          </Field>
+        </div>
+      ) : null}
+
+      {step === "bank" ? (
+        <div className="space-y-4">
+          <div className="rounded-md bg-surface-2 p-4">
+            <p className="text-sm font-medium">Where should we send your Naira?</p>
+            <p className="mt-2 text-xs leading-5 text-text-muted">
+              We resolve the account name with your bank and show it to payers before they send —
+              so they can confirm they are paying the right business.
+            </p>
+          </div>
+
+          <Field label="Bank">
+            <label className="flex h-12 items-center gap-3 rounded-md bg-surface px-4 text-text-muted ring-1 ring-line focus-within:ring-2 focus-within:ring-accent">
+              <Search className="h-4 w-4 shrink-0" />
+              <input
+                value={bankQuery}
+                onChange={(event) => setBankQuery(event.target.value)}
+                placeholder="Search banks"
+                className="w-full bg-transparent text-sm text-text outline-none placeholder:text-text-subtle"
+              />
+            </label>
+          </Field>
+
+          <div className="max-h-56 space-y-1 overflow-y-auto rounded-md bg-surface-2 p-1.5">
             {filteredBanks.map((bank) => (
               <button
-                key={`${bank.code}-${bank.name}`}
+                key={bank.code}
                 type="button"
                 onClick={() => {
                   setInstitutionCode(bank.code);
                   setBankQuery(bank.name);
                 }}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-xl p-3 text-left transition duration-200 hover:bg-zinc-50",
-                  institutionCode === bank.code && "bg-[#f7f3ff] text-[#8A4FFF]",
+                  "flex w-full items-center justify-between gap-3 rounded-sm px-3 py-2.5 text-left text-sm",
+                  "transition-colors duration-fast ease-linq hover:bg-surface",
+                  institutionCode === bank.code && "bg-surface",
                 )}
               >
-                {bank.logo ? <img src={bank.logo} alt="" loading="eager" decoding="async" className="h-8 w-8 rounded-lg object-contain" /> : <span className="h-8 w-8 rounded-lg bg-zinc-100" />}
-                <span className="block truncate text-sm font-medium">{bank.name}</span>
+                <span className="min-w-0 truncate">{bank.name}</span>
+                {institutionCode === bank.code ? (
+                  <Check className="h-4 w-4 shrink-0 text-accent" />
+                ) : null}
               </button>
             ))}
-            {filteredBanks.length === 0 && <p className="p-3 text-xs text-zinc-500">No bank found.</p>}
+            {filteredBanks.length === 0 ? (
+              <p className="px-3 py-4 text-center text-xs text-text-muted">No banks match that search.</p>
+            ) : null}
           </div>
-          <div className="space-y-2">
-            <input value={accountIdentifier} onChange={(event) => setAccountIdentifier(event.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" className="h-12 w-full rounded-xl border border-zinc-200 px-4 text-sm outline-none focus:border-[#8A4FFF]" placeholder="Account number" />
-            {verifying && (
-              <p className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Verifying account...</p>
-            )}
-            {verifiedName && !verifying && (
-              <p className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700"><Check className="h-3.5 w-3.5" /> {verifiedName}</p>
-            )}
-            {verifyError && !verifying && (
-              <p className="text-xs text-red-500">{verifyError}</p>
-            )}
-          </div>
-        </div>
-      )}
 
-      {step === "review" && (
-        <div className="divide-y divide-zinc-100 rounded-2xl bg-zinc-50 px-4 text-sm">
+          <Field
+            label="Account number"
+            error={verifyError || undefined}
+            hint={verifying ? "Checking with your bank…" : undefined}
+          >
+            <Input
+              value={accountIdentifier}
+              onChange={(event) =>
+                setAccountIdentifier(event.target.value.replace(/\D/g, "").slice(0, 10))
+              }
+              inputMode="numeric"
+              placeholder="0123456789"
+              className="tnum"
+              invalid={Boolean(verifyError)}
+            />
+          </Field>
+
+          {/* The resolved name is the whole point of this step — give it weight. */}
+          {verifiedName ? (
+            <div className="linq-fade-in flex items-start gap-2.5 rounded-md bg-success-soft px-4 py-3.5">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+              <div className="min-w-0">
+                <p className="text-xs text-text-muted">Account name</p>
+                <p className="mt-0.5 truncate text-sm font-semibold">{verifiedName}</p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {step === "review" ? (
+        <dl className="divide-y divide-line rounded-md bg-surface-2 px-4 text-sm">
           {[
             ["Business", businessName],
             ["Merchant", merchantName],
             ["Email", businessEmail],
-            ["Location", location || "Not set"],
-            ["Bank", `${selectedBank?.name ?? institutionCode} / ${accountIdentifier}`],
-          ].map(([label, value]) => (
-            <p key={label} className="flex justify-between gap-4 py-3"><span className="text-zinc-500">{label}</span><span className="text-right font-medium">{value}</span></p>
+            ["Location", location || "—"],
+            ["Bank", selectedBank?.name ?? institutionCode],
+            ["Account", accountIdentifier],
+            ["Account name", verifiedName ?? "Not resolved"],
+            ["Wallets", wallets.length ? `${wallets.length} connected` : "None yet"],
+          ].map(([label, answer]) => (
+            <div key={label} className="flex justify-between gap-4 py-3">
+              <dt className="text-text-muted">{label}</dt>
+              <dd className="min-w-0 truncate text-right font-medium">{answer}</dd>
+            </div>
           ))}
-        </div>
-      )}
+        </dl>
+      ) : null}
 
-      <div className="mt-4 rounded-2xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-500">
-        <p className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#8A4FFF]" /> Payments settle directly to your verified Naira account.</p>
-        <p className="mt-1 flex items-center gap-2"><CreditCard className="h-4 w-4 text-[#8A4FFF]" /> Payout retries always use the verified account above.</p>
-      </div>
+      {feedback ? (
+        <p className="linq-fade-in mt-4 rounded-md bg-accent-soft px-4 py-3 text-xs leading-5 text-accent-text">
+          {feedback}
+        </p>
+      ) : null}
 
-      <div className="mt-4 grid grid-cols-[auto_1fr] gap-2">
-        <button onClick={back} disabled={stepIndex === 0 || saving} className="flex h-12 items-center justify-center rounded-xl border border-zinc-200 px-4 text-sm font-medium text-zinc-600 disabled:opacity-40">
+      <div className="mt-6 flex gap-2">
+        <Button
+          variant="secondary"
+          size="lg"
+          aria-label="Back"
+          disabled={stepIndex === 0 || saving}
+          onClick={back}
+        >
           <ArrowLeft className="h-4 w-4" />
-        </button>
+        </Button>
         {step === "review" ? (
-          <button onClick={submit} disabled={saving} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#8A4FFF] text-sm font-medium text-white disabled:opacity-60">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            Save merchant setup
-          </button>
+          <Button size="lg" className="flex-1" loading={saving} onClick={submit}>
+            <Check className="h-4 w-4" /> Save and finish
+          </Button>
         ) : (
-          <button onClick={next} disabled={continueDisabled} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#8A4FFF] text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Continue <ArrowRight className="h-4 w-4" /></>}
-          </button>
+          <Button size="lg" className="flex-1" disabled={continueDisabled} onClick={next}>
+            Continue <ArrowRight className="h-4 w-4" />
+          </Button>
         )}
       </div>
-      {feedback && <p className="mt-3 text-xs text-zinc-500">{feedback}</p>}
-    </section>
+    </Card>
   );
 }

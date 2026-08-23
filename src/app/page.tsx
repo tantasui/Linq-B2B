@@ -1,149 +1,278 @@
-import Link from "next/link";
-import { ArrowRight, Check, Command, Link2, QrCode, ShieldCheck, Waypoints } from "lucide-react";
-import { AuthRedirect } from "@/components/AuthRedirect";
+"use client";
 
-const networks = ["Sui", "Base", "BNB", "Solana", "Tron"];
+import Link from "next/link";
+import { useState } from "react";
+import { ArrowRight, Check, Link2, Menu, QrCode, ShieldCheck, Waypoints, X } from "lucide-react";
+import { AuthRedirect } from "@/components/AuthRedirect";
+import { LinqMark, LinqWordmark } from "@/components/brand/LinqMark";
+import { Receipt } from "@/components/brand/Receipt";
+import { SegmentedBar } from "@/components/brand/SegmentedBar";
+import { NetworkLogo } from "@/components/icons/NetworkLogos";
+import { buttonClasses } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ENABLED_CHAINS } from "@/lib/chains";
+import { cn } from "@/lib/utils";
+import type { OrderRecord } from "@/server/types";
+
+/** A representative receipt, so the hero shows the actual product surface. */
+const heroReceipt: OrderRecord = {
+  id: "ord_8fd21c4a",
+  businessId: "biz_1",
+  payerName: "Adaeze Okonkwo",
+  payerEmail: "adaeze@example.com",
+  amountNgn: 485_000,
+  token: "USDC",
+  network: "base",
+  quotedRate: 1612,
+  cryptoAmountDue: 300.87,
+  transactionFee: 0.45,
+  paycrestOrderId: "0x7d3f9ac41b8e25f6a0c9",
+  status: "settled",
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+const FEATURES = [
+  {
+    icon: Link2,
+    title: "Payment links",
+    body: "Price an invoice once. Your customer picks the wallet, the stablecoin and the chain.",
+  },
+  {
+    icon: QrCode,
+    title: "Wallet deposits",
+    body: "Network-specific deposit addresses and QR codes for USDC and USDSUI on every supported chain.",
+  },
+  {
+    icon: Waypoints,
+    title: "Settlement analytics",
+    body: "Watch incoming flow, settlement rate and payout quality without exporting a spreadsheet.",
+  },
+];
+
+const STEPS = [
+  ["Share a link", "Generate a receive link or a fixed payment request in one tap."],
+  ["Customer pays in crypto", "They choose a chain, send stablecoins, and see the status live."],
+  ["You get Naira", "Linq converts and settles to your verified bank account, with a receipt."],
+];
 
 export default function Home() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <main className="min-h-screen bg-[#fbfaf7] text-[#0b0b10]">
+    <main className="min-h-screen bg-bg text-text">
       <AuthRedirect />
-      <nav className="absolute left-0 right-0 top-0 z-10">
-        <div className="mx-auto flex h-20 max-w-7xl items-center px-6 lg:px-10">
-          <Link href="/" className="flex items-center gap-3 text-lg font-semibold tracking-[-0.04em]">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#8A4FFF] text-white">
-              <Command className="h-5 w-5" />
-            </span>
-            LinqSwitch
+
+      <nav className="sticky top-0 z-50 border-b border-line bg-bg/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-[72px] max-w-6xl items-center gap-8 px-6 lg:px-10">
+          <Link href="/" className="flex items-center gap-2.5 text-accent">
+            <LinqMark size={32} />
+            <LinqWordmark size={18} />
           </Link>
-          <div className="ml-16 hidden items-center gap-9 text-sm text-zinc-600 md:flex">
-            <a href="#products">Products</a>
-            <a href="#network">Networks</a>
-            <a href="#pricing">Pricing</a>
+
+          <div className="hidden items-center gap-8 text-sm text-text-muted md:flex">
+            <a href="#products" className="transition-colors duration-fast ease-linq hover:text-text">
+              Products
+            </a>
+            <a href="#how" className="transition-colors duration-fast ease-linq hover:text-text">
+              How it works
+            </a>
+            <a href="#pricing" className="transition-colors duration-fast ease-linq hover:text-text">
+              Pricing
+            </a>
           </div>
+
           <div className="ml-auto flex items-center gap-3">
-            <Link href="/login" className="hidden px-4 py-2 text-sm text-zinc-600 sm:block">Log in</Link>
-            <Link href="/onboarding" className="rounded-full bg-[#8A4FFF] px-5 py-3 text-sm font-medium text-white">Start now</Link>
+            <ThemeToggle className="hidden sm:flex" />
+            <Link
+              href="/login"
+              className="hidden px-3 py-2 text-sm text-text-muted transition-colors duration-fast ease-linq hover:text-text sm:block"
+            >
+              Log in
+            </Link>
+            <Link href="/onboarding" className={buttonClasses({ className: "rounded-full" })}>
+              Start now
+            </Link>
+            <button
+              type="button"
+              aria-label="Menu"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="grid h-10 w-10 place-items-center rounded-md text-text-muted transition duration-fast ease-linq hover:bg-surface-2 active:scale-[0.94] md:hidden"
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+
+        {menuOpen ? (
+          <div className="linq-fade-in border-t border-line bg-surface px-6 py-4 md:hidden">
+            <div className="flex flex-col gap-1">
+              {[
+                ["Products", "#products"],
+                ["How it works", "#how"],
+                ["Pricing", "#pricing"],
+                ["Log in", "/login"],
+              ].map(([label, href]) => (
+                <a
+                  key={label}
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-sm px-3 py-2.5 text-sm text-text-muted transition-colors duration-fast ease-linq hover:bg-surface-2 hover:text-text"
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </nav>
 
-      <section className="relative overflow-hidden border-b border-black/[0.06] px-6 pb-24 pt-36 lg:px-10 lg:pb-32 lg:pt-48">
-        <div className="absolute left-[45%] top-[-18rem] h-[48rem] w-[58rem] rounded-full bg-[#8A4FFF]/20 blur-[95px]" />
-        <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(0,0,0,.045)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,.045)_1px,transparent_1px)] [background-size:76px_76px]" />
-        <div className="relative mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[.95fr_1.05fr]">
+      {/* ── Hero ── */}
+      <section className="relative overflow-hidden border-b border-line px-6 pb-24 pt-20 lg:px-10 lg:pb-28 lg:pt-28">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-[-22rem] h-[42rem] w-[62rem] -translate-x-1/2 rounded-full bg-accent/15 blur-[110px]"
+        />
+        <div className="relative mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-[1.05fr_.95fr]">
           <div>
-            <p className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#8A4FFF]/20 bg-white/60 px-4 py-2 text-sm text-[#6d32e5]">
-              <span className="h-2 w-2 rounded-full bg-[#8A4FFF]" />
-              Stablecoin payments, simplified
+            <p className="mb-7 inline-flex items-center gap-2 rounded-full bg-accent-soft px-4 py-2 text-xs font-medium text-accent-text">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              Stablecoin payments, settled in Naira
             </p>
-            <h1 className="max-w-xl text-6xl font-medium leading-[.95] tracking-[-0.075em] sm:text-7xl">
+            <h1 className="max-w-xl text-[2.75rem] font-semibold leading-[1.02] tracking-[-0.045em] sm:text-6xl">
               Money moves at internet speed.
             </h1>
-            <p className="mt-7 max-w-lg text-lg leading-8 text-zinc-600">
-              Create payment links that accept USDC and USDsui across Sui, Base, BNB, Solana and Tron.
+            <p className="mt-7 max-w-lg text-lg leading-8 text-text-muted">
+              Accept USDC and USDSUI across Sui, Base, BNB, Solana and Tron. We convert and settle
+              to your bank account, with a receipt for every payment.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
-              <Link href="/onboarding" className="inline-flex items-center gap-2 rounded-full bg-[#8A4FFF] px-7 py-4 text-sm font-medium text-white">
+              <Link href="/onboarding" className={buttonClasses({ size: "lg", className: "rounded-full px-7" })}>
                 Start setup <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/onboarding" className="rounded-full border border-black/10 bg-white px-7 py-4 text-sm font-medium">
-                Create receive link
+              <Link
+                href="/login"
+                className={buttonClasses({ variant: "secondary", size: "lg", className: "rounded-full px-7" })}
+              >
+                Log in
               </Link>
             </div>
           </div>
 
+          {/* The receipt is the product's signature surface — show it, don't describe it. */}
           <div className="relative">
-            <div className="rounded-[32px] border border-black/[0.07] bg-white p-4 shadow-[0_40px_110px_rgba(50,23,104,.13)]">
-              <div className="overflow-hidden rounded-[25px] border border-[#eee8fb] bg-[#fdfcff] p-6 text-zinc-950 sm:p-8">
-                <div className="flex justify-between">
-                  <p className="text-sm text-zinc-500">Live volume</p>
-                  <span className="rounded-full bg-[#f3edff] px-3 py-1 text-xs text-[#8A4FFF]">Beta</span>
-                </div>
-                <p className="mt-4 text-4xl font-medium tracking-[-0.06em]">₦0</p>
-                <div className="mt-10 h-28">
-                  <svg viewBox="0 0 500 110" className="h-full w-full" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="hero-flow" x2="0" y2="1">
-                        <stop stopColor="#8A4FFF" stopOpacity=".42" />
-                        <stop offset="1" stopColor="#8A4FFF" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <path d="M0 93 C70 72 92 80 142 48 C191 18 219 61 273 51 C334 40 348 62 408 32 C444 15 468 22 500 7 L500 110 L0 110Z" fill="url(#hero-flow)" />
-                    <path d="M0 93 C70 72 92 80 142 48 C191 18 219 61 273 51 C334 40 348 62 408 32 C444 15 468 22 500 7" fill="none" stroke="#8A4FFF" strokeWidth="3" />
-                  </svg>
-                </div>
-                <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                  {[
-                    ["No live order yet", "Create a link", "LinqSwitch"],
-                    ["No payout yet", "Verify bank", "Wallet"],
-                  ].map(([client, total, chain]) => (
-                    <div key={client} className="rounded-2xl border border-zinc-100 bg-white p-4">
-                      <p className="text-xs text-zinc-500">{chain}</p>
-                      <p className="mt-4 text-sm text-zinc-600">{client}</p>
-                      <p className="mt-1 font-medium">{total}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="absolute -bottom-7 -left-5 hidden rounded-2xl border border-black/[0.06] bg-white p-4 shadow-xl sm:flex sm:items-center sm:gap-3">
-              <Check className="h-5 w-5 rounded-full bg-[#8A4FFF] p-1 text-white" />
-              <div className="text-sm"><p className="font-medium">Ready for beta</p><p className="text-zinc-500">Connect live backend</p></div>
-            </div>
+            <Receipt order={heroReceipt} merchant={{ businessName: "Mama Tolu Foods" }} printing />
           </div>
         </div>
       </section>
 
-      <section id="network" className="border-b border-black/[0.06] bg-white/45 px-6 py-8 lg:px-10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 text-sm text-zinc-500 lg:flex-row lg:items-center lg:justify-between">
+      {/* ── Networks ── */}
+      <section className="border-b border-line px-6 py-8 lg:px-10">
+        <div className="mx-auto flex max-w-6xl flex-col gap-5 text-sm text-text-muted lg:flex-row lg:items-center lg:justify-between">
           <span>Settle stablecoins across chains</span>
-          <div className="flex flex-wrap gap-x-9 gap-y-3 font-medium text-zinc-700">
-            {networks.map((network) => <span key={network}>{network}</span>)}
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+            {ENABLED_CHAINS.map((chain) => (
+              <span key={chain.id} className="flex items-center gap-2.5 font-medium text-text">
+                <NetworkLogo network={chain.id} size={24} />
+                {chain.shortName}
+              </span>
+            ))}
           </div>
         </div>
       </section>
 
-      <section id="products" className="mx-auto max-w-7xl px-6 py-24 lg:px-10 lg:py-32">
+      {/* ── Products ── */}
+      <section id="products" className="mx-auto max-w-6xl px-6 py-24 lg:px-10 lg:py-28">
         <div className="max-w-2xl">
-          <p className="text-xs uppercase tracking-[0.22em] text-[#8A4FFF]">Platform</p>
-          <h2 className="mt-5 text-4xl font-medium tracking-[-0.06em] sm:text-5xl">Payment infrastructure with no crypto clutter.</h2>
+          <p className="text-micro uppercase tracking-[0.18em] text-accent-text">Platform</p>
+          <h2 className="mt-5 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+            Payment infrastructure without the crypto clutter.
+          </h2>
         </div>
         <div className="mt-14 grid gap-4 lg:grid-cols-3">
-          {[
-            { icon: Link2, title: "Payment links", body: "Price an invoice once. Let customers select wallet, stablecoin, and route." },
-            { icon: QrCode, title: "Wallet deposits", body: "Generate network-specific QR destinations for USDC and USDsui across every supported chain." },
-            { icon: Waypoints, title: "Operations analytics", body: "Measure incoming flow, conversion, and settlement quality in real time." },
-          ].map((feature) => (
-            <div key={feature.title} className="rounded-[26px] border border-black/[0.07] bg-white p-8">
-              <feature.icon className="h-6 w-6 text-[#8A4FFF]" />
-              <h3 className="mt-14 text-xl font-medium tracking-tight">{feature.title}</h3>
-              <p className="mt-4 leading-7 text-zinc-600">{feature.body}</p>
-            </div>
+          {FEATURES.map((feature) => (
+            <Card key={feature.title} interactive className="p-8">
+              <feature.icon className="h-6 w-6 text-accent" />
+              <h3 className="mt-12 text-lg font-medium tracking-[-0.02em]">{feature.title}</h3>
+              <p className="mt-3 leading-7 text-text-muted">{feature.body}</p>
+            </Card>
           ))}
         </div>
       </section>
 
-      <section id="pricing" className="border-t border-zinc-100 bg-[#f7f3ff] px-6 py-24 text-zinc-950 lg:px-10">
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-12 lg:flex-row lg:items-center">
-          <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-[#8A4FFF]">Get started</p>
-            <h2 className="mt-5 max-w-xl text-4xl font-medium tracking-[-0.06em] sm:text-5xl">One percent per successful payment.</h2>
-            <p className="mt-5 text-zinc-600">No setup cost. No monthly fee. No minimum volume.</p>
-          </div>
-          <div className="rounded-[28px] border border-zinc-100 bg-white p-7 shadow-[0_20px_60px_rgba(70,35,120,.08)] sm:w-96">
-            {["Payment links and QR receive", "USDC and USDsui support", "Analytics included"].map((line) => (
-              <p key={line} className="flex items-center gap-3 border-b border-zinc-100 py-4 text-sm text-zinc-600 last:border-0">
-                <ShieldCheck className="h-4 w-4 text-[#8A4FFF]" />
-                {line}
-              </p>
+      {/* ── How it works ── */}
+      <section id="how" className="border-y border-line bg-surface px-6 py-24 lg:px-10 lg:py-28">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-micro uppercase tracking-[0.18em] text-accent-text">How it works</p>
+          <h2 className="mt-5 max-w-xl text-4xl font-semibold tracking-[-0.04em]">
+            Three steps from payment to payout.
+          </h2>
+          <div className="mt-14 grid gap-10 lg:grid-cols-3">
+            {STEPS.map(([title, body], index) => (
+              <div key={title}>
+                <SegmentedBar value={index + 1} segments={3} />
+                <h3 className="mt-6 text-lg font-medium tracking-[-0.02em]">{title}</h3>
+                <p className="mt-3 leading-7 text-text-muted">{body}</p>
+              </div>
             ))}
-            <Link href="/onboarding" className="mt-6 flex justify-center rounded-full bg-[#8A4FFF] px-6 py-4 text-sm font-medium">
-              Start accepting payments
-            </Link>
           </div>
         </div>
       </section>
+
+      {/* ── Pricing ── */}
+      <section id="pricing" className="px-6 py-24 lg:px-10 lg:py-28">
+        <div className="mx-auto flex max-w-6xl flex-col justify-between gap-12 lg:flex-row lg:items-center">
+          <div>
+            <p className="text-micro uppercase tracking-[0.18em] text-accent-text">Pricing</p>
+            <h2 className="mt-5 max-w-xl text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+              One percent per successful payment.
+            </h2>
+            <p className="mt-5 text-text-muted">No setup cost. No monthly fee. No minimum volume.</p>
+          </div>
+          <Card className="p-7 shadow-lg sm:w-96">
+            {[
+              "Payment links and QR receive",
+              "USDC and USDSUI on five chains",
+              "Receipts, exports and analytics",
+            ].map((line) => (
+              <p
+                key={line}
+                className="flex items-center gap-3 border-b border-line py-4 text-sm text-text-muted last:border-0"
+              >
+                <Check className="h-4 w-4 shrink-0 text-accent" />
+                {line}
+              </p>
+            ))}
+            <Link
+              href="/onboarding"
+              className={buttonClasses({ size: "lg", className: "mt-6 w-full rounded-full" })}
+            >
+              Start accepting payments
+            </Link>
+          </Card>
+        </div>
+      </section>
+
+      <footer className="border-t border-line px-6 py-12 lg:px-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+          <Link href="/" className="flex items-center gap-2.5 text-accent">
+            <LinqMark size={28} />
+            <LinqWordmark size={16} />
+          </Link>
+          <p className="text-xs text-text-subtle">
+            © {new Date().getFullYear()} Linq · linq.xyz
+          </p>
+          <div className={cn("flex items-center gap-5 text-xs text-text-muted")}>
+            <a href="mailto:support@linq.xyz" className="transition-colors duration-fast ease-linq hover:text-text">
+              Support
+            </a>
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-success" /> Verified payouts
+            </span>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }

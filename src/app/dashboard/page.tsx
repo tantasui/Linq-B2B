@@ -1,84 +1,194 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownLeft, ChevronRight, Eye, Receipt, WalletMinimal } from "lucide-react";
-import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { useEffect, useState } from "react";
+import { ArrowDownLeft, ArrowRight, ChevronRight, Eye, EyeOff, Receipt } from "lucide-react";
+import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { ChartFrame } from "@/components/ui/chart-frame";
+import { buttonClasses } from "@/components/ui/button";
+import { Card, SectionHeader } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { BalanceSkeleton, RowSkeleton } from "@/components/ui/skeleton";
+import { StatusPill } from "@/components/ui/status";
+import { NetworkLogo } from "@/components/icons/NetworkLogos";
 import { listOrders } from "@/lib/api-client";
+import { chainDisplayName } from "@/lib/chains";
 import type { OrderRecord } from "@/server/types";
-import { cn } from "@/lib/utils";
 
-const emptyTrend = Array.from({ length: 8 }, () => ({ value: 0 }));
+const naira = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 0,
+});
+
+const IN_FLIGHT = ["initiated", "deposited", "pending", "fulfilling", "validated", "settling"];
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderRecord[]>([]);
-  const settledOrders = orders.filter((order) => order.status === "settled");
-  const totalNgn = settledOrders.reduce((sum, order) => sum + order.amountNgn, 0);
-  const trend = settledOrders.length ? settledOrders.slice(0, 8).reverse().map((order) => ({ value: order.amountNgn })) : emptyTrend;
+  const [loading, setLoading] = useState(true);
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    listOrders().then(({ orders }) => setOrders(orders)).catch(() => undefined);
+    listOrders()
+      .then(({ orders: data }) => setOrders(data))
+      .catch(() => undefined)
+      .finally(() => setLoading(false));
   }, []);
 
+  const settled = orders.filter((order) => order.status === "settled");
+  const pending = orders.filter((order) => IN_FLIGHT.includes(order.status));
+  const totalNgn = settled.reduce((sum, order) => sum + order.amountNgn, 0);
+  const pendingNgn = pending.reduce((sum, order) => sum + order.amountNgn, 0);
+  const trend = settled.length
+    ? settled.slice(0, 12).reverse().map((order) => ({ value: order.amountNgn }))
+    : Array.from({ length: 8 }, () => ({ value: 0 }));
+
   return (
-    <div className="space-y-7">
+    <div className="space-y-8">
+      {/* Balance: the one figure the page exists to show. */}
       <section>
-        <div className="flex items-center justify-between">
-          <p className="flex items-center gap-2 text-sm text-zinc-400">Total volume <Eye className="h-4 w-4" /></p>
-        </div>
-        <div className="mt-3 flex items-end justify-between">
-          <div>
-            <p className="text-[38px] font-semibold tracking-[-0.06em]">{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalNgn)}</p>
-            <p className="mt-1 text-sm text-zinc-500">{settledOrders.length} settled order{settledOrders.length === 1 ? "" : "s"}</p>
+        <div className="flex items-end justify-between gap-6">
+          <div className="min-w-0">
+            <button
+              type="button"
+              onClick={() => setHidden((value) => !value)}
+              className="flex items-center gap-2 text-sm text-text-muted transition-colors duration-fast ease-linq hover:text-text"
+            >
+              Total settled
+              {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+
+            {loading ? (
+              <div className="mt-4">
+                <BalanceSkeleton />
+              </div>
+            ) : (
+              <>
+                <p className="tnum mt-3 text-hero font-semibold sm:text-display">
+                  {hidden ? "••••••" : naira.format(totalNgn)}
+                </p>
+                <p className="mt-2 text-sm text-text-muted">
+                  {settled.length} settled order{settled.length === 1 ? "" : "s"}
+                  {pendingNgn > 0 ? (
+                    <>
+                      {" · "}
+                      <span className="text-accent-text">
+                        {naira.format(pendingNgn)} in flight
+                      </span>
+                    </>
+                  ) : null}
+                </p>
+              </>
+            )}
           </div>
-          <ChartFrame className="h-16 w-28">
+
+          <ChartFrame className="hidden h-16 w-32 shrink-0 sm:block">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={trend}>
-                <Area type="monotone" dataKey="value" stroke="#8A4FFF" fill="#8A4FFF" fillOpacity={0.12} strokeWidth={2.5} />
+                <defs>
+                  <linearGradient id="home-trend" x2="0" y2="1">
+                    <stop stopColor="hsl(var(--accent))" stopOpacity="0.35" />
+                    <stop offset="1" stopColor="hsl(var(--accent))" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="hsl(var(--accent))"
+                  fill="url(#home-trend)"
+                  strokeWidth={2.5}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </ChartFrame>
         </div>
+
+        <div className="mt-7">
+          <Link
+            href="/dashboard/receive"
+            className={buttonClasses({ size: "lg", className: "w-full sm:w-auto" })}
+          >
+            Convert to cash <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       </section>
 
+      {/* Two ways to get paid, given equal weight. */}
       <section className="grid grid-cols-2 gap-3">
         {[
-          { label: "Receive", icon: ArrowDownLeft, href: "/dashboard/receive" },
-          { label: "Request", icon: Receipt, href: "/dashboard/receive?mode=fixed" },
+          {
+            label: "Receive",
+            hint: "Payer picks the amount",
+            icon: ArrowDownLeft,
+            href: "/dashboard/receive",
+          },
+          {
+            label: "Request",
+            hint: "You set the amount",
+            icon: Receipt,
+            href: "/dashboard/receive?mode=fixed",
+          },
         ].map((action) => (
-          <Link key={action.label} href={action.href} className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-100 bg-white px-2 py-4 text-xs text-zinc-600 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-            <action.icon className="h-7 w-7 text-[#8A4FFF]" />
-            {action.label}
+          <Link key={action.label} href={action.href} className="block">
+            <Card interactive className="h-full">
+              <action.icon className="h-6 w-6 text-accent" />
+              <p className="mt-6 text-sm font-medium">{action.label}</p>
+              <p className="mt-1 text-xs text-text-muted">{action.hint}</p>
+            </Card>
           </Link>
         ))}
       </section>
 
       <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-medium">Recent incoming</h2>
-          <Link href="/dashboard/transactions" className="flex items-center text-xs text-[#a985ff]">All orders <ChevronRight className="h-4 w-4" /></Link>
-        </div>
-        <div className="space-y-3">
-          {orders.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-zinc-200 bg-white p-5 text-sm text-zinc-500">
-              No live orders yet. Create a receive link when your merchant setup is complete.
-            </div>
-          )}
-          {orders.slice(0, 4).map((payment) => (
-            <div key={payment.id} className="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-              <WalletMinimal className="h-5 w-5 shrink-0 text-[#8A4FFF]" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{payment.payerName}</p>
-                <p className="text-xs text-zinc-500 capitalize">{payment.network} - {new Date(payment.createdAt).toLocaleDateString()}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium">+{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(payment.amountNgn)}</p>
-                <p className={cn("text-xs capitalize", payment.status === "settled" ? "text-emerald-500" : payment.status === "failed" || payment.status === "expired" ? "text-red-400" : "text-amber-400")}>{payment.status}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <SectionHeader
+          title="Recent incoming"
+          action={
+            <Link
+              href="/dashboard/transactions"
+              className="flex items-center gap-0.5 text-xs text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
+            >
+              All orders <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          }
+        />
+
+        {loading ? (
+          <RowSkeleton />
+        ) : orders.length === 0 ? (
+          <Card className="p-0">
+            <EmptyState
+              title="No payments yet"
+              body="Create a receive link and your first settled payment will land here."
+              action={
+                <Link href="/dashboard/receive" className={buttonClasses({ size: "sm" })}>
+                  Create a receive link
+                </Link>
+              }
+            />
+          </Card>
+        ) : (
+          <div className="space-y-2.5">
+            {orders.slice(0, 5).map((order) => (
+              <Card key={order.id} interactive className="flex items-center gap-3.5 py-4">
+                <NetworkLogo network={order.network} size={32} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{order.payerName}</p>
+                  <p className="truncate text-xs text-text-muted">
+                    {chainDisplayName(order.network)} ·{" "}
+                    {new Date(order.createdAt).toLocaleDateString(undefined, {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                  <p className="tnum text-sm font-medium">+{naira.format(order.amountNgn)}</p>
+                  <StatusPill status={order.status} />
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

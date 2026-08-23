@@ -1,25 +1,32 @@
 import Link from "next/link";
-import { Command } from "lucide-react";
 import { MerchantOnboarding } from "@/components/onboarding/MerchantOnboarding";
+import { LinqMark, LinqWordmark } from "@/components/brand/LinqMark";
 
 export default function OnboardingPage() {
   return (
-    <main className="min-h-screen bg-[#f6f3fb] px-5 py-6 text-zinc-950">
-      <div className="mx-auto w-full max-w-[460px]">
-        <header className="mb-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 text-lg font-semibold tracking-[-0.04em]">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#8A4FFF] text-white">
-              <Command className="h-5 w-5" />
-            </span>
-            LinqSwitch
+    <main className="min-h-screen bg-bg px-5 py-6 text-text">
+      <div className="mx-auto w-full max-w-[520px]">
+        <header className="mb-8 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5 text-accent">
+            <LinqMark size={30} />
+            <LinqWordmark size={17} />
           </Link>
-          <Link href="/dashboard" className="text-sm text-zinc-500">Dashboard</Link>
+          <Link
+            href="/login"
+            className="text-sm text-text-muted transition-colors duration-fast ease-linq hover:text-text"
+          >
+            Log in
+          </Link>
         </header>
-        <section className="mb-5">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#a985ff]">Merchant setup</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Start accepting payments</h1>
-          <p className="mt-2 text-sm leading-6 text-zinc-500">Create the business profile, sign in with email or Google, and verify the Naira payout account.</p>
+
+        <section className="mb-6">
+          <p className="text-micro uppercase tracking-[0.16em] text-accent-text">Merchant setup</p>
+          <h1 className="mt-2 text-hero font-semibold">Start accepting payments</h1>
+          <p className="mt-3 text-sm leading-6 text-text-muted">
+            Create your business profile, sign in, and verify the Naira account we should settle to.
+          </p>
         </section>
+
         <MerchantOnboarding onCompleteHref="/dashboard" />
       </div>
     </main>

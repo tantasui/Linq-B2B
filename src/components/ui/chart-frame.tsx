@@ -12,7 +12,7 @@ export function ChartFrame({ children, className }: { children: React.ReactNode;
 
   return (
     <div className={cn("min-w-0", className)}>
-      {mounted ? children : <div className="h-full w-full animate-pulse rounded-xl bg-white/[0.02]" />}
+      {mounted ? children : <div className="linq-skeleton h-full w-full rounded-md" />}
     </div>
   );
 }

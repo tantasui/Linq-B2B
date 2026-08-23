@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, Bell, Command, Home, LogOut, QrCode, ReceiptText, Settings } from "lucide-react";
+import { BarChart3, Bell, Home, LogOut, QrCode, ReceiptText, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getMerchantMe, setActiveBusinessId, setActiveDynamicUserId, syncMerchantWallets } from "@/lib/api-client";
 import { tokensForNetwork } from "@/lib/chains";
 import type { MerchantRecord, StablecoinSymbol } from "@/server/types";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
 import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
+import { LinqMark, LinqWordmark } from "@/components/brand/LinqMark";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const navigation = [
   { name: "Home", href: "/dashboard", icon: Home },
@@ -18,6 +20,22 @@ const navigation = [
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
+
+function NotificationButton() {
+  return (
+    <button
+      type="button"
+      aria-label="Notifications"
+      className={cn(
+        "relative grid h-10 w-10 place-items-center rounded-md bg-surface text-text-muted ring-1 ring-line",
+        "shadow-sm transition duration-fast ease-linq hover:-translate-y-px hover:text-text hover:shadow-md active:scale-[0.97]",
+      )}
+    >
+      <Bell className="h-[18px] w-[18px]" />
+      <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-accent" />
+    </button>
+  );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -34,7 +52,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         network: wallet.network,
         address: wallet.address,
         walletType: wallet.walletType,
-        tokenSupport: (tokensForNetwork(wallet.network).length ? tokensForNetwork(wallet.network) : ["USDC"]) as StablecoinSymbol[],
+        tokenSupport: (tokensForNetwork(wallet.network).length
+          ? tokensForNetwork(wallet.network)
+          : ["USDC"]) as StablecoinSymbol[],
       })),
     [dynamic.wallets],
   );
@@ -56,26 +76,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     lastWalletSync.current = signature;
     syncMerchantWallets({ businessId: merchant.id, wallets: walletPayload })
       .then(({ wallets }) => setMerchant((current) => (current ? { ...current, wallets } : current)))
-      .catch(() => { lastWalletSync.current = ""; });
+      .catch(() => {
+        lastWalletSync.current = "";
+      });
   }, [merchant?.id, walletPayload]);
 
-  return (
-    <div className="min-h-screen bg-[#f6f3fb] text-zinc-950">
+  const pageTitle = navigation.find((entry) => entry.href === pathname)?.name ?? "Dashboard";
 
+  return (
+    <div className="min-h-screen bg-bg text-text">
       {/* ── Desktop sidebar (lg+) ── */}
-      <aside className="fixed left-0 top-0 z-40 hidden h-full w-[220px] flex-col border-r border-zinc-100 bg-white px-4 py-6 lg:flex">
-        <Link href="/dashboard" className="mb-8 flex items-center gap-3 text-base font-semibold tracking-[-0.04em]">
-          <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#8A4FFF] text-white">
-            <Command className="h-4 w-4" />
-          </span>
-          LinqSwitch
+      <aside className="fixed left-0 top-0 z-40 hidden h-full w-[248px] flex-col bg-surface px-4 pb-8 pt-6 ring-1 ring-line lg:flex">
+        <Link
+          href="/dashboard"
+          className="mb-8 flex items-center gap-2.5 px-2 text-accent transition-opacity duration-fast ease-linq hover:opacity-80"
+        >
+          <LinqMark size={30} />
+          <LinqWordmark size={17} />
         </Link>
 
-        <div className="mb-6 flex items-center gap-3 rounded-2xl bg-zinc-50 p-3">
+        <div className="mb-6 flex items-center gap-3 rounded-md bg-surface-2 p-3">
           <MerchantAvatar className="h-9 w-9 shrink-0" />
           <div className="min-w-0">
             <p className="truncate text-xs font-medium">{merchant?.businessName ?? "Set up business"}</p>
-            <p className="text-[11px] text-zinc-400">Merchant</p>
+            <p className="text-micro text-text-subtle">Merchant</p>
           </div>
         </div>
 
@@ -86,65 +110,87 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.name}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                  active ? "bg-[#f3edff] text-[#8A4FFF]" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900",
+                  "flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium",
+                  "transition-colors duration-fast ease-linq",
+                  active
+                    ? "bg-accent-soft text-accent-text"
+                    : "text-text-muted hover:bg-surface-2 hover:text-text",
                 )}
               >
-                <item.icon className="h-4 w-4 shrink-0" />
+                <item.icon className="h-[18px] w-[18px] shrink-0" />
                 {item.name}
               </Link>
             );
           })}
         </nav>
 
-        <button
-          onClick={dynamic.disconnect}
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-50 hover:text-red-600"
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          Log out
-        </button>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-4">
+          <button
+            type="button"
+            onClick={dynamic.disconnect}
+            className={cn(
+              "flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium text-text-muted",
+              "transition-colors duration-fast ease-linq hover:bg-danger-soft hover:text-danger",
+            )}
+          >
+            <LogOut className="h-[18px] w-[18px] shrink-0" />
+            Log out
+          </button>
+          <ThemeToggle />
+        </div>
       </aside>
 
       {/* ── Mobile shell (below lg) ── */}
-      <div className="mx-auto min-h-screen w-full max-w-[460px] border-x border-zinc-100 bg-[#fdfcfb] shadow-[0_0_70px_rgba(55,29,98,.08)] lg:hidden">
-        <header className="sticky top-0 z-30 flex h-[66px] items-center justify-between border-b border-zinc-100 bg-[#fdfcfb]/95 px-5 backdrop-blur-xl">
-          <Link href="/dashboard" className="flex items-center gap-3 transition-opacity duration-200 hover:opacity-80">
+      <div className="mx-auto min-h-screen w-full max-w-[480px] bg-bg lg:hidden">
+        <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between gap-3 border-b border-line bg-bg/85 px-5 backdrop-blur-xl">
+          <Link
+            href="/dashboard"
+            className="flex min-w-0 items-center gap-3 transition-opacity duration-fast ease-linq hover:opacity-80"
+          >
             {isDashboardHome ? (
               <>
                 <MerchantAvatar className="h-10 w-10" />
-                <div>
-                  <p className="text-xs text-zinc-500">Welcome back</p>
-                  <p className="text-sm font-medium">{merchant?.businessName ?? "Set up business"}</p>
+                <div className="min-w-0">
+                  <p className="text-micro text-text-muted">Welcome back</p>
+                  <p className="truncate text-sm font-medium">
+                    {merchant?.businessName ?? "Set up business"}
+                  </p>
                 </div>
               </>
             ) : (
-              <p className="text-sm font-medium text-[#8A4FFF]">LinqSwitch</p>
+              <LinqMark size={30} className="text-accent" />
             )}
           </Link>
-          <button aria-label="Notifications" className="relative rounded-full border border-zinc-100 bg-white p-3 text-zinc-600 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-[#8A4FFF]" />
-          </button>
+          <NotificationButton />
         </header>
 
-        <main className="min-h-[calc(100vh-66px)] px-5 pb-28 pt-6">{children}</main>
+        <main key={pathname} className="linq-page-in min-h-[calc(100vh-68px)] px-5 pb-32 pt-6">
+          {children}
+        </main>
 
-        <nav className="fixed bottom-0 left-1/2 z-40 flex h-[76px] w-full max-w-[460px] -translate-x-1/2 items-start justify-around border-t border-zinc-100 bg-white/98 px-2 pt-3 backdrop-blur-xl">
+        <nav className="fixed bottom-0 left-1/2 z-40 flex w-full max-w-[480px] -translate-x-1/2 items-stretch justify-around border-t border-line bg-surface/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl">
           {navigation.map((item) => {
             const active = pathname === item.href;
             return (
               <Link
                 key={item.name}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-w-[66px] flex-col items-center gap-1.5 text-[11px] transition duration-200 hover:-translate-y-0.5",
-                  active ? "text-[#8A4FFF]" : "text-zinc-400",
+                  "flex min-w-[62px] flex-col items-center gap-1 rounded-sm py-2 text-micro",
+                  "transition duration-fast ease-linq active:scale-[0.94]",
+                  active ? "text-accent-text" : "text-text-subtle hover:text-text-muted",
                 )}
               >
-                <span className="px-4 py-1.5">
-                  <item.icon className="h-5 w-5" />
+                <span
+                  className={cn(
+                    "grid h-8 w-14 place-items-center rounded-full transition-colors duration-fast ease-linq",
+                    active && "bg-accent-soft",
+                  )}
+                >
+                  <item.icon className="h-[18px] w-[18px]" />
                 </span>
                 {item.name}
               </Link>
@@ -153,24 +199,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
       </div>
 
-      {/* ── Desktop content area (lg+) ── */}
-      <div className="hidden lg:block lg:ml-[220px]">
-        <header className="sticky top-0 z-30 flex h-[66px] items-center justify-between border-b border-zinc-100 bg-white/95 px-8 backdrop-blur-xl">
-          <p className="text-sm font-medium text-zinc-500">
-            {navigation.find((n) => n.href === pathname)?.name ?? "Dashboard"}
-          </p>
-          <button aria-label="Notifications" className="relative rounded-full border border-zinc-100 bg-white p-3 text-zinc-600 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-[#8A4FFF]" />
-          </button>
+      {/* ── Desktop content (lg+) ── */}
+      <div className="hidden lg:ml-[248px] lg:block">
+        <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-line bg-bg/85 px-8 backdrop-blur-xl">
+          <p className="text-sm font-medium text-text-muted">{pageTitle}</p>
+          <NotificationButton />
         </header>
-        <main className="min-h-[calc(100vh-66px)] px-8 pb-12 pt-8 xl:px-12">
-          <div className="mx-auto max-w-[900px]">
-            {children}
-          </div>
+        <main key={pathname} className="linq-page-in min-h-[calc(100vh-68px)] px-8 pb-16 pt-8 xl:px-12">
+          <div className="mx-auto max-w-[960px]">{children}</div>
         </main>
       </div>
-
     </div>
   );
 }

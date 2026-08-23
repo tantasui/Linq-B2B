@@ -1,120 +1,132 @@
 "use client";
 
-import * as React from "react";
-import { ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface SelectContextValue {
+export interface SelectOption {
   value: string;
-  open: boolean;
-  setOpen: (open: boolean) => void;
-  selectValue: (value: string) => void;
-  registerLabel: (value: string, label: React.ReactNode) => void;
-  selectedLabel?: React.ReactNode;
+  label: string;
+  /** Optional leading visual — a network badge, a bank logo, a token icon. */
+  adornment?: React.ReactNode;
+  hint?: string;
 }
 
-const SelectContext = React.createContext<SelectContextValue | null>(null);
-
-function useSelect() {
-  const context = React.useContext(SelectContext);
-  if (!context) throw new Error("Select components must be used inside Select");
-  return context;
-}
-
-interface SelectProps {
-  children: React.ReactNode;
+/**
+ * The select-box pattern: a pill showing the current selection with a chevron
+ * that flips on open, and a panel that scales and fades in beneath it.
+ *
+ * This is the product's one dropdown — currency, network and payout-method
+ * selectors all use it, so choosing a chain feels the same as choosing a bank.
+ */
+export function Select({
+  value,
+  options,
+  onChange,
+  placeholder = "Select",
+  label,
+  className,
+  disabled,
+}: {
   value?: string;
-  defaultValue?: string;
-  onValueChange?: (value: string) => void;
-}
+  options: SelectOption[];
+  onChange: (value: string) => void;
+  placeholder?: string;
+  label?: string;
+  className?: string;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapper = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value);
 
-export function Select({ children, value, defaultValue = "", onValueChange }: SelectProps) {
-  const [internalValue, setInternalValue] = React.useState(defaultValue);
-  const [open, setOpen] = React.useState(false);
-  const [labels, setLabels] = React.useState<Record<string, React.ReactNode>>({});
-  const currentValue = value ?? internalValue;
-  const selectValue = (nextValue: string) => {
-    if (value === undefined) setInternalValue(nextValue);
-    onValueChange?.(nextValue);
-    setOpen(false);
-  };
-  const registerLabel = React.useCallback((itemValue: string, label: React.ReactNode) => {
-    setLabels((existing) => (existing[itemValue] === label ? existing : { ...existing, [itemValue]: label }));
-  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!wrapper.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   return (
-    <SelectContext.Provider
-      value={{
-        value: currentValue,
-        open,
-        setOpen,
-        selectValue,
-        registerLabel,
-        selectedLabel: labels[currentValue],
-      }}
-    >
-      <div className="relative inline-block">{children}</div>
-    </SelectContext.Provider>
-  );
-}
+    <div ref={wrapper} className={cn("relative", className)}>
+      {label ? <span className="mb-2 block text-xs text-text-muted">{label}</span> : null}
 
-export const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
-  ({ className, children, ...props }, ref) => {
-    const { open, setOpen } = useSelect();
-    return (
       <button
-        ref={ref}
         type="button"
+        disabled={disabled}
+        aria-haspopup="listbox"
         aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
         className={cn(
-          "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring",
-          className,
+          "flex h-12 w-full items-center gap-2.5 rounded-full bg-surface px-4 text-sm",
+          "ring-1 ring-line shadow-sm transition duration-fast ease-linq",
+          "hover:shadow-md active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none",
+          open && "ring-accent",
         )}
-        onClick={() => setOpen(!open)}
-        {...props}
       >
-        {children}
-        <ChevronDown className="h-4 w-4 opacity-50" />
+        {selected?.adornment}
+        <span className={cn("min-w-0 flex-1 truncate text-left", !selected && "text-text-muted")}>
+          {selected?.label ?? placeholder}
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 text-text-muted transition-transform duration-fast ease-linq",
+            open && "rotate-180",
+          )}
+        />
       </button>
-    );
-  },
-);
-SelectTrigger.displayName = "SelectTrigger";
 
-export function SelectValue({ placeholder }: { placeholder?: string }) {
-  const { value, selectedLabel } = useSelect();
-  return <span className="truncate">{selectedLabel ?? value ?? placeholder}</span>;
-}
-
-export function SelectContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  const { open } = useSelect();
-  if (!open) return null;
-  return (
-    <div
-      className={cn("absolute right-0 z-50 mt-2 min-w-full overflow-hidden rounded-md border bg-popover p-1 shadow-xl", className)}
-      {...props}
-    />
-  );
-}
-
-export function SelectItem({ value, className, children }: { value: string; className?: string; children: React.ReactNode }) {
-  const { value: selected, selectValue, registerLabel } = useSelect();
-
-  React.useEffect(() => {
-    registerLabel(value, children);
-  }, [children, registerLabel, value]);
-
-  return (
-    <button
-      type="button"
-      onClick={() => selectValue(value)}
-      className={cn(
-        "block w-full cursor-pointer rounded-sm px-2 py-1.5 text-left text-sm hover:bg-white/5",
-        selected === value && "text-[#8A4FFF]",
-        className,
-      )}
-    >
-      {children}
-    </button>
+      {open ? (
+        <div
+          role="listbox"
+          className={cn(
+            "linq-pop-in absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden",
+            "rounded-lg bg-surface p-1.5 shadow-lg ring-1 ring-line",
+            label && "top-[calc(100%+8px)]",
+          )}
+        >
+          <div className="max-h-64 overflow-y-auto">
+            {options.map((option) => {
+              const active = option.value === value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-sm px-3 py-2.5 text-left text-sm",
+                    "transition-colors duration-fast ease-linq hover:bg-surface-2",
+                    active && "bg-surface-2",
+                  )}
+                >
+                  {option.adornment}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{option.label}</span>
+                    {option.hint ? (
+                      <span className="block truncate text-xs text-text-muted">{option.hint}</span>
+                    ) : null}
+                  </span>
+                  {active ? <Check className="h-4 w-4 shrink-0 text-accent" /> : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }

@@ -2,73 +2,196 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --brand-purple: #8A4FFF;
-  --brand-purple-light: #A978FF;
-  --brand-purple-dark: #6B3ACC;
-  --brand-black: #0A0A0A;
-  --brand-gray: #18181B;
-  --brand-offwhite: #FAFAFA;
-}
+/* ============================================================================
+   Linq design tokens
+   ----------------------------------------------------------------------------
+   ONE system for iOS + web. Light mode is the source of truth; dark mode
+   remaps the same token names onto dark values. Nothing moves, resizes or
+   reorders between modes — only colour values change.
+
+   Layer 1 (UI shell): neutral off-white / charcoal surfaces, accent used
+   sparingly for primary actions and live state.
+   Layer 2 (illustration): the purple receipt / chain-mark / segmented bar
+   language, reserved for receipts, loading, empty states and milestones.
+   ========================================================================== */
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 0 0% 4%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 4%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 4%;
-    --primary: 262 100% 65%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 262 100% 65%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
+    /* — surfaces — */
+    --bg: 240 5% 97%;              /* #F7F7F8 — near-white base */
+    --surface: 0 0% 100%;
+    --surface-2: 240 5% 95%;
+    --surface-3: 240 5% 92%;
+
+    /* — text — */
+    --text: 240 10% 5%;
+    --text-muted: 240 4% 46%;
+    --text-subtle: 240 4% 62%;
+
+    /* — lines — */
+    --border: 240 6% 91%;
+    --border-strong: 240 5% 84%;
+
+    /* — the one accent — */
+    --accent: 262 100% 65%;        /* #8A4FFF */
+    --accent-hover: 262 82% 58%;
+    --accent-text: 262 78% 56%;    /* AA-safe accent for text on light */
+    --accent-soft: 262 100% 96%;
+    --accent-contrast: 0 0% 100%;
+
+    /* — state — */
+    --success: 152 52% 36%;
+    --success-soft: 152 45% 94%;
+    --warning: 36 74% 42%;
+    --warning-soft: 36 85% 94%;
+    --danger: 0 55% 51%;           /* desaturated: professional, not alarming */
+    --danger-soft: 0 70% 96%;
+
+    /* — brand illustration layer (receipts, tickets) — */
+    --ticket: 265 68% 96.5%;
+    --ticket-edge: 262 42% 84%;
+    --printer: 262 100% 65%;
+
+    /* — concentric radii: outer − inner stays proportional — */
+    --r-xs: 8px;
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+    --r-xl: 28px;
+    --radius: var(--r-md);
+
+    /* — soft, diffuse elevation (no hard borders) — */
+    --shadow-sm: 0 1px 2px hsl(260 30% 12% / 0.04), 0 1px 3px hsl(260 30% 12% / 0.03);
+    --shadow-md: 0 2px 4px hsl(260 30% 12% / 0.04), 0 8px 20px hsl(260 30% 12% / 0.06);
+    --shadow-lg: 0 4px 8px hsl(260 30% 12% / 0.05), 0 18px 44px hsl(260 30% 12% / 0.10);
+    --shadow-xl: 0 8px 16px hsl(260 30% 12% / 0.06), 0 32px 80px hsl(260 30% 12% / 0.14);
+
+    /* — motion: snappy, ease-out, never bouncy — */
+    --dur-fast: 150ms;
+    --dur: 200ms;
+    --dur-slow: 250ms;
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+
+    /* shadcn compatibility aliases */
+    --background: var(--bg);
+    --foreground: var(--text);
+    --card: var(--surface);
+    --card-foreground: var(--text);
+    --popover: var(--surface);
+    --popover-foreground: var(--text);
+    --primary: var(--accent);
+    --primary-foreground: var(--accent-contrast);
+    --secondary: var(--surface-2);
+    --secondary-foreground: var(--text);
+    --muted: var(--surface-2);
+    --muted-foreground: var(--text-muted);
+    --accent-foreground: var(--accent-contrast);
+    --destructive: var(--danger);
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 262 100% 65%;
-    --radius: 0.625rem;
+    --input: var(--border);
+    --ring: var(--accent);
   }
 
   .dark {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 262 100% 65%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 65%;
-    --accent: 262 100% 65%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 262 100% 65%;
+    /* true dark charcoal — never pure black */
+    --bg: 240 6% 8%;
+    --surface: 240 6% 11%;
+    --surface-2: 240 5% 15%;
+    --surface-3: 240 5% 19%;
+
+    --text: 0 0% 98%;
+    --text-muted: 240 5% 66%;
+    --text-subtle: 240 4% 48%;
+
+    --border: 240 5% 20%;
+    --border-strong: 240 5% 28%;
+
+    /* lightened accent: ~6:1 on the dark surfaces, per the AA note */
+    --accent: 262 100% 76%;
+    --accent-hover: 262 100% 82%;
+    --accent-text: 262 100% 78%;
+    --accent-soft: 262 40% 18%;
+    --accent-contrast: 262 60% 10%;
+
+    --success: 152 48% 58%;
+    --success-soft: 152 30% 16%;
+    --warning: 38 80% 62%;
+    --warning-soft: 36 40% 16%;
+    --danger: 0 65% 66%;
+    --danger-soft: 0 35% 17%;
+
+    /* the brand's dark violet family, matching the 3D asset shading */
+    --ticket: 265 22% 13%;
+    --ticket-edge: 265 20% 24%;
+    --printer: 262 90% 72%;
+
+    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.35);
+    --shadow-md: 0 2px 4px hsl(0 0% 0% / 0.3), 0 8px 20px hsl(0 0% 0% / 0.35);
+    --shadow-lg: 0 4px 8px hsl(0 0% 0% / 0.3), 0 18px 44px hsl(0 0% 0% / 0.45);
+    --shadow-xl: 0 8px 16px hsl(0 0% 0% / 0.35), 0 32px 80px hsl(0 0% 0% / 0.55);
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: Inter, "Segoe UI", Arial, system-ui, sans-serif;
+    @apply bg-bg text-text antialiased;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    /* Contextual alternates on, but numerals stay proportional in prose. */
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  /* Tabular figures everywhere money lives, so columns align down a list. */
+  .tnum,
+  [data-amount] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  ::selection {
+    background: hsl(var(--accent) / 0.22);
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--accent));
+    outline-offset: 2px;
   }
 }
 
-/* Hide Dynamic Labs floating widget */
+/* ── Dark-mode switch: cross-fade the whole interface, never a hard cut ── */
+.theme-fade,
+.theme-fade * {
+  transition: background-color 240ms var(--ease), border-color 240ms var(--ease),
+    color 240ms var(--ease), fill 240ms var(--ease), box-shadow 240ms var(--ease) !important;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--text-muted) / 0.25);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--text-muted) / 0.45);
+  background-clip: content-box;
+}
+
+/* Dynamic Labs ships a floating widget we render ourselves. */
 dynamic-widget,
 .dynamic-widget,
 [data-dynamic-widget],
@@ -77,83 +200,171 @@ dynamic-widget,
   display: none !important;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
-}
-
-/* Gradient text utility */
-.gradient-text {
-  background: linear-gradient(135deg, #8A4FFF 0%, #A978FF 50%, #8A4FFF 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Purple glow effect */
-.purple-glow {
-  box-shadow: 0 0 60px rgba(138, 79, 255, 0.3);
-}
-
-/* Smooth gradient background */
-.gradient-bg {
-  background: linear-gradient(135deg, rgba(138, 79, 255, 0.1) 0%, transparent 50%, rgba(138, 79, 255, 0.05) 100%);
-}
-
-/* Animated gradient border */
-.gradient-border {
-  position: relative;
-  background: linear-gradient(var(--background), var(--background)) padding-box,
-              linear-gradient(135deg, #8A4FFF, #A978FF, #8A4FFF) border-box;
-  border: 1px solid transparent;
-}
-
-/* Grid pattern for backgrounds */
-.grid-pattern {
-  background-image:
-    linear-gradient(to right, rgba(138, 79, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(138, 79, 255, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-}
-
-/* Animation keyframes */
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(138, 79, 255, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(138, 79, 255, 0.5); }
-}
+/* ============================================================================
+   Motion primitives
+   ========================================================================== */
 
 @keyframes linq-sheet-up {
-  from { opacity: 0; transform: translateY(32px); }
+  from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 .linq-sheet-up {
-  animation: linq-sheet-up 220ms ease-out both;
+  animation: linq-sheet-up var(--dur-slow) var(--ease) both;
 }
 
-.animate-float {
-  animation: float 3s ease-in-out infinite;
+@keyframes linq-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.linq-fade-in {
+  animation: linq-fade-in var(--dur) var(--ease) both;
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+/* Dropdown / popover entrance: subtle scale + fade, anchored to the trigger. */
+@keyframes linq-pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.linq-pop-in {
+  animation: linq-pop-in var(--dur) var(--ease) both;
+  transform-origin: top center;
+}
+
+/* Page transition: fast crossfade — boringly consistent beats novel. */
+@keyframes linq-page-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.linq-page-in {
+  animation: linq-page-in var(--dur-fast) var(--ease) both;
+}
+
+/* Skeleton shimmer — shaped like the real content, never a spinner on blank. */
+@keyframes linq-shimmer {
+  100% { transform: translateX(100%); }
+}
+.linq-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: hsl(var(--surface-2));
+}
+.linq-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, hsl(var(--text) / 0.05), transparent);
+  animation: linq-shimmer 1.4s infinite;
+}
+
+/* Segmented gradient bar — the brand's loading device. */
+@keyframes linq-segment-wave {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 1; }
+}
+
+/* Chain-link mark — the signature loader: links separate, then interlock.
+   Offsets are in the mark's own user units (131.59-wide viewBox), so the
+   separation scales with the mark at every size. */
+@keyframes linq-link-left {
+  0%, 100% { transform: translateX(-11px); }
+  55% { transform: translateX(1.5px); }
+}
+@keyframes linq-link-right {
+  0%, 100% { transform: translateX(11px); }
+  55% { transform: translateX(-1.5px); }
+}
+
+/* Success checkmark draws in. */
+@keyframes linq-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Receipt prints: the ticket feeds out of the printer slot. */
+@keyframes linq-print {
+  from { transform: translateY(-14px); opacity: 0; clip-path: inset(0 0 100% 0); }
+  to { transform: translateY(0); opacity: 1; clip-path: inset(0 0 0 0); }
+}
+.linq-print {
+  animation: linq-print 520ms var(--ease) both;
+}
+
+/* Reserved for rare, high-emotion moments only. */
+@keyframes linq-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.linq-float {
+  animation: linq-float 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================================
+   Receipt / ticket
+   ----------------------------------------------------------------------------
+   The scalloped bottom edge is cut with a mask so the ticket keeps its shape on
+   any surface and in either theme. A masked element clips its own box-shadow,
+   so elevation is applied as a drop-shadow filter on the wrapper, which follows
+   the scalloped alpha instead of the rectangle.
+   ========================================================================== */
+
+/* The ticket is three stacked blocks so each mask has a single job: a plain
+   head, a perforation strip whose ends are punched out, and a scalloped foot.
+   Overlaying opaque circles instead would only work on one known background —
+   these are true holes, so the ticket keeps its shape on the hero gradient, on
+   a card, and in either theme. */
+
+.linq-ticket-notch {
+  --notch: 10px;
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at 0 50%, transparent 98%, #000 100%),
+    radial-gradient(circle var(--notch) at 100% 50%, transparent 98%, #000 100%);
+  -webkit-mask-composite: source-in;
+  mask:
+    radial-gradient(circle var(--notch) at 0 50%, transparent 98%, #000 100%),
+    radial-gradient(circle var(--notch) at 100% 50%, transparent 98%, #000 100%);
+  mask-composite: intersect;
+}
+
+.linq-ticket-foot {
+  --scallop: 11px;
+  -webkit-mask:
+    radial-gradient(circle var(--scallop) at var(--scallop) var(--scallop), transparent 98%, #000 100%)
+      0 100% / calc(var(--scallop) * 2) var(--scallop) repeat-x,
+    linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--scallop)) no-repeat;
+  mask:
+    radial-gradient(circle var(--scallop) at var(--scallop) var(--scallop), transparent 98%, #000 100%)
+      0 100% / calc(var(--scallop) * 2) var(--scallop) repeat-x,
+    linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--scallop)) no-repeat;
+}
+
+.linq-ticket-shadow {
+  filter: drop-shadow(0 4px 10px hsl(262 40% 20% / 0.10)) drop-shadow(0 18px 40px hsl(262 40% 20% / 0.12));
+}
+
+.dark .linq-ticket-shadow {
+  filter: drop-shadow(0 4px 10px hsl(0 0% 0% / 0.4)) drop-shadow(0 18px 40px hsl(0 0% 0% / 0.5));
+}
+
+/* ============================================================================
+   Segmented gradient bar — the exact ramp from the brand asset.
+   ========================================================================== */
+:root {
+  --seg-1: #8A4FFF;
+  --seg-2: #9661FF;
+  --seg-3: #A172FF;
+  --seg-4: #AD84FF;
+  --seg-5: #B995FF;
+  --seg-6: #C5A7FF;
+  --seg-7: #D0B9FF;
+  --seg-8: #DCCAFF;
 }

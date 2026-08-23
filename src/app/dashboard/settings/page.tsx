@@ -1,26 +1,79 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Building2, Check, Copy, CreditCard, ImagePlus, LogOut, ShieldCheck, Trash2, Wallet } from "lucide-react";
+import { Bell, Building2, ImagePlus, LogOut, Moon, ShieldCheck, Trash2, Wallet } from "lucide-react";
 import { MerchantAvatar, merchantLogoChangedEvent, merchantLogoStorageKey } from "@/components/MerchantAvatar";
 import { MerchantOnboarding } from "@/components/onboarding/MerchantOnboarding";
 import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
+import { useTheme } from "@/components/providers/ThemeProvider";
 import { getMerchantMe } from "@/lib/api-client";
 import { getBankLogo } from "@/lib/banks";
 import { formatWalletLabel, shortAddress } from "@/lib/wallets";
 import type { MerchantRecord } from "@/server/types";
+import { SegmentedBar } from "@/components/brand/SegmentedBar";
+import { NetworkLogo } from "@/components/icons/NetworkLogos";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { CopyButton } from "@/components/ui/copy";
+import { Switch } from "@/components/ui/field";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AddButton } from "@/components/ui/stepper";
+import { TabBar } from "@/components/ui/tab-bar";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useToast } from "@/components/ui/toast";
+
+/** The onboarding milestones a merchant moves through, in order. */
+const KYC_STEPS = ["started", "bank_verified", "wallet_synced", "complete"] as const;
+
+function Section({
+  icon: Icon,
+  title,
+  children,
+  action,
+}: {
+  icon: typeof Building2;
+  title: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h2 className="flex items-center gap-2 text-sm font-medium">
+          <Icon className="h-4 w-4 text-accent-text" />
+          {title}
+        </h2>
+        {action}
+      </div>
+      {children}
+    </Card>
+  );
+}
 
 export default function SettingsPage() {
   const dynamic = useDynamicBridge();
+  const { theme } = useTheme();
+  const { toast } = useToast();
   const [switches, setSwitches] = useState({ notifications: true, verification: true, biometric: false });
   const [logoVersion, setLogoVersion] = useState(0);
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
-  const [feedback, setFeedback] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [activeWallet, setActiveWallet] = useState("");
+
   const verifiedBank = merchant?.bankAccounts.find((bank) => bank.verificationStatus === "verified");
   const verifiedBankLogo = getBankLogo(verifiedBank?.institutionCode, verifiedBank?.institutionName);
+  const kycStep = merchant ? KYC_STEPS.indexOf(merchant.onboardingStatus) + 1 : 0;
+  const wallets = merchant?.wallets ?? [];
+  const currentWallet = wallets.find((wallet) => wallet.id === activeWallet) ?? wallets[0];
 
   useEffect(() => {
-    getMerchantMe().then((data) => setMerchant(data.merchant)).catch(() => setMerchant(null));
+    getMerchantMe()
+      .then((data) => {
+        setMerchant(data.merchant);
+        if (data.merchant?.wallets?.[0]) setActiveWallet(data.merchant.wallets[0].id);
+      })
+      .catch(() => setMerchant(null))
+      .finally(() => setLoading(false));
   }, []);
 
   const notifyLogoChanged = () => {
@@ -35,6 +88,7 @@ export default function SettingsPage() {
       if (typeof reader.result !== "string") return;
       window.localStorage.setItem(merchantLogoStorageKey, reader.result);
       notifyLogoChanged();
+      toast("Logo updated");
     };
     reader.readAsDataURL(file);
   };
@@ -42,99 +96,181 @@ export default function SettingsPage() {
   const removeLogo = () => {
     window.localStorage.removeItem(merchantLogoStorageKey);
     notifyLogoChanged();
-  };
-
-  const copyAddress = async (address: string) => {
-    await navigator.clipboard.writeText(address);
-    setFeedback("Wallet address copied");
-    window.setTimeout(() => setFeedback(""), 1600);
+    toast("Logo removed");
   };
 
   return (
     <div className="space-y-5">
-      <div><p className="text-xs uppercase tracking-[0.2em] text-[#a985ff]">Settings</p><h1 className="mt-2 text-3xl font-semibold">Business</h1></div>
-      {!merchant && <MerchantOnboarding />}
-      <section className="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm transition duration-200 hover:shadow-md">
-        <h2 className="mb-5 flex items-center gap-2 font-medium"><Building2 className="h-4 w-4 text-[#a985ff]" /> Merchant identity</h2>
-        <div className="flex items-center gap-3 border-b border-zinc-100 pb-4">
-          <MerchantAvatar key={logoVersion} className="h-12 w-12" />
-          <div className="min-w-0 flex-1"><p className="font-medium">{merchant?.businessName ?? "No merchant configured"}</p><p className="truncate text-xs text-zinc-500">{merchant?.businessEmail ?? "Complete onboarding to start beta payments"}</p></div>
-        </div>
-        <div className="mt-4 flex gap-2">
-          <label className="flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white text-xs font-medium text-zinc-700 transition duration-200 hover:border-[#8A4FFF] hover:text-[#8A4FFF]">
-            <ImagePlus className="h-4 w-4" />
-            Upload image
-            <input type="file" accept="image/*" className="sr-only" onChange={(event) => uploadLogo(event.target.files?.[0])} />
-          </label>
-          <button onClick={removeLogo} className="flex h-11 items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 text-zinc-500 transition duration-200 hover:border-red-200 hover:text-red-500" aria-label="Remove merchant image">
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-        <p className="mt-4 text-sm text-zinc-500">{merchant?.location ?? "Business profile details will appear here after onboarding."}</p>
-      </section>
-      <section className="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm transition duration-200 hover:shadow-md">
-        <h2 className="mb-4 flex items-center gap-2 font-medium"><CreditCard className="h-4 w-4 text-[#a985ff]" /> Naira payout account</h2>
-        {verifiedBank ? (
-          <div className="flex items-center gap-3">
-            {verifiedBankLogo ? <img src={verifiedBankLogo} alt="" loading="eager" decoding="async" className="h-10 w-10 rounded-xl object-contain" /> : <span className="h-10 w-10 rounded-xl bg-zinc-100" />}
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{verifiedBank.resolvedAccountName}</p>
-              <p className="mt-1 text-sm text-zinc-500">{verifiedBank.accountIdentifier} - {verifiedBank.institutionName ?? verifiedBank.institutionCode}</p>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-zinc-500">No verified payout account yet.</p>
-        )}
-      </section>
-      <section className="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm transition duration-200 hover:shadow-md">
-        <h2 className="mb-4 flex items-center gap-2 font-medium"><Wallet className="h-4 w-4 text-[#a985ff]" /> Settlement defaults</h2>
-        <div className="flex justify-between border-b border-zinc-100 py-3 text-sm"><span className="text-zinc-500">Currency</span><span>NGN</span></div>
-        <div className="flex justify-between border-b border-zinc-100 py-3 text-sm"><span className="text-zinc-500">Stablecoin</span><span>USDSUI (Sui) · USDC (Sui, Base, BNB, Solana, Tron)</span></div>
-        <div className="space-y-2 py-3">
-          <p className="text-xs text-zinc-500">Saved business wallets</p>
-          {merchant?.wallets.length ? (
-            merchant.wallets.map((wallet) => (
-              <div key={`${wallet.network}-${wallet.address}`} className="flex items-center gap-3 rounded-xl bg-zinc-50 p-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium capitalize">{formatWalletLabel(wallet)}</p>
-                  <code className="block truncate text-xs text-zinc-500">{shortAddress(wallet.address)}</code>
-                </div>
-                <button
-                  aria-label="Copy wallet address"
-                  onClick={() => copyAddress(wallet.address)}
-                  className="rounded-lg border border-zinc-200 bg-white p-2 text-zinc-500 transition duration-200 hover:border-[#8A4FFF] hover:text-[#8A4FFF]"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
+      <header>
+        <p className="text-micro uppercase tracking-[0.16em] text-accent-text">Settings</p>
+        <h1 className="mt-2 text-hero font-semibold">Business</h1>
+      </header>
+
+      {loading ? (
+        <Card className="space-y-3">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-10 w-full" />
+        </Card>
+      ) : !merchant ? (
+        <MerchantOnboarding />
+      ) : null}
+
+      {merchant ? (
+        <>
+          {/* Compliance progress uses the brand's segmented bar, not a percentage. */}
+          <Section icon={ShieldCheck} title="Verification">
+            <SegmentedBar
+              value={kycStep}
+              segments={KYC_STEPS.length}
+              label={
+                merchant.onboardingStatus === "complete"
+                  ? "Verified — you can accept payments"
+                  : `Step ${kycStep} of ${KYC_STEPS.length} · ${merchant.onboardingStatus.replace(/_/g, " ")}`
+              }
+            />
+          </Section>
+
+          <Section icon={Building2} title="Merchant identity">
+            <div className="flex items-center gap-3.5 border-b border-line pb-5">
+              <MerchantAvatar key={logoVersion} className="h-12 w-12" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{merchant.businessName}</p>
+                <p className="truncate text-xs text-text-muted">{merchant.businessEmail}</p>
               </div>
-            ))
-          ) : (
-            <p className="rounded-xl bg-zinc-50 p-3 text-xs text-zinc-500">No wallet saved yet.</p>
-          )}
-          {feedback && <p className="flex items-center gap-1 text-xs text-emerald-500"><Check className="h-4 w-4" />{feedback}</p>}
-        </div>
-      </section>
-      <section className="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm transition duration-200 hover:shadow-md">
-        <h2 className="mb-3 flex items-center gap-2 font-medium"><ShieldCheck className="h-4 w-4 text-[#a985ff]" /> Notifications & security</h2>
-        {[
-          { key: "notifications" as const, label: "Payment notifications", icon: Bell },
-          { key: "verification" as const, label: "Confirm large payments", icon: ShieldCheck },
-          { key: "biometric" as const, label: "Biometric unlock", icon: Wallet },
-        ].map(({ key, label, icon: Icon }) => (
-          <div key={key} className="flex items-center gap-3 border-t border-zinc-100 py-4 text-sm">
-            <Icon className="h-4 w-4 text-zinc-500" /><span className="flex-1">{label}</span>
-            <button role="switch" aria-checked={switches[key]} onClick={() => setSwitches((current) => ({ ...current, [key]: !current[key] }))} className={`flex h-6 w-11 items-center rounded-full p-1 transition-all duration-200 ${switches[key] ? "justify-end bg-[#8A4FFF]" : "bg-zinc-200"}`}>
-              <span className="h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200" />
-            </button>
-          </div>
-        ))}
-      </section>
-      <button
-        onClick={dynamic.disconnect}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-white text-sm font-medium text-red-500 transition duration-200 hover:bg-red-50"
-      >
+            </div>
+            <div className="mt-5 flex gap-2">
+              <label className="flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-surface text-xs font-medium text-text ring-1 ring-line transition duration-fast ease-linq hover:shadow-md active:scale-[0.98]">
+                <ImagePlus className="h-4 w-4" />
+                Upload logo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(event) => uploadLogo(event.target.files?.[0])}
+                />
+              </label>
+              <Button variant="secondary" size="icon" className="h-11 w-11" aria-label="Remove logo" onClick={removeLogo}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+            {merchant.location ? (
+              <p className="mt-4 text-sm text-text-muted">{merchant.location}</p>
+            ) : null}
+          </Section>
+
+          <Section icon={Wallet} title="Naira payout account">
+            {verifiedBank ? (
+              <div className="flex items-center gap-3.5">
+                {verifiedBankLogo ? (
+                  <img
+                    src={verifiedBankLogo}
+                    alt=""
+                    loading="eager"
+                    decoding="async"
+                    className="h-11 w-11 rounded-md bg-white object-contain ring-1 ring-line"
+                  />
+                ) : (
+                  <span className="h-11 w-11 rounded-md bg-surface-2" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{verifiedBank.resolvedAccountName}</p>
+                  <p className="tnum mt-0.5 truncate text-xs text-text-muted">
+                    {verifiedBank.accountIdentifier} ·{" "}
+                    {verifiedBank.institutionName ?? verifiedBank.institutionCode}
+                  </p>
+                </div>
+                <CopyButton value={verifiedBank.accountIdentifier} label="Account number" />
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">No verified payout account yet.</p>
+            )}
+          </Section>
+
+          {/* Multi-wallet switching uses the tab pattern from the component set. */}
+          <Section
+            icon={Wallet}
+            title="Receiving wallets"
+            action={
+              <AddButton
+                label="Add a receiving wallet"
+                stacked
+                className="scale-75"
+                onClick={() => toast("Connect another wallet from your Dynamic account", "info")}
+              />
+            }
+          >
+            {wallets.length ? (
+              <>
+                <TabBar
+                  tabs={wallets.map((wallet) => ({
+                    id: wallet.id,
+                    label: formatWalletLabel(wallet),
+                    adornment: <NetworkLogo network={wallet.network} size={18} />,
+                  }))}
+                  activeId={currentWallet?.id ?? ""}
+                  onSelect={setActiveWallet}
+                />
+                {currentWallet ? (
+                  <div className="mt-4 flex items-center gap-2 rounded-md bg-surface-2 py-1 pl-4 pr-1">
+                    <code className="min-w-0 flex-1 truncate font-mono text-xs text-text-muted">
+                      {shortAddress(currentWallet.address)}
+                    </code>
+                    <CopyButton value={currentWallet.address} label="Wallet address" />
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-sm text-text-muted">No wallet connected yet.</p>
+            )}
+
+            <dl className="mt-5 space-y-3 border-t border-line pt-4 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-text-muted">Settlement currency</dt>
+                <dd className="font-medium">NGN</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-text-muted">Accepted</dt>
+                <dd className="text-right font-medium">USDC · USDSUI</dd>
+              </div>
+            </dl>
+          </Section>
+
+          <Section
+            icon={Moon}
+            title="Appearance"
+            action={<ThemeToggle />}
+          >
+            <p className="text-sm text-text-muted">
+              Currently using {theme} mode. Receipts you share export in whichever mode you are in.
+            </p>
+          </Section>
+
+          <Section icon={Bell} title="Notifications & security">
+            <div className="divide-y divide-line">
+              {[
+                { key: "notifications" as const, label: "Payment notifications" },
+                { key: "verification" as const, label: "Confirm large payments" },
+                { key: "biometric" as const, label: "Biometric unlock" },
+              ].map((entry) => (
+                <div key={entry.key} className="flex items-center gap-4 py-4 text-sm first:pt-0 last:pb-0">
+                  <span className="flex-1">{entry.label}</span>
+                  <Switch
+                    checked={switches[entry.key]}
+                    label={entry.label}
+                    onChange={(next) =>
+                      setSwitches((current) => ({ ...current, [entry.key]: next }))
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </Section>
+        </>
+      ) : null}
+
+      <Button variant="danger" size="lg" className="w-full" onClick={dynamic.disconnect}>
         <LogOut className="h-4 w-4" /> Log out
-      </button>
+      </Button>
     </div>
   );
 }
