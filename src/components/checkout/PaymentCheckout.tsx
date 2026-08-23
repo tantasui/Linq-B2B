@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Banknote, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Banknote, Wallet } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
 import { NairaTransferDetails } from "@/components/checkout/NairaTransferDetails";
 import { NetworkLogo } from "@/components/icons/NetworkLogos";
 import { TokenIcon } from "@/components/icons/CryptoIcons";
-import { LinqMark, LinqWordmark } from "@/components/brand/LinqMark";
+import { LinqLoader, LinqMark, LinqWordmark } from "@/components/brand/LinqMark";
 import { Receipt } from "@/components/brand/Receipt";
 import { SegmentedBar } from "@/components/brand/SegmentedBar";
 import { Button } from "@/components/ui/button";
@@ -19,10 +19,10 @@ import { createOrder, getOrder, getPaycrestRate, getPaymentLink } from "@/lib/ap
 import { buildStellarUsdcPayUri } from "@/lib/sep7";
 import { chainDisplayName, ENABLED_CHAINS, getChain, isAddressValidForNetwork } from "@/lib/chains";
 import type { FiatCurrency, PaymentMode, StablecoinSymbol } from "@/lib/payment-data";
-import type { MerchantRecord, OrderRecord, PaymentLinkRecord } from "@/server/types";
+import type { MerchantRecord, OrderRecord, OrderStatus, PaymentLinkRecord } from "@/server/types";
 import { cn } from "@/lib/utils";
 
-type Stage = null | "naira" | "customer" | "asset" | "network" | "token" | "review" | "transfer" | "success";
+type Stage = null | "naira" | "customer" | "asset" | "network" | "token" | "review" | "transfer" | "status";
 
 interface PaymentCheckoutProps {
   linkId: string;
@@ -47,6 +47,55 @@ function formatNaira(value: number) {
 
 function formatCountdown(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/**
+ * How the confirmation screen reads for a given order status.
+ *
+ * Reaching this screen only means a deposit was detected — not that the Naira
+ * payout landed. Showing a receipt at that point tells the payer it worked
+ * before anyone has checked, so a payment that later fails or is refunded still
+ * looks successful. The screen reflects whatever the poll last returned, and
+ * only prints the receipt on a settled order.
+ */
+function confirmationView(status: OrderStatus | undefined, merchantName: string) {
+  switch (status) {
+    // Only `settled` means the Naira actually landed. `fulfilled` sits three
+    // steps earlier in the lifecycle, so treating it as success would print a
+    // receipt for a payout that has not been disbursed.
+    case "settled":
+      return {
+        tone: "done" as const,
+        title: "Payment successful",
+        body: `Your transfer is confirmed and the payout to ${merchantName} has settled.`,
+      };
+    case "expired":
+      return {
+        tone: "failed" as const,
+        title: "Payment window closed",
+        body: "The deposit window ended before a transfer arrived. If you already sent funds, contact support with your order reference — do not send again.",
+      };
+    case "failed":
+    case "cancelled":
+      return {
+        tone: "failed" as const,
+        title: "Payment could not be completed",
+        body: "Your funds are safe. If they left your wallet, contact support with the order reference below and we will trace it.",
+      };
+    case "refunding":
+    case "refunded":
+      return {
+        tone: "failed" as const,
+        title: "Payment refunded",
+        body: "The payout could not be completed, so your transfer is being returned to you.",
+      };
+    default:
+      return {
+        tone: "pending" as const,
+        title: "Transfer received",
+        body: `We have your transfer and are settling the payout to ${merchantName}. This usually takes a moment.`,
+      };
+  }
 }
 
 /**
@@ -204,12 +253,12 @@ export function PaymentCheckout({
       .catch(() => undefined);
   }, [secondsLeft, order?.id, order?.status]);
 
-  // The confirmation is driven by the order itself, not by the payer telling us
-  // they paid — the ticket prints when the deposit is actually seen.
+  // The confirmation is driven by the order itself, never by the payer telling
+  // us they paid. While the order is still `initiated` nothing has arrived, so
+  // the transfer sheet stays up; any other status means there is something to
+  // report, and the status screen says exactly what.
   useEffect(() => {
-    if (order && ["settled", "fulfilled", "validated", "settling"].includes(order.status)) {
-      setStage("success");
-    }
+    if (order && order.status !== "initiated") setStage("status");
   }, [order]);
 
   const startCrypto = () => setStage(payerName && payerEmail ? "asset" : "customer");
@@ -583,20 +632,82 @@ export function PaymentCheckout({
         ) : null}
       </Sheet>
 
-      {/* ── Success ── */}
-      <Sheet open={stage === "success" && Boolean(order)} onClose={() => setStage(null)} title="" className="bg-bg">
+      {/* ── Status ── the live confirmation, receipt only once settled. */}
+      <Sheet
+        open={stage === "status" && Boolean(order)}
+        onClose={() => setStage(null)}
+        title=""
+        className="bg-bg"
+      >
         {order ? (
-          <>
-            <Receipt order={order} merchant={merchant} printing />
-            <p className="mx-auto mt-7 max-w-xs text-center text-sm leading-6 text-text-muted">
-              A copy has been sent to {payerEmail || "your email"}.
-            </p>
-            <Button size="lg" className="mt-5 w-full" onClick={() => setStage(null)}>
-              Done
-            </Button>
-          </>
+          (() => {
+            const view = confirmationView(order.status, activeMerchant.businessName || "the merchant");
+
+            return (
+              <>
+                {view.tone === "done" ? (
+                  <Receipt order={order} merchant={merchant} printing />
+                ) : (
+                  <div className="px-2 pb-2 pt-4 text-center">
+                    {view.tone === "pending" ? (
+                      <LinqLoader size={44} className="mx-auto" />
+                    ) : (
+                      <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-warning-soft">
+                        <AlertTriangle className="h-6 w-6 text-warning" />
+                      </span>
+                    )}
+                    <h2 className="mt-6 text-xl font-semibold tracking-[-0.02em]">{view.title}</h2>
+                    <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-text-muted">
+                      {view.body}
+                    </p>
+
+                    {view.tone === "pending" ? (
+                      <SegmentedBar className="mt-7" label={`Status: ${order.status}`} />
+                    ) : null}
+
+                    {/* Support has nothing to work from without the reference. */}
+                    <div className="mt-7 flex items-center gap-2 rounded-md bg-surface-2 py-1 pl-4 pr-1 text-left">
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[11px] text-text-muted">Order reference</span>
+                        <code className="block truncate font-mono text-xs text-text">
+                          {order.paycrestOrderId ?? order.id}
+                        </code>
+                      </span>
+                      <CopyButton
+                        value={order.paycrestOrderId ?? order.id}
+                        label="Order reference"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {view.tone === "done" ? (
+                  <p className="mx-auto mt-7 max-w-xs text-center text-sm leading-6 text-text-muted">
+                    A copy has been sent to {payerEmail || "your email"}.
+                  </p>
+                ) : null}
+
+                {view.tone === "failed" ? (
+                  <a
+                    href={`mailto:support@linq.xyz?subject=Order ${order.paycrestOrderId ?? order.id}`}
+                    className={cn(
+                      "mt-5 flex h-12 w-full items-center justify-center rounded-md bg-surface text-sm font-medium text-text ring-1 ring-line",
+                      "transition duration-fast ease-linq hover:shadow-md active:scale-[0.98]",
+                    )}
+                  >
+                    Contact support
+                  </a>
+                ) : (
+                  <Button size="lg" className="mt-5 w-full" onClick={() => setStage(null)}>
+                    Done
+                  </Button>
+                )}
+              </>
+            );
+          })()
         ) : null}
       </Sheet>
+
     </main>
   );
 }
