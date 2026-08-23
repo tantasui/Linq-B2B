@@ -11,7 +11,7 @@ const text = (max = 120) =>
 export const idSchema = z.string().trim().min(2).max(80).regex(/^[a-zA-Z0-9_-]+$/);
 export const uuidOrSlugSchema = z.string().trim().min(2).max(120).regex(/^[a-zA-Z0-9_-]+$/);
 export const emailSchema = z.string().trim().toLowerCase().email().max(254);
-export const tokenSchema = z.enum(["USDSUI", "USDC"]);
+export const tokenSchema = z.enum(["USDSUI", "USDC", "USDT"]);
 export const networkSchema = z
   .string()
   .trim()

@@ -42,7 +42,7 @@ const FEATURES = [
   {
     icon: QrCode,
     title: "Wallet deposits",
-    body: "Network-specific deposit addresses and QR codes for USDC and USDSUI on every supported chain.",
+    body: "Network-specific deposit addresses and QR codes for every stablecoin and chain we support.",
   },
   {
     icon: Waypoints,
@@ -144,8 +144,8 @@ export default function Home() {
               Money moves at internet speed.
             </h1>
             <p className="mt-7 max-w-lg text-lg leading-8 text-text-muted">
-              Accept USDC and USDSUI across Sui, Base, BNB, Solana and Tron. We convert and settle
-              to your bank account, with a receipt for every payment.
+              Accept USDC, USDT and USDSUI across Sui, Base, BNB, Solana, Stellar and Tron. We
+              convert and settle to your bank account, with a receipt for every payment.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
               <Link href="/onboarding" className={buttonClasses({ size: "lg", className: "rounded-full px-7" })}>
@@ -233,7 +233,7 @@ export default function Home() {
           <Card className="p-7 shadow-lg sm:w-96">
             {[
               "Payment links and QR receive",
-              "USDC and USDSUI on five chains",
+              "USDC, USDT and USDSUI on six chains",
               "Receipts, exports and analytics",
             ].map((line) => (
               <p

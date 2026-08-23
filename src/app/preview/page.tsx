@@ -235,6 +235,22 @@ export default function PreviewPage() {
               }}
             />
             <NairaTransferDetails
+              merchant={{
+                businessName: "Mama Tolu Foods",
+                bankAccounts: [
+                  {
+                    id: "bank_2",
+                    businessId: "biz_1",
+                    institutionCode: "044",
+                    institutionName: "Access Bank",
+                    accountIdentifier: "9876543210",
+                    resolvedAccountName: "TOLU ADEYEMI",
+                    verificationStatus: "pending",
+                  },
+                ],
+              }}
+            />
+            <NairaTransferDetails
               merchant={{ businessName: "Mama Tolu Foods", bankAccounts: [] }}
             />
           </div>

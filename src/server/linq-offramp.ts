@@ -12,11 +12,14 @@ export const USDC_SUI_COIN_TYPE =
   "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
 
 export function coinTypeForToken(token: StablecoinSymbol): string {
+  // Sui move-types only; USDT is not a Sui-native coin here.
   return token === "USDC" ? USDC_SUI_COIN_TYPE : USDSUI_COIN_TYPE;
 }
 
 function linqCoinId(token: StablecoinSymbol): string {
-  return token === "USDC" ? "usdc" : "usdsui";
+  if (token === "USDC") return "usdc";
+  if (token === "USDT") return "usdt";
+  return "usdsui";
 }
 
 async function requestLinq<T>(path: string, init?: RequestInit): Promise<T> {

@@ -1,4 +1,4 @@
-export type StablecoinSymbol = "USDSUI" | "USDC";
+export type StablecoinSymbol = "USDSUI" | "USDC" | "USDT";
 export type LinkMode = "open" | "fixed" | "static";
 export type LinkStatus = "active" | "paused" | "archived";
 export type OrderStatus =

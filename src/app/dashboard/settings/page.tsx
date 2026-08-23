@@ -12,6 +12,7 @@ import { formatWalletLabel, shortAddress } from "@/lib/wallets";
 import type { MerchantRecord } from "@/server/types";
 import { SegmentedBar } from "@/components/brand/SegmentedBar";
 import { NetworkLogo } from "@/components/icons/NetworkLogos";
+import { ENABLED_CHAINS } from "@/lib/chains";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy";
@@ -64,6 +65,8 @@ export default function SettingsPage() {
   const verifiedBankLogo = getBankLogo(verifiedBank?.institutionCode, verifiedBank?.institutionName);
   const kycStep = merchant ? KYC_STEPS.indexOf(merchant.onboardingStatus) + 1 : 0;
   const wallets = merchant?.wallets ?? [];
+  // Derived from chain config so it cannot drift as tokens are added.
+  const acceptedTokens = Array.from(new Set(ENABLED_CHAINS.flatMap((chain) => chain.tokens)));
   const currentWallet = wallets.find((wallet) => wallet.id === activeWallet) ?? wallets[0];
 
   useEffect(() => {
@@ -230,7 +233,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-text-muted">Accepted</dt>
-                <dd className="text-right font-medium">USDC · USDSUI</dd>
+                <dd className="text-right font-medium">{acceptedTokens.join(" · ")}</dd>
               </div>
             </dl>
           </Section>
