@@ -195,9 +195,29 @@ export async function getLinqOrderStatus(id: string) {
   };
 }
 
+/**
+ * Linq statuses that mean the order exists but no money has arrived yet.
+ *
+ * Linq moves an order off "initiated" as soon as it is queued, and again when
+ * a worker starts watching the deposit wallet — both before the payer has sent
+ * anything. Treating those as "fulfilling" told the checkout the transfer had
+ * been received and replaced the deposit address with a confirmation screen,
+ * so the payer never saw where to send the money.
+ *
+ * Anything further along genuinely does mean the deposit landed: Linq only
+ * enters "processing in WalletWatcher" once it has seen a non-zero balance.
+ */
+const AWAITING_DEPOSIT_STATUSES = new Set([
+  "processing: in order queue",
+  "processing: wallet worker on it..",
+]);
+
 export function normalizeLinqStatus(status: string | undefined): OrderRecord["status"] {
   const s = String(status ?? "initiated").toLowerCase();
   if (s === "initiated") return "initiated";
+  // Checked before the "processing" prefix below, which would otherwise
+  // swallow these.
+  if (AWAITING_DEPOSIT_STATUSES.has(s)) return "initiated";
   if (s.startsWith("processing")) return "fulfilling";
   if (s === "settled" || s === "disbursed" || s === "settled in treasury" || s === "completed") return "settled";
   if (s.startsWith("timeout") || s === "expired") return "expired";
