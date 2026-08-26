@@ -59,7 +59,7 @@ function parseRateSide(data: { buy?: PaycrestRateBand; sell?: PaycrestRateBand; 
   const band = data.sell ?? data.buy;
   const marketRate = Number(band?.marketRate ?? band?.rate ?? data.marketRate ?? data.rate);
   if (!Number.isFinite(marketRate) || marketRate <= 0) {
-    throw new ApiError("Paycrest did not return a usable NGN market rate.", 502, { data });
+    throw new ApiError("The payment provider did not return a usable NGN market rate.", 502, { data });
   }
   return {
     marketRate,
@@ -70,7 +70,7 @@ function parseRateSide(data: { buy?: PaycrestRateBand; sell?: PaycrestRateBand; 
 }
 
 async function requestPaycrest<T>(path: string, init?: RequestInit): Promise<T> {
-  if (!livePaycrestEnabled) throw new ApiError("Paycrest API key is not configured.", 503);
+  if (!livePaycrestEnabled) throw new ApiError("The payment provider is not configured.", 503);
   const method = init?.method ?? "GET";
   const startedAt = Date.now();
   const requestBody = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
@@ -90,7 +90,7 @@ async function requestPaycrest<T>(path: string, init?: RequestInit): Promise<T> 
   logger.info("paycrest.response_json", { method, path, status: response.status, body });
   if (!response.ok) {
     logger.warn("paycrest.request_failed", { method, path, status: response.status, body });
-    throw new ApiError(body?.message || body?.error || `Paycrest request failed with ${response.status}.`, response.status >= 500 ? 502 : response.status, {
+    throw new ApiError(body?.message || body?.error || `The payment provider request failed with ${response.status}.`, response.status >= 500 ? 502 : response.status, {
       provider: "paycrest",
       providerStatus: response.status,
       path,
@@ -103,7 +103,7 @@ async function requestPaycrest<T>(path: string, init?: RequestInit): Promise<T> 
 export async function getSupportedTokens(network?: string) {
   const key = `paycrest:tokens:${network ?? "all"}`;
   return cached(key, 900, async () => {
-    if (!livePaycrestEnabled) throw new Error("Paycrest API key is required for beta token discovery.");
+    if (!livePaycrestEnabled) throw new Error("The payment provider is not configured for token discovery.");
     const query = network ? `?network=${encodeURIComponent(network)}` : "";
     const response = await requestPaycrest<{ data: TokenNetworkRecord[] }>(`/tokens${query}`);
     return response.data;
@@ -114,7 +114,7 @@ export async function getRate(network: string, token: StablecoinSymbol, amountNg
   const normalizedAmount = amountNgn ? String(amountNgn) : "1";
   const key = `paycrest:rate:${network}:${token}:${normalizedAmount}:NGN`;
   return cached(key, 900, async () => {
-    if (!livePaycrestEnabled) throw new ApiError("Paycrest API key is required for beta rates.", 503);
+    if (!livePaycrestEnabled) throw new ApiError("The payment provider is not configured for rates.", 503);
     const providerPath = `/provider/rates/${encodeURIComponent(token)}/NGN`;
     try {
       const response = await requestPaycrest<{ data: { buy?: PaycrestRateBand; sell?: PaycrestRateBand } }>(providerPath);
@@ -136,7 +136,7 @@ export async function getRate(network: string, token: StablecoinSymbol, amountNg
 export async function getSupportedInstitutions(currency = "NGN"): Promise<SupportedInstitution[]> {
   const key = `paycrest:institutions:${currency}`;
   return cached(key, 3600, async () => {
-    if (!livePaycrestEnabled) throw new Error("Paycrest API key is required for institution lookup.");
+    if (!livePaycrestEnabled) throw new Error("The payment provider is not configured for institution lookup.");
     const response = await requestPaycrest<{ data: SupportedInstitution[] }>(`/institutions/${encodeURIComponent(currency)}`);
     return response.data;
   });
@@ -167,7 +167,7 @@ export async function resolvePaycrestCode(institutionCode: string, institutionNa
 }
 
 export async function verifyBankAccount(institutionCode: string, accountIdentifier: string, institutionName?: string) {
-  if (!livePaycrestEnabled) throw new ApiError("Paycrest API key is required for beta bank verification.", 503);
+  if (!livePaycrestEnabled) throw new ApiError("The payment provider is not configured for bank verification.", 503);
   const resolvedCode = await resolvePaycrestCode(institutionCode, institutionName);
   const response = await requestPaycrest<{ data: { accountName?: string; name?: string } }>("/verify-account", {
     method: "POST",
@@ -188,7 +188,7 @@ export async function verifyBankAccount(institutionCode: string, accountIdentifi
 export async function createPaycrestOrder(input: PaycrestOrderInput) {
   const rate = await getRate(input.network, input.token, input.amountNgn);
   const cryptoAmount = Number((input.amountNgn / rate.marketRate).toFixed(6));
-  if (!livePaycrestEnabled) throw new ApiError("Paycrest API key is required for beta order creation.", 503);
+  if (!livePaycrestEnabled) throw new ApiError("The payment provider is not configured for order creation.", 503);
 
   const paycrestInstitutionCode = await resolvePaycrestCode(input.bank.institutionCode, input.bank.institutionName);
   const payload = {
@@ -231,7 +231,7 @@ export async function createPaycrestOrder(input: PaycrestOrderInput) {
 }
 
 export async function getPaycrestOrder(id: string) {
-  if (!id.trim()) throw new ApiError("Paycrest order id is required.", 400);
+  if (!id.trim()) throw new ApiError("A provider order id is required.", 400);
   const response = await requestPaycrest<{ data: PaycrestOrderResponseData }>(`/sender/orders/${encodeURIComponent(id)}`);
   const data = response.data;
   return {

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Download, Mail, RefreshCcw, RotateCcw, Search } from "lucide-react";
+import { Download, ExternalLink, Mail, RefreshCcw, RotateCcw, Search } from "lucide-react";
 import { apiUrl, getMerchantMe, listOrders, retryTransfer, sendOrderReceipt } from "@/lib/api-client";
 import { chainDisplayName } from "@/lib/chains";
+import { explorerTxUrl, shortenHash } from "@/lib/explorer";
 import type { MerchantRecord, OrderRecord } from "@/server/types";
 import { NetworkLogo } from "@/components/icons/NetworkLogos";
 import { Receipt } from "@/components/brand/Receipt";
@@ -286,6 +287,24 @@ export default function TransactionsPage() {
         {openOrder ? (
           <>
             <Receipt order={openOrder} merchant={merchant} />
+
+            {/* Only rendered once the payment has been seen on-chain. Before
+                that there is no digest, and a dead link would be worse than
+                none. */}
+            {explorerTxUrl(openOrder.network, openOrder.depositDigest) ? (
+              <a
+                href={explorerTxUrl(openOrder.network, openOrder.depositDigest)!}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-5 flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2.5 text-xs transition duration-fast ease-linq hover:bg-surface-3"
+              >
+                <span className="text-text-muted">Deposit transaction</span>
+                <span className="flex items-center gap-1.5 font-medium text-text">
+                  <span className="font-mono">{shortenHash(openOrder.depositDigest!)}</span>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-text-muted" />
+                </span>
+              </a>
+            ) : null}
 
             <div className="mt-7 grid grid-cols-2 gap-2">
               <a

@@ -83,9 +83,14 @@ create table if not exists orders (
   valid_until timestamptz,
   status text not null default 'initiated',
   paycrest_payload jsonb,
+  deposit_digest text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Added after the table shipped. The create above is "if not exists", so an
+-- existing database keeps its original columns and needs this explicitly.
+alter table orders add column if not exists deposit_digest text;
 
 create table if not exists order_events (
   id uuid primary key default gen_random_uuid(),

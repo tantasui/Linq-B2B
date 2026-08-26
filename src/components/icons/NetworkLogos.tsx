@@ -42,6 +42,11 @@ export function networkLogoSrc(network?: string) {
 
 /** The fallback for every path: the chain's short name on its brand colour. */
 function InitialDisc({ label, color, size }: { label: string; color: string; size: number }) {
+  // The disc is a fixed-size circle with no room to wrap or truncate, so a
+  // long name has to be shortened here. Names of four characters or fewer are
+  // left alone, which is every chain whose logo is served locally; this only
+  // bites for one served from a remote host that may fail to load.
+  const badge = label.length > 4 ? label.slice(0, 3).toUpperCase() : label;
   return (
     <span
       style={{
@@ -58,7 +63,7 @@ function InitialDisc({ label, color, size }: { label: string; color: string; siz
         flexShrink: 0,
       }}
     >
-      {label}
+      {badge}
     </span>
   );
 }

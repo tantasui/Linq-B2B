@@ -142,6 +142,7 @@ function mapOrder(row: Row, transferAttempts: TransferAttemptRecord[] = []): Ord
     transactionFee: toNumber(row.transaction_fee),
     paycrestOrderId: row.paycrest_order_id ?? undefined,
     providerReceiveAddress: row.provider_receive_address ?? undefined,
+    depositDigest: row.deposit_digest ?? undefined,
     validUntil: row.valid_until ? toIso(row.valid_until) : undefined,
     status: row.status,
     paycrestPayload: row.paycrest_payload ?? undefined,
@@ -450,6 +451,7 @@ export async function updateOrder(id: string, patch: Partial<OrderRecord>) {
         valid_until = $13,
         status = $14,
         paycrest_payload = $15::jsonb,
+        deposit_digest = $16,
         updated_at = now()
        where id = $1
        returning *`,
@@ -469,6 +471,7 @@ export async function updateOrder(id: string, patch: Partial<OrderRecord>) {
         merged.validUntil ?? null,
         merged.status,
         JSON.stringify(merged.paycrestPayload ?? null),
+        merged.depositDigest ?? null,
       ],
     );
     return mapOrder(result!.rows[0], current.transferAttempts);

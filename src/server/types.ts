@@ -87,6 +87,8 @@ export interface OrderRecord {
   transactionFee?: number;
   paycrestOrderId?: string;
   providerReceiveAddress?: string;
+  /** Digest of the on-chain payment that funded the deposit address. */
+  depositDigest?: string;
   validUntil?: string;
   status: OrderStatus;
   paycrestPayload?: unknown;

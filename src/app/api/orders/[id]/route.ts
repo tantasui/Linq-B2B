@@ -21,11 +21,20 @@ export async function GET(_request: Request, { params }: Params) {
     if (order.paycrestOrderId && liveLinqEnabled && !TERMINAL.has(order.status)) {
       try {
         const linq = await getLinqOrderStatus(order.paycrestOrderId);
-        if (linq.status !== order.status) {
+        const statusChanged = linq.status !== order.status;
+        // The deposit digest appears once the payment is seen on-chain, which
+        // does not always coincide with a status change — so it is saved on
+        // its own rather than only riding along with one.
+        const digestArrived = Boolean(linq.depositDigest) && linq.depositDigest !== order.depositDigest;
+
+        if (statusChanged || digestArrived) {
           order = await updateOrder(order.id, {
-            status: linq.status,
+            ...(statusChanged ? { status: linq.status } : {}),
+            ...(digestArrived ? { depositDigest: linq.depositDigest } : {}),
             paycrestPayload: linq.raw,
           }) ?? order;
+        }
+        if (statusChanged) {
           await addOrderEvent(order.id, "linq", `order.refresh.${linq.status}`, linq.raw);
         }
       } catch (error) {

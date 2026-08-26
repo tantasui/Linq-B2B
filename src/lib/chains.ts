@@ -97,7 +97,10 @@ export const CHAINS: ChainConfig[] = [
   {
     id: "stellar",
     name: "Stellar",
-    shortName: "XLM",
+    // The chain, not the asset. Payers send USDC on Stellar, never XLM, so
+    // labelling the network "XLM" invited exactly the mistake the SEP-7 QR
+    // below exists to prevent.
+    shortName: "Stellar",
     family: "stellar",
     tokens: ["USDC"],
     linqNetwork: "stellar",

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,9 +41,19 @@ export function Sheet({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  // Rendered into <body> rather than in place. The dashboard's page-entrance
+  // animation uses fill-mode "both", so its final keyframe (transform:
+  // translateY(0)) sticks after the animation ends — and any transform, even a
+  // zero one, makes that element the containing block for fixed-position
+  // descendants. Left in place, this sheet's "fixed inset-0" sized itself to
+  // the whole scrolling page instead of the viewport, so on a long list it
+  // centred itself far below the fold and appeared cut off.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  return (
+  if (!open || !mounted) return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
       <button
         aria-label="Close"
@@ -77,6 +88,7 @@ export function Sheet({
         ) : null}
         {children}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

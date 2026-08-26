@@ -183,12 +183,14 @@ export async function getLinqOrderStatus(id: string) {
     currency: string;
     created: string;
     updated: string;
+    depositDigest?: string;
   }>(`/b2b/status?id=${encodeURIComponent(id)}`);
   return {
     linqOrderId: response.id,
     status: normalizeLinqStatus(response.status),
     amountStableCoin: response.amountStableCoin,
     amountNgn: response.amountNGN,
+    depositDigest: response.depositDigest,
     raw: response,
   };
 }
