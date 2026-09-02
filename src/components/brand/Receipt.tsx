@@ -5,6 +5,7 @@ import { NetworkLogo } from "@/components/icons/NetworkLogos";
 import { LinqMark } from "@/components/brand/LinqMark";
 import { CopyButton } from "@/components/ui/copy";
 import { chainDisplayName } from "@/lib/chains";
+import { formatCurrency, formatRate, ORDER_STATUS_LABELS } from "@/lib/payment-data";
 import { cn } from "@/lib/utils";
 import type { MerchantRecord, OrderRecord } from "@/server/types";
 
@@ -23,31 +24,9 @@ import type { MerchantRecord, OrderRecord } from "@/server/types";
  * (static), and image/PDF export.
  */
 
-function formatNaira(value: number) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 function truncateMiddle(value: string, lead = 6, tail = 6) {
   return value.length > lead + tail + 3 ? `${value.slice(0, lead)}…${value.slice(-tail)}` : value;
 }
-
-const STATUS_LABELS: Partial<Record<OrderRecord["status"], string>> = {
-  settled: "Payment Received",
-  fulfilled: "Conversion Complete",
-  validated: "Conversion Complete",
-  settling: "Settling",
-  pending: "Awaiting Deposit",
-  deposited: "Deposit Detected",
-  initiated: "Awaiting Deposit",
-  expired: "Payment Window Closed",
-  failed: "Payout Failed",
-  refunded: "Refunded",
-  cancelled: "Cancelled",
-};
 
 /**
  * The slot the ticket feeds out of. Wider than the ticket, with the dark mouth
@@ -88,7 +67,7 @@ export function Receipt({
   printing?: boolean;
   className?: string;
 }) {
-  const status = STATUS_LABELS[order.status] ?? "Payment";
+  const status = ORDER_STATUS_LABELS[order.status] ?? "Payment";
   const fee = (order.transactionFee ?? 0) + (order.senderFee ?? 0);
   const reference = order.paycrestOrderId ?? order.id;
   const settled = order.status === "settled" || order.status === "fulfilled";
@@ -99,7 +78,7 @@ export function Receipt({
 
       <div
         className={cn(
-          "linq-ticket-shadow mx-auto w-[88%]",
+          "mx-auto w-[88%]",
           // Tucked under the slot so the paper reads as coming through it.
           printing && "-mt-2",
           printing && "linq-print",
@@ -117,7 +96,7 @@ export function Receipt({
 
           <div className="mt-8 pb-7 text-center">
             <p className="tnum text-[2.125rem] font-semibold leading-none tracking-[-0.04em] text-text">
-              {formatNaira(order.amountNgn)}
+              {formatCurrency(order.amountNgn, "NGN")}
             </p>
             <p className="mt-3 inline-flex items-center gap-2 text-sm text-text-muted">
               <NetworkLogo network={order.network} size={18} />
@@ -148,9 +127,7 @@ export function Receipt({
             <DetailRow label="To">{merchant?.businessName ?? "—"}</DetailRow>
             <DetailRow label="Network">{chainDisplayName(order.network)}</DetailRow>
             <DetailRow label="Rate">
-              <span className="tnum">
-                ₦{order.quotedRate.toLocaleString()} / {order.token}
-              </span>
+              <span className="tnum">{formatRate(order.quotedRate, order.token)}</span>
             </DetailRow>
             <DetailRow label="Fee">
               <span className="tnum">{fee > 0 ? `${fee.toFixed(2)} ${order.token}` : "No fee"}</span>

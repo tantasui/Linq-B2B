@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { createOrder, getOrder, getPaycrestRate, getPaymentLink } from "@/lib/api-client";
 import { buildStellarUsdcPayUri } from "@/lib/sep7";
 import { chainDisplayName, ENABLED_CHAINS, getChain, isAddressValidForNetwork } from "@/lib/chains";
-import type { FiatCurrency, PaymentMode, StablecoinSymbol } from "@/lib/payment-data";
+import { formatCurrency, formatRate, type FiatCurrency, type PaymentMode, type StablecoinSymbol } from "@/lib/payment-data";
 import type { MerchantRecord, OrderRecord, OrderStatus, PaymentLinkRecord } from "@/server/types";
 import { cn } from "@/lib/utils";
 
@@ -38,11 +38,7 @@ const payerStorageKey = "linq:payer";
 const EXPIRED_OR_DONE = ["settled", "refunded", "expired", "failed", "cancelled"];
 
 function formatNaira(value: number) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatCurrency(value, "NGN");
 }
 
 function formatCountdown(seconds: number) {
@@ -522,7 +518,7 @@ export function PaymentCheckout({
             ["To", activeMerchant.businessName],
             ["Asset", token],
             ["Network", chainDisplayName(networkId)],
-            ["Rate", `₦${rate.toLocaleString()} / ${token}`],
+            ["Rate", formatRate(rate, token)],
           ].map(([label, answer]) => (
             <div key={label} className="flex justify-between gap-4 py-3.5 text-sm">
               <dt className="text-text-muted">{label}</dt>

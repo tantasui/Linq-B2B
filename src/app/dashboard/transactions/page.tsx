@@ -5,6 +5,7 @@ import { Download, ExternalLink, Mail, RefreshCcw, RotateCcw, Search } from "luc
 import { apiUrl, getMerchantMe, listOrders, retryTransfer, sendOrderReceipt } from "@/lib/api-client";
 import { chainDisplayName } from "@/lib/chains";
 import { explorerTxUrl, shortenHash } from "@/lib/explorer";
+import { formatCurrency } from "@/lib/payment-data";
 import type { MerchantRecord, OrderRecord } from "@/server/types";
 import { NetworkLogo } from "@/components/icons/NetworkLogos";
 import { Receipt } from "@/components/brand/Receipt";
@@ -18,12 +19,6 @@ import { RowSkeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-
-const naira = new Intl.NumberFormat("en-NG", {
-  style: "currency",
-  currency: "NGN",
-  maximumFractionDigits: 0,
-});
 
 /** States where the Naira leg can be attempted again. */
 const RETRYABLE = new Set(["failed", "refunded", "expired", "cancelled"]);
@@ -146,12 +141,12 @@ export default function TransactionsPage() {
       <div className="grid grid-cols-2 gap-3">
         <Card>
           <p className="text-xs text-text-muted">Settled</p>
-          <p className="tnum mt-2.5 text-xl font-semibold">{naira.format(settledTotal)}</p>
+          <p className="tnum mt-2.5 text-xl font-semibold">{formatCurrency(settledTotal, "NGN")}</p>
         </Card>
         <Card>
           <p className="text-xs text-text-muted">In flight</p>
           <p className="tnum mt-2.5 text-xl font-semibold text-accent-text">
-            {naira.format(pendingTotal)}
+            {formatCurrency(pendingTotal, "NGN")}
           </p>
         </Card>
       </div>
@@ -267,7 +262,7 @@ export default function TransactionsPage() {
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
-                    <p className="tnum text-sm font-medium">{naira.format(order.amountNgn)}</p>
+                    <p className="tnum text-sm font-medium">{formatCurrency(order.amountNgn, "NGN")}</p>
                     <StatusPill status={order.status} />
                   </div>
                 </Card>

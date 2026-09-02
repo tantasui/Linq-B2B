@@ -9,14 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NetworkLogo } from "@/components/icons/NetworkLogos";
 import { listOrders } from "@/lib/api-client";
 import { chainDisplayName } from "@/lib/chains";
+import { formatCurrency } from "@/lib/payment-data";
 import { cn } from "@/lib/utils";
 import type { OrderRecord } from "@/server/types";
-
-const naira = new Intl.NumberFormat("en-NG", {
-  style: "currency",
-  currency: "NGN",
-  maximumFractionDigits: 0,
-});
 
 /** The brand ramp, so the one multi-series chart still reads as one palette. */
 const SERIES = ["#8A4FFF", "#A172FF", "#B995FF", "#D0B9FF", "#E8DCFF"];
@@ -91,14 +86,14 @@ export default function AnalyticsPage() {
   }, [inRange]);
 
   const stats = [
-    ["Settled volume", naira.format(totalNgn), `${settled.length} order${settled.length === 1 ? "" : "s"}`],
+    ["Settled volume", formatCurrency(totalNgn, "NGN"), `${settled.length} order${settled.length === 1 ? "" : "s"}`],
     ["Orders", String(inRange.length), "created"],
     [
       "Settlement rate",
       inRange.length ? `${Math.round((settled.length / inRange.length) * 100)}%` : "—",
       "of orders settled",
     ],
-    ["Average order", settled.length ? naira.format(averageOrder) : "—", "per settlement"],
+    ["Average order", settled.length ? formatCurrency(averageOrder, "NGN") : "—", "per settlement"],
   ];
 
   return (

@@ -239,6 +239,17 @@ dynamic-widget,
   animation: linq-page-in var(--dur-fast) var(--ease) both;
 }
 
+/* Respect the OS motion preference — and skip any chance of an entrance
+   animation settling on a partial frame by simply not animating at all. */
+@media (prefers-reduced-motion: reduce) {
+  .linq-sheet-up,
+  .linq-fade-in,
+  .linq-pop-in,
+  .linq-page-in {
+    animation: none;
+  }
+}
+
 /* Skeleton shimmer — shaped like the real content, never a spinner on blank. */
 @keyframes linq-shimmer {
   100% { transform: translateX(100%); }
@@ -345,14 +356,6 @@ dynamic-widget,
     radial-gradient(circle var(--scallop) at var(--scallop) var(--scallop), transparent 98%, #000 100%)
       0 100% / calc(var(--scallop) * 2) var(--scallop) repeat-x,
     linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--scallop)) no-repeat;
-}
-
-.linq-ticket-shadow {
-  filter: drop-shadow(0 4px 10px hsl(262 40% 20% / 0.10)) drop-shadow(0 18px 40px hsl(262 40% 20% / 0.12));
-}
-
-.dark .linq-ticket-shadow {
-  filter: drop-shadow(0 4px 10px hsl(0 0% 0% / 0.4)) drop-shadow(0 18px 40px hsl(0 0% 0% / 0.5));
 }
 
 /* ============================================================================

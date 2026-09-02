@@ -13,13 +13,8 @@ import { StatusPill } from "@/components/ui/status";
 import { NetworkLogo } from "@/components/icons/NetworkLogos";
 import { listOrders } from "@/lib/api-client";
 import { chainDisplayName } from "@/lib/chains";
+import { formatCurrency } from "@/lib/payment-data";
 import type { OrderRecord } from "@/server/types";
-
-const naira = new Intl.NumberFormat("en-NG", {
-  style: "currency",
-  currency: "NGN",
-  maximumFractionDigits: 0,
-});
 
 const IN_FLIGHT = ["initiated", "deposited", "pending", "fulfilling", "validated", "settling"];
 
@@ -65,7 +60,7 @@ export default function DashboardPage() {
             ) : (
               <>
                 <p className="tnum mt-3 text-hero font-semibold sm:text-display">
-                  {hidden ? "••••••" : naira.format(totalNgn)}
+                  {hidden ? "••••••" : formatCurrency(totalNgn, "NGN")}
                 </p>
                 <p className="mt-2 text-sm text-text-muted">
                   {settled.length} settled order{settled.length === 1 ? "" : "s"}
@@ -73,7 +68,7 @@ export default function DashboardPage() {
                     <>
                       {" · "}
                       <span className="text-accent-text">
-                        {naira.format(pendingNgn)} in flight
+                        {formatCurrency(pendingNgn, "NGN")} in flight
                       </span>
                     </>
                   ) : null}
@@ -182,7 +177,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
-                  <p className="tnum text-sm font-medium">+{naira.format(order.amountNgn)}</p>
+                  <p className="tnum text-sm font-medium">+{formatCurrency(order.amountNgn, "NGN")}</p>
                   <StatusPill status={order.status} />
                 </div>
               </Card>

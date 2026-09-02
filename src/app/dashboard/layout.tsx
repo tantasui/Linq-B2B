@@ -1,5 +1,6 @@
 "use client";
 
+import type { AnimationEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -20,6 +21,17 @@ const navigation = [
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
+
+/**
+ * Belt-and-braces against a browser/GPU compositor leaving the entrance
+ * animation's mid-fade frame on screen: once it actually finishes, drop the
+ * class so the final state is an ordinary (non-animated) style, not a
+ * composited layer that can get stuck partially transparent.
+ */
+function clearPageInAnimation(event: AnimationEvent<HTMLElement>) {
+  if (event.target !== event.currentTarget || event.animationName !== "linq-page-in") return;
+  event.currentTarget.classList.remove("linq-page-in");
+}
 
 function NotificationButton() {
   return (
@@ -166,7 +178,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <NotificationButton />
         </header>
 
-        <main key={pathname} className="linq-page-in min-h-[calc(100vh-68px)] px-5 pb-32 pt-6">
+        <main
+          key={pathname}
+          className="linq-page-in min-h-[calc(100vh-68px)] px-5 pb-32 pt-6"
+          onAnimationEnd={clearPageInAnimation}
+        >
           {children}
         </main>
 
@@ -205,7 +221,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <p className="text-sm font-medium text-text-muted">{pageTitle}</p>
           <NotificationButton />
         </header>
-        <main key={pathname} className="linq-page-in min-h-[calc(100vh-68px)] px-8 pb-16 pt-8 xl:px-12">
+        <main
+          key={pathname}
+          className="linq-page-in min-h-[calc(100vh-68px)] px-8 pb-16 pt-8 xl:px-12"
+          onAnimationEnd={clearPageInAnimation}
+        >
           <div className="mx-auto max-w-[960px]">{children}</div>
         </main>
       </div>

@@ -1,6 +1,7 @@
 import { databaseEnabled } from "./env";
 import { queryDb } from "./db";
 import { makeSlug } from "./security";
+import { formatCurrency } from "@/lib/payment-data";
 import type {
   BankAccountRecord,
   MerchantRecord,
@@ -397,7 +398,7 @@ export async function createOrder(input: Omit<OrderRecord, "id" | "createdAt" | 
     await addOrderEvent(created.id, "app", "order.created", created);
     return created;
   }
-  const created: OrderRecord = { ...input, id: `order-${Date.now().toString(36)}`, status: input.status ?? "initiated", createdAt: now(), updatedAt: now() };
+  const created: OrderRecord = { ...input, id: makeSlug("order"), status: input.status ?? "initiated", createdAt: now(), updatedAt: now() };
   state().orders.unshift(created);
   await addOrderEvent(created.id, "app", "order.created", created);
   return created;
@@ -592,9 +593,5 @@ export async function listWalletIncoming(businessId: string) {
 }
 
 export function formatNaira(value: number) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatCurrency(value, "NGN");
 }

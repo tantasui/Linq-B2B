@@ -1,16 +1,10 @@
 import { env, resendEnabled } from "./env";
 import { createSimplePdf } from "./pdf";
 import { makeSlug } from "./security";
-import { addReceipt, addWalletIncoming, getMerchant, getOrder, listReceipts } from "./store";
+import { addReceipt, addWalletIncoming, formatNaira, getMerchant, getOrder, listReceipts } from "./store";
+import { chainDisplayName } from "@/lib/chains";
+import { formatRate, ORDER_STATUS_LABELS } from "@/lib/payment-data";
 import type { MerchantRecord, OrderRecord, ReceiptKind, ReceiptRecord, StablecoinSymbol, WalletIncomingRecord } from "./types";
-
-function formatNaira(value: number) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 function formatToken(value: number, token: string) {
   return `${value.toLocaleString("en-US", { maximumFractionDigits: 8 })} ${token}`;
@@ -62,7 +56,26 @@ function receiptNumber(kind: ReceiptKind, id: string) {
   return `${prefix}-${id.replace(/[^a-z0-9]/gi, "").slice(-8).toUpperCase()}`;
 }
 
-export function renderReceiptHtml(params: {
+/**
+ * The UI ticket uses the real ₦ glyph because it always has the app's own
+ * webfont loaded, which renders it correctly. Email and PDF have no such
+ * guarantee -- an unknown mail client's fallback font can substitute a
+ * different font just for that one glyph, and some of those draw it wide
+ * enough to overlap the digit after it no matter how much space follows.
+ * Spell the currency out instead, and flatten the typographic space this
+ * shares a source with formatCurrency/formatRate down to a plain one too.
+ */
+function emailSafeCurrency(text: string) {
+  return text.replace(/₦/g, "N").replace(/ /g, " ");
+}
+
+/**
+ * The one place that turns an order/wallet-event into "what the receipt says" -
+ * shared by the emailed HTML and the downloadable PDF, so both stay in lockstep
+ * with each other and with the in-app ticket (`components/brand/Receipt.tsx`),
+ * which reads the same `ORDER_STATUS_LABELS` and field order.
+ */
+function buildReceiptView(params: {
   kind: ReceiptKind;
   order?: OrderRecord;
   merchant: MerchantRecord;
@@ -70,40 +83,80 @@ export function renderReceiptHtml(params: {
 }) {
   const { kind, order, merchant, walletIncoming } = params;
   const copy = statusCopy(kind);
+  const statusLabel = order ? ORDER_STATUS_LABELS[order.status] ?? copy.headline : copy.headline;
+  const settled = order?.status === "settled" || order?.status === "fulfilled";
   const number = receiptNumber(kind, order?.id ?? walletIncoming?.id ?? makeSlug("notice"));
-  const amount = order ? formatNaira(order.amountNgn) : walletIncoming ? formatToken(walletIncoming.amountToken, walletIncoming.token) : "Not available";
-  const tokenLine = order
-    ? `${formatToken(order.cryptoAmountDue, order.token)} on ${order.network.replaceAll("-", " ")}`
+  const fee = order ? (order.transactionFee ?? 0) + (order.senderFee ?? 0) : 0;
+
+  const heroAmount = order
+    ? emailSafeCurrency(formatNaira(order.amountNgn))
     : walletIncoming
-      ? `${formatToken(walletIncoming.amountToken, walletIncoming.token)} on ${walletIncoming.network}`
+      ? formatToken(walletIncoming.amountToken, walletIncoming.token)
       : "Not available";
-  const payer = order ? `${order.payerName} (${order.payerEmail})` : "Direct wallet activity";
-  const externalRef = order?.paycrestOrderId ?? walletIncoming?.transactionHash ?? "Not available";
+  const heroSecondary = order
+    ? `${formatToken(order.cryptoAmountDue, order.token)} on ${chainDisplayName(order.network)}`
+    : walletIncoming
+      ? `${formatToken(walletIncoming.amountToken, walletIncoming.token)} on ${chainDisplayName(walletIncoming.network)}`
+      : undefined;
+
+  // Same fields, same order, same labels as the ticket's detail rows.
+  const rows: [string, string][] = order
+    ? [
+        ["Date & time", new Date(order.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })],
+        ["From", order.payerName || "—"],
+        ["To", merchant.businessName],
+        ["Network", chainDisplayName(order.network)],
+        ["Rate", emailSafeCurrency(formatRate(order.quotedRate, order.token))],
+        ["Fee", fee > 0 ? `${fee.toFixed(2)} ${order.token}` : "No fee"],
+        ["Transaction ID", order.paycrestOrderId ?? order.id],
+      ]
+    : [
+        ["Date & time", new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })],
+        ["From", "Direct wallet activity"],
+        ["To", merchant.businessName],
+        ["Network", walletIncoming ? chainDisplayName(walletIncoming.network) : "—"],
+        ["Transaction ID", walletIncoming?.transactionHash ?? "Not available"],
+      ];
+
+  return { copy, number, statusLabel, settled, heroAmount, heroSecondary, rows };
+}
+
+export function renderReceiptHtml(params: {
+  kind: ReceiptKind;
+  order?: OrderRecord;
+  merchant: MerchantRecord;
+  walletIncoming?: WalletIncomingRecord;
+}) {
+  const view = buildReceiptView(params);
+  const rowsHtml = view.rows
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:11px 0;border-top:1px solid #E4DBF2;color:#706F75;font-size:12px;">${label}</td><td style="padding:11px 0;border-top:1px solid #E4DBF2;text-align:right;color:#141216;font-size:12px;font-weight:500;">${value}</td></tr>`,
+    )
+    .join("");
   return `<!doctype html>
 <html>
-  <body style="margin:0;background:#000;color:#fff;font-family:Inter,Segoe UI,Arial,sans-serif;">
-    <section style="padding:42px;background:radial-gradient(circle at 15% 0%,rgba(160,224,171,.28),transparent 30%),radial-gradient(circle at 80% 20%,rgba(255,172,46,.2),transparent 28%),#000;">
-      <p style="margin:0 0 22px;color:#aaa;font-size:11px;letter-spacing:.18em;text-transform:uppercase;">Linq ${copy.title}</p>
-      <h1 style="margin:0 0 12px;font-size:42px;line-height:.98;font-weight:400;">${copy.headline}</h1>
-      <p style="margin:0 0 28px;color:#d8d8d8;font-size:15px;max-width:680px;">${copy.summary}</p>
-      <div style="border-top:1px solid rgba(255,255,255,.28);padding-top:20px;">
-        <p style="margin:0;color:#aaa;font-size:12px;">Receipt number</p>
-        <p style="margin:6px 0 20px;font-size:20px;">${number}</p>
-        <table style="width:100%;border-collapse:collapse;color:#fff;">
-          ${[
-            ["Merchant", merchant.businessName],
-            ["Amount", amount],
-            ["Asset/network", tokenLine],
-            ["Payer/source", payer],
-            ["Status", order?.status ?? walletIncoming?.reason ?? kind],
-            ["Reference", externalRef],
-            ["Issued", new Date().toLocaleString()],
-          ]
-            .map(([label, value]) => `<tr><td style="border-top:1px solid rgba(255,255,255,.14);padding:12px 0;color:#aaa;">${label}</td><td style="border-top:1px solid rgba(255,255,255,.14);padding:12px 0;text-align:right;">${value}</td></tr>`)
-            .join("")}
-        </table>
+  <body style="margin:0;background:#F4F1F9;color:#141216;font-family:Inter,Segoe UI,Arial,sans-serif;padding:32px 16px;">
+    <div style="max-width:420px;margin:0 auto;">
+      <p style="margin:0 0 18px;text-align:center;color:#7837E6;font-size:13px;font-weight:700;letter-spacing:.14em;">LINQ</p>
+      <div style="background:#F7F3FC;border:1px solid #D9CEEA;border-radius:16px;overflow:hidden;">
+        <div style="padding:24px 24px 0;">
+          <p style="margin:0 0 24px;text-align:center;color:#7837E6;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;">
+            ${view.settled ? "&#10003; " : ""}${view.statusLabel}
+          </p>
+          <p style="margin:0;text-align:center;font-size:34px;font-weight:600;letter-spacing:-.02em;">${view.heroAmount}</p>
+          ${view.heroSecondary ? `<p style="margin:12px 0 0;text-align:center;color:#706F75;font-size:14px;">${view.heroSecondary}</p>` : ""}
+          <div style="margin:28px 0 0;border-top:2px dashed #D9CEEA;"></div>
+        </div>
+        <div style="padding:8px 24px 28px;">
+          <table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>
+          <p style="margin:22px 0 0;text-align:center;color:#9C99A3;font-size:11px;">
+            linq.xyz &middot; <a href="mailto:support@linq.xyz" style="color:#7837E6;">support</a>
+          </p>
+        </div>
       </div>
-    </section>
+      <p style="margin:20px 0 0;text-align:center;color:#9C99A3;font-size:12px;">${view.copy.summary}</p>
+    </div>
   </body>
 </html>`;
 }
@@ -114,20 +167,14 @@ export function renderReceiptPdf(params: {
   merchant: MerchantRecord;
   walletIncoming?: WalletIncomingRecord;
 }) {
-  const copy = statusCopy(params.kind);
-  const order = params.order;
-  const incoming = params.walletIncoming;
-  return createSimplePdf(copy.title, [
-    { text: copy.headline, size: 20, gapAfter: 10 },
-    { text: copy.summary, muted: true, gapAfter: 18 },
-    { text: `Merchant: ${params.merchant.businessName}` },
-    { text: `Amount: ${order ? formatNaira(order.amountNgn) : incoming ? formatToken(incoming.amountToken, incoming.token) : "Not available"}` },
-    { text: `Asset/network: ${order ? `${formatToken(order.cryptoAmountDue, order.token)} on ${order.network}` : incoming ? `${formatToken(incoming.amountToken, incoming.token)} on ${incoming.network}` : "Not available"}` },
-    { text: `Payer/source: ${order ? `${order.payerName} <${order.payerEmail}>` : incoming?.reason ?? "Direct wallet activity"}` },
-    { text: `Status: ${order?.status ?? incoming?.reason ?? params.kind}` },
-    { text: `Reference: ${order?.paycrestOrderId ?? incoming?.transactionHash ?? "Not available"}` },
-    { text: `Issued: ${new Date().toLocaleString()}`, muted: true, gapAfter: 16 },
-    { text: "This document was generated by Linq for payment reconciliation and merchant records.", muted: true },
+  const view = buildReceiptView(params);
+  return createSimplePdf(view.copy.title, [
+    { text: view.statusLabel, size: 18, gapAfter: 10 },
+    { text: view.heroAmount, size: 26, gapAfter: view.heroSecondary ? 2 : 14 },
+    ...(view.heroSecondary ? [{ text: view.heroSecondary, muted: true, gapAfter: 16 } as const] : []),
+    ...view.rows.map(([label, value]) => ({ text: `${label}: ${value}` })),
+    { text: `Receipt no.: ${view.number}`, muted: true, gapAfter: 4 },
+    { text: view.copy.summary, muted: true },
   ]);
 }
 

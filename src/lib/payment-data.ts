@@ -1,6 +1,23 @@
+import type { OrderStatus } from "@/server/types";
+
 export type FiatCurrency = "NGN" | "USD";
 export type StablecoinSymbol = "USDSUI" | "USDC" | "USDT";
 export type PaymentMode = "open" | "fixed";
+
+/** The one copy of order-status wording — the receipt UI and the emailed/PDF invoice both read from here. */
+export const ORDER_STATUS_LABELS: Partial<Record<OrderStatus, string>> = {
+  settled: "Payment Received",
+  fulfilled: "Conversion Complete",
+  validated: "Conversion Complete",
+  settling: "Settling",
+  pending: "Awaiting Deposit",
+  deposited: "Deposit Detected",
+  initiated: "Awaiting Deposit",
+  expired: "Payment Window Closed",
+  failed: "Payout Failed",
+  refunded: "Refunded",
+  cancelled: "Cancelled",
+};
 
 export interface MerchantProfile {
   id: string;
@@ -44,11 +61,18 @@ export interface PaymentRequest {
 }
 
 export function formatCurrency(value: number, currency: FiatCurrency) {
-  return new Intl.NumberFormat(currency === "NGN" ? "en-NG" : "en-US", {
+  const formatted = new Intl.NumberFormat(currency === "NGN" ? "en-NG" : "en-US", {
     style: "currency",
     currency,
     maximumFractionDigits: currency === "NGN" ? 0 : 2,
   }).format(value);
+  // en-NG sets no space between ₦ and the digits, which reads as a strikethrough
+  // through the first digit in most fonts — insert a narrow one.
+  return currency === "NGN" ? formatted.replace(/^(-?)(\D+)/, "$1$2 ") : formatted;
+}
+
+export function formatRate(rate: number, token: string) {
+  return `₦ ${rate.toLocaleString()} / ${token}`;
 }
 
 export function makePaymentPath(request: PaymentRequest) {
