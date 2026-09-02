@@ -34,11 +34,13 @@ const DISMISS_VELOCITY = 0.6; // px/ms
  * entrance, one dismissal — a flow that changes its container between steps
  * feels like several different products stitched together.
  *
- * On mobile, dragging down from the handle or header moves the sheet — the
- * whole panel, header and content together as one physical object, not the
- * content scrolling independently underneath a fixed frame — and either
- * springs back or continues the same motion into a close, depending on how
- * far (or how fast) it was let go.
+ * On mobile, dragging down from anywhere in the sheet — handle, header or
+ * content — moves the sheet: the whole panel together as one physical
+ * object, not the content scrolling independently underneath a fixed frame.
+ * A drag that starts while content is scrolled away from its top is left to
+ * that content's own scrolling instead, and either way, letting go springs
+ * back or continues the same motion into a close depending on how far (or
+ * how fast) it was released.
  */
 export function Sheet({
   open,
@@ -59,7 +61,17 @@ export function Sheet({
   const [closing, setClosing] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
   const backdropRef = useRef<HTMLButtonElement>(null);
-  const drag = useRef<{ startY: number; lastY: number; lastT: number; active: boolean } | null>(null);
+  // "pending": waiting to see which way the first real movement goes.
+  // "sheet": dragging the whole sheet — engaged once we see downward motion
+  // while the scrollable content is already at its top. "scroll": movement
+  // started below scroll-top, or went upward first — left to the browser's
+  // native scroll entirely, we never touch transform or preventDefault.
+  const drag = useRef<{
+    startY: number;
+    lastY: number;
+    lastT: number;
+    mode: "pending" | "sheet" | "scroll";
+  } | null>(null);
 
   const requestClose = (fromOffset = 0) => {
     if (closing) return;
@@ -92,22 +104,52 @@ export function Sheet({
     }
   };
 
+  // Below a few pixels of movement we haven't committed to either
+  // interpretation yet — this is also what keeps a plain tap on a button
+  // inside the sheet (the close X, "Retry", a link) working: with no real
+  // movement, we never touch transform or call preventDefault, so the click
+  // fires exactly as it would with no gesture handling here at all.
+  const ENGAGE_THRESHOLD = 6;
+
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     // Touch/pen only: on desktop this is a centred dialog, not a bottom
-    // sheet, and dragging its title bar isn't an expected interaction there.
+    // sheet, and dragging it isn't an expected interaction there.
     if (event.pointerType === "mouse") return;
-    (event.target as HTMLElement).setPointerCapture(event.pointerId);
-    drag.current = { startY: event.clientY, lastY: event.clientY, lastT: event.timeStamp, active: true };
-    const section = sectionRef.current;
-    if (section) section.style.transition = "none";
+    drag.current = { startY: event.clientY, lastY: event.clientY, lastT: event.timeStamp, mode: "pending" };
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag.current?.active) return;
-    const offset = Math.max(0, event.clientY - drag.current.startY);
-    drag.current.lastY = event.clientY;
-    drag.current.lastT = event.timeStamp;
+    const state = drag.current;
+    if (!state) return;
+    const rawOffset = event.clientY - state.startY;
     const section = sectionRef.current;
+
+    if (state.mode === "pending") {
+      if (Math.abs(rawOffset) < ENGAGE_THRESHOLD) return;
+      // Only take the gesture over from the browser when it can only mean
+      // "drag the sheet": moving down, and the content has nowhere left to
+      // scroll up to. Anything else — moving up, or down while there's still
+      // scrolled content above — is left entirely to native scrolling.
+      const atTop = (section?.scrollTop ?? 0) <= 0;
+      state.mode = rawOffset > 0 && atTop ? "sheet" : "scroll";
+      if (state.mode === "sheet") {
+        (event.target as HTMLElement).setPointerCapture(event.pointerId);
+        if (section) {
+          section.style.transition = "none";
+          // The entrance is a CSS *animation* with fill-mode "both", which
+          // pins transform at its final keyframe value — that wins over an
+          // inline style for the same property no matter what we set below,
+          // so the drag would silently have zero visual effect without this.
+          section.classList.remove("linq-sheet-up");
+        }
+      }
+    }
+
+    if (state.mode !== "sheet") return;
+    event.preventDefault();
+    const offset = Math.max(0, rawOffset);
+    state.lastY = event.clientY;
+    state.lastT = event.timeStamp;
     if (section) section.style.transform = `translateY(${offset}px)`;
     const backdrop = backdropRef.current;
     if (backdrop) backdrop.style.opacity = String(Math.max(0.15, 1 - offset / 400));
@@ -116,7 +158,7 @@ export function Sheet({
   const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
     const state = drag.current;
     drag.current = null;
-    if (!state?.active) return;
+    if (state?.mode !== "sheet") return;
     const offset = Math.max(0, event.clientY - state.startY);
     const elapsed = Math.max(1, event.timeStamp - state.lastT);
     const velocity = Math.max(0, event.clientY - state.lastY) / elapsed;
@@ -176,6 +218,11 @@ export function Sheet({
           className,
         )}
       >
+        {/* Covers the handle, header and content: a drag can start from
+            anywhere in the sheet, same as it can be tapped anywhere in it —
+            onPointerMove decides per-gesture whether that means "drag the
+            sheet" or "let this scroll", so it never steals a tap on a
+            button in here either. */}
         <div
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -185,7 +232,7 @@ export function Sheet({
         >
           <div className="mx-auto mb-5 h-1 w-10 touch-none rounded-full bg-surface-3 sm:hidden" />
           {title ? (
-            <header className="mb-6 flex items-center gap-3 touch-none sm:touch-auto">
+            <header className="mb-6 flex items-center gap-3">
               {leading}
               <h2 className="flex-1 text-lg font-medium tracking-[-0.02em]">{title}</h2>
               <button
@@ -198,8 +245,8 @@ export function Sheet({
               </button>
             </header>
           ) : null}
+          {children}
         </div>
-        {children}
       </section>
     </div>,
     document.body,
