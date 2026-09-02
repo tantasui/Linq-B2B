@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, Check, Link2, Menu, QrCode, ShieldCheck, Waypoints, X } from "lucide-react";
+import { ArrowRight, Link2, Menu, QrCode, ShieldCheck, Waypoints, X } from "lucide-react";
 import { AuthRedirect } from "@/components/AuthRedirect";
 import { LinqMark, LinqWordmark } from "@/components/brand/LinqMark";
 import { Receipt } from "@/components/brand/Receipt";
@@ -78,9 +78,6 @@ export default function Home() {
             <a href="#how" className="transition-colors duration-fast ease-linq hover:text-text">
               How it works
             </a>
-            <a href="#pricing" className="transition-colors duration-fast ease-linq hover:text-text">
-              Pricing
-            </a>
           </div>
 
           <div className="ml-auto flex items-center gap-3">
@@ -111,7 +108,6 @@ export default function Home() {
               {[
                 ["Products", "#products"],
                 ["How it works", "#how"],
-                ["Pricing", "#pricing"],
                 ["Log in", "/login"],
               ].map(([label, href]) => (
                 <a
@@ -217,40 +213,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ── Pricing ── */}
-      <section id="pricing" className="px-6 py-24 lg:px-10 lg:py-28">
-        <div className="mx-auto flex max-w-6xl flex-col justify-between gap-12 lg:flex-row lg:items-center">
-          <div>
-            <p className="text-micro uppercase tracking-[0.18em] text-accent-text">Pricing</p>
-            <h2 className="mt-5 max-w-xl text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
-              One percent per successful payment.
-            </h2>
-            <p className="mt-5 text-text-muted">No setup cost. No monthly fee. No minimum volume.</p>
-          </div>
-          <Card className="p-7 shadow-lg sm:w-96">
-            {[
-              "Payment links and QR receive",
-              "USDC, USDT and USDSUI on six chains",
-              "Receipts, exports and analytics",
-            ].map((line) => (
-              <p
-                key={line}
-                className="flex items-center gap-3 border-b border-line py-4 text-sm text-text-muted last:border-0"
-              >
-                <Check className="h-4 w-4 shrink-0 text-accent" />
-                {line}
-              </p>
-            ))}
-            <Link
-              href="/onboarding"
-              className={buttonClasses({ size: "lg", className: "mt-6 w-full rounded-full" })}
-            >
-              Start accepting payments
-            </Link>
-          </Card>
         </div>
       </section>
 
