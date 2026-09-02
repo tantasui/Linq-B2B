@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { cn } from "@/lib/utils";
+import { cn, localIsoDay } from "@/lib/utils";
 
 /**
  * The date scrubber: a horizontal run of dates where the current one is a
@@ -70,9 +70,12 @@ export function DateCarousel({
       )}
     >
       <span className="shrink-0" style={{ width: "45%" }} aria-hidden />
-      {dates.map((date) => {
+      {dates.map((date, index) => {
         const active = date.toDateString() === activeKey;
-        const count = counts?.[date.toISOString().slice(0, 10)] ?? 0;
+        const count = counts?.[localIsoDay(date)] ?? 0;
+        // A month marker right where it turns over, so scrolling through
+        // never leaves you guessing which month a run of days belongs to.
+        const showMonth = index === 0 || dates[index - 1].getMonth() !== date.getMonth();
         return (
           <button
             key={date.toISOString()}
@@ -89,7 +92,9 @@ export function DateCarousel({
             )}
           >
             <span className="text-[10px] uppercase tracking-wide">
-              {date.toLocaleDateString(undefined, { weekday: "narrow" })}
+              {showMonth
+                ? date.toLocaleDateString(undefined, { month: "short" })
+                : date.toLocaleDateString(undefined, { weekday: "narrow" })}
             </span>
             <span className={cn("tnum leading-none", active ? "text-lg font-semibold" : "text-sm")}>
               {date.getDate()}

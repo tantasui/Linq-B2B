@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, ExternalLink, Mail, RefreshCcw, RotateCcw, Search } from "lucide-react";
 import { apiUrl, getMerchantMe, listOrders, retryTransfer, sendOrderReceipt } from "@/lib/api-client";
-import { chainDisplayName } from "@/lib/chains";
+import { ENABLED_CHAINS } from "@/lib/chains";
 import { explorerTxUrl, shortenHash } from "@/lib/explorer";
 import { formatCurrency } from "@/lib/payment-data";
 import type { MerchantRecord, OrderRecord } from "@/server/types";
@@ -18,13 +18,10 @@ import { Sheet } from "@/components/ui/sheet";
 import { RowSkeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status";
 import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
+import { cn, localIsoDay } from "@/lib/utils";
 
 /** States where the Naira leg can be attempted again. */
 const RETRYABLE = new Set(["failed", "refunded", "expired", "cancelled"]);
-
-const isoDay = (value: string | Date) =>
-  (typeof value === "string" ? new Date(value) : value).toISOString().slice(0, 10);
 
 export default function TransactionsPage() {
   const [query, setQuery] = useState("");
@@ -59,10 +56,6 @@ export default function TransactionsPage() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const networks = useMemo(
-    () => Array.from(new Set(orders.map((order) => order.network))),
-    [orders],
-  );
   const statuses = useMemo(
     () => Array.from(new Set(orders.map((order) => order.status))),
     [orders],
@@ -72,7 +65,7 @@ export default function TransactionsPage() {
   const countsByDay = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const order of orders) {
-      const key = isoDay(order.createdAt);
+      const key = localIsoDay(order.createdAt);
       counts[key] = (counts[key] ?? 0) + 1;
     }
     return counts;
@@ -87,7 +80,7 @@ export default function TransactionsPage() {
           haystack.includes(query.toLowerCase()) &&
           (network === "all" || order.network === network) &&
           (status === "all" || order.status === status) &&
-          (!day || isoDay(order.createdAt) === isoDay(day))
+          (!day || localIsoDay(order.createdAt) === localIsoDay(day))
         );
       }),
     [day, network, orders, query, status],
@@ -176,8 +169,19 @@ export default function TransactionsPage() {
         <label className="flex h-12 flex-1 items-center gap-3 rounded-md bg-surface px-4 text-text-muted ring-1 ring-line focus-within:ring-2 focus-within:ring-accent">
           <Search className="h-4 w-4 shrink-0" />
           <input
+            type="search"
+            enterKeyHint="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onFocus={(event) => {
+              // The on-screen keyboard can cover roughly half the viewport —
+              // without this the field can end up hidden behind it right as
+              // it's focused.
+              window.setTimeout(
+                () => event.target.scrollIntoView({ behavior: "smooth", block: "center" }),
+                150,
+              );
+            }}
             placeholder="Search payer, order or wallet"
             className="w-full bg-transparent text-sm text-text outline-none placeholder:text-text-subtle"
           />
@@ -188,10 +192,10 @@ export default function TransactionsPage() {
             onChange={setNetwork}
             options={[
               { value: "all", label: "All networks" },
-              ...networks.map((entry) => ({
-                value: entry,
-                label: chainDisplayName(entry),
-                adornment: <NetworkLogo network={entry} size={20} />,
+              ...ENABLED_CHAINS.map((chain) => ({
+                value: chain.id,
+                label: chain.name,
+                adornment: <NetworkLogo network={chain.id} size={20} />,
               })),
             ]}
           />

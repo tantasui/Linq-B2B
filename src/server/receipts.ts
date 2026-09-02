@@ -1,5 +1,5 @@
 import { env, resendEnabled } from "./env";
-import { createSimplePdf } from "./pdf";
+import { barcodeBars, createReceiptPdf } from "./pdf";
 import { makeSlug } from "./security";
 import { addReceipt, addWalletIncoming, formatNaira, getMerchant, getOrder, listReceipts } from "./store";
 import { chainDisplayName } from "@/lib/chains";
@@ -87,38 +87,53 @@ function buildReceiptView(params: {
   const settled = order?.status === "settled" || order?.status === "fulfilled";
   const number = receiptNumber(kind, order?.id ?? walletIncoming?.id ?? makeSlug("notice"));
   const fee = order ? (order.transactionFee ?? 0) + (order.senderFee ?? 0) : 0;
+  const date = order ? new Date(order.createdAt) : new Date();
+  const dateLine = date
+    .toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+    .toUpperCase();
 
-  const heroAmount = order
+  const totalValue = order
     ? emailSafeCurrency(formatNaira(order.amountNgn))
     : walletIncoming
       ? formatToken(walletIncoming.amountToken, walletIncoming.token)
       : "Not available";
-  const heroSecondary = order
-    ? `${formatToken(order.cryptoAmountDue, order.token)} on ${chainDisplayName(order.network)}`
-    : walletIncoming
-      ? `${formatToken(walletIncoming.amountToken, walletIncoming.token)} on ${chainDisplayName(walletIncoming.network)}`
-      : undefined;
 
-  // Same fields, same order, same labels as the ticket's detail rows.
+  // Line items, dotted-leader style — the same facts as the ticket's detail
+  // rows, plus an explicit Status row since (unlike a retail receipt) a Linq
+  // receipt can represent a failed or refunded event, not only a paid one.
   const rows: [string, string][] = order
     ? [
-        ["Date & time", new Date(order.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })],
+        ["Status", statusLabel],
         ["From", order.payerName || "—"],
         ["To", merchant.businessName],
         ["Network", chainDisplayName(order.network)],
+        ["Paid", formatToken(order.cryptoAmountDue, order.token)],
         ["Rate", emailSafeCurrency(formatRate(order.quotedRate, order.token))],
         ["Fee", fee > 0 ? `${fee.toFixed(2)} ${order.token}` : "No fee"],
-        ["Transaction ID", order.paycrestOrderId ?? order.id],
+        ["Ref", order.paycrestOrderId ?? order.id],
       ]
     : [
-        ["Date & time", new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })],
+        ["Status", statusLabel],
         ["From", "Direct wallet activity"],
         ["To", merchant.businessName],
         ["Network", walletIncoming ? chainDisplayName(walletIncoming.network) : "—"],
-        ["Transaction ID", walletIncoming?.transactionHash ?? "Not available"],
+        ["Ref", walletIncoming?.transactionHash ?? "Not available"],
       ];
 
-  return { copy, number, statusLabel, settled, heroAmount, heroSecondary, rows };
+  return { copy, number, statusLabel, settled, dateLine, totalValue, rows };
+}
+
+const RECEIPT_TAGLINE = "/ Stablecoins In, Naira Out /";
+
+/** The same deterministic bars as the PDF, rendered as table cells (works in Outlook too). */
+function barcodeHtml(seed: string) {
+  const cells = barcodeBars(seed)
+    .map(
+      (bar) =>
+        `<td style="width:${bar.width}px;height:36px;padding:0;line-height:0;font-size:0;background:${bar.black ? "#1A1A1A" : "transparent"};">&nbsp;</td>`,
+    )
+    .join("");
+  return `<table role="presentation" style="margin:0 auto;border-collapse:collapse;"><tr>${cells}</tr></table>`;
 }
 
 export function renderReceiptHtml(params: {
@@ -128,35 +143,52 @@ export function renderReceiptHtml(params: {
   walletIncoming?: WalletIncomingRecord;
 }) {
   const view = buildReceiptView(params);
+  const mono = "ui-monospace, SFMono-Regular, 'Courier New', monospace";
   const rowsHtml = view.rows
     .map(
-      ([label, value]) =>
-        `<tr><td style="padding:11px 0;border-top:1px solid #E4DBF2;color:#706F75;font-size:12px;">${label}</td><td style="padding:11px 0;border-top:1px solid #E4DBF2;text-align:right;color:#141216;font-size:12px;font-weight:500;">${value}</td></tr>`,
+      ([label, value]) => `<tr>
+        <td style="padding:7px 0;font-size:11px;color:#3A3A3A;white-space:nowrap;">${label}</td>
+        <td style="width:100%;padding:7px 6px;border-bottom:1px dotted #B8AF9C;"></td>
+        <td style="padding:7px 0;font-size:11px;font-weight:700;color:#1A1A1A;white-space:nowrap;text-align:right;">${value}</td>
+      </tr>`,
     )
     .join("");
   return `<!doctype html>
 <html>
-  <body style="margin:0;background:#F4F1F9;color:#141216;font-family:Inter,Segoe UI,Arial,sans-serif;padding:32px 16px;">
-    <div style="max-width:420px;margin:0 auto;">
-      <p style="margin:0 0 18px;text-align:center;color:#7837E6;font-size:13px;font-weight:700;letter-spacing:.14em;">LINQ</p>
-      <div style="background:#F7F3FC;border:1px solid #D9CEEA;border-radius:16px;overflow:hidden;">
-        <div style="padding:24px 24px 0;">
-          <p style="margin:0 0 24px;text-align:center;color:#7837E6;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;">
-            ${view.settled ? "&#10003; " : ""}${view.statusLabel}
-          </p>
-          <p style="margin:0;text-align:center;font-size:34px;font-weight:600;letter-spacing:-.02em;">${view.heroAmount}</p>
-          ${view.heroSecondary ? `<p style="margin:12px 0 0;text-align:center;color:#706F75;font-size:14px;">${view.heroSecondary}</p>` : ""}
-          <div style="margin:28px 0 0;border-top:2px dashed #D9CEEA;"></div>
-        </div>
-        <div style="padding:8px 24px 28px;">
-          <table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>
-          <p style="margin:22px 0 0;text-align:center;color:#9C99A3;font-size:11px;">
-            linq.xyz &middot; <a href="mailto:support@linq.xyz" style="color:#7837E6;">support</a>
-          </p>
-        </div>
-      </div>
-      <p style="margin:20px 0 0;text-align:center;color:#9C99A3;font-size:12px;">${view.copy.summary}</p>
+  <body style="margin:0;background:#6D28D9;padding:40px 14px;font-family:${mono};">
+    <div style="max-width:380px;margin:0 auto;background:#F5F0E6;color:#1A1A1A;padding:26px 24px 30px;">
+      <table role="presentation" style="width:100%;"><tr>
+        <td style="font-size:12px;font-weight:700;letter-spacing:.05em;color:#7C3AED;">${view.copy.title.toUpperCase()}</td>
+        <td style="font-size:12px;font-weight:700;text-align:right;">No. ${view.number}</td>
+      </tr></table>
+
+      <p style="margin:22px 0 2px;text-align:center;font-size:26px;font-weight:800;font-style:italic;color:#7C3AED;">LINQ</p>
+      <p style="margin:0 0 16px;text-align:center;font-size:10px;letter-spacing:.04em;color:#4A4A4A;">${RECEIPT_TAGLINE}</p>
+
+      <div style="border-top:2px dashed #C9C2B4;"></div>
+      <p style="margin:14px 0;text-align:center;font-size:11px;letter-spacing:.03em;">DATE: ${view.dateLine}</p>
+      <div style="border-top:2px dashed #C9C2B4;margin-bottom:6px;"></div>
+
+      <table role="presentation" style="width:100%;border-collapse:collapse;">${rowsHtml}</table>
+
+      <div style="border-top:2px dashed #C9C2B4;margin:16px 0 18px;"></div>
+      <table role="presentation" style="width:100%;"><tr>
+        <td style="font-size:14px;font-weight:700;">TOTAL:</td>
+        <td style="font-size:14px;font-weight:700;text-align:right;">${view.totalValue}</td>
+      </tr></table>
+
+      <div style="margin:24px 0 10px;">${barcodeHtml(view.number)}</div>
+      <p style="margin:6px 0 20px;text-align:center;font-size:22px;font-weight:800;font-style:italic;color:#7C3AED;">Thank You!</p>
+
+      <div style="border-top:2px dashed #C9C2B4;"></div>
+      <table role="presentation" style="width:100%;margin-top:14px;"><tr>
+        <td style="font-size:9px;color:#4A4A4A;">
+          <a href="mailto:support@linq.xyz" style="color:#4A4A4A;">support@linq.xyz</a>
+        </td>
+        <td style="font-size:9px;color:#4A4A4A;text-align:right;letter-spacing:.04em;">LINQ.XYZ</td>
+      </tr></table>
     </div>
+    <p style="max-width:380px;margin:18px auto 0;text-align:center;color:#E9DFFB;font-size:11px;font-family:Inter,Segoe UI,Arial,sans-serif;">${view.copy.summary}</p>
   </body>
 </html>`;
 }
@@ -168,14 +200,18 @@ export function renderReceiptPdf(params: {
   walletIncoming?: WalletIncomingRecord;
 }) {
   const view = buildReceiptView(params);
-  return createSimplePdf(view.copy.title, [
-    { text: view.statusLabel, size: 18, gapAfter: 10 },
-    { text: view.heroAmount, size: 26, gapAfter: view.heroSecondary ? 2 : 14 },
-    ...(view.heroSecondary ? [{ text: view.heroSecondary, muted: true, gapAfter: 16 } as const] : []),
-    ...view.rows.map(([label, value]) => ({ text: `${label}: ${value}` })),
-    { text: `Receipt no.: ${view.number}`, muted: true, gapAfter: 4 },
-    { text: view.copy.summary, muted: true },
-  ]);
+  return createReceiptPdf({
+    title: view.copy.title,
+    receiptNumber: view.number,
+    brand: "LINQ",
+    tagline: RECEIPT_TAGLINE,
+    dateLine: view.dateLine,
+    rows: view.rows.map(([label, value]) => ({ label, value })),
+    totalLabel: "TOTAL:",
+    totalValue: view.totalValue,
+    footerLeft: "support@linq.xyz",
+    footerRight: "LINQ.XYZ",
+  });
 }
 
 async function sendResendEmail(input: {

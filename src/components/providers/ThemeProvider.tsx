@@ -29,6 +29,15 @@ export function useTheme() {
  */
 export const themeBootScript = `(function(){try{var s=localStorage.getItem("${themeStorageKey}");var d=s?s==="dark":matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d);document.documentElement.style.colorScheme=d?"dark":"light";}catch(e){}})();`;
 
+/**
+ * For the payer-facing checkout page only. That page is opened by a
+ * customer, not the merchant, so it must always mirror the device's own
+ * light/dark setting — never a preference the merchant happened to leave in
+ * this browser's storage while previewing their own link from the dashboard.
+ * Unlike `themeBootScript`, this ignores `localStorage` entirely.
+ */
+export const deviceThemeBootScript = `(function(){try{var d=matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d);document.documentElement.style.colorScheme=d?"dark":"light";}catch(e){}})();`;
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
 

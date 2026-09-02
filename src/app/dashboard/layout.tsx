@@ -4,12 +4,13 @@ import type { AnimationEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, Bell, Home, LogOut, QrCode, ReceiptText, Settings } from "lucide-react";
+import { BarChart3, Home, LogOut, QrCode, ReceiptText, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getMerchantMe, setActiveBusinessId, setActiveDynamicUserId, syncMerchantWallets } from "@/lib/api-client";
 import { tokensForNetwork } from "@/lib/chains";
 import type { MerchantRecord, StablecoinSymbol } from "@/server/types";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
+import { NotificationCenter } from "@/components/NotificationCenter";
 import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
 import { LinqMark, LinqWordmark } from "@/components/brand/LinqMark";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -31,22 +32,6 @@ const navigation = [
 function clearPageInAnimation(event: AnimationEvent<HTMLElement>) {
   if (event.target !== event.currentTarget || event.animationName !== "linq-page-in") return;
   event.currentTarget.classList.remove("linq-page-in");
-}
-
-function NotificationButton() {
-  return (
-    <button
-      type="button"
-      aria-label="Notifications"
-      className={cn(
-        "relative grid h-10 w-10 place-items-center rounded-md bg-surface text-text-muted ring-1 ring-line",
-        "shadow-sm transition duration-fast ease-linq hover:-translate-y-px hover:text-text hover:shadow-md active:scale-[0.97]",
-      )}
-    >
-      <Bell className="h-[18px] w-[18px]" />
-      <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-accent" />
-    </button>
-  );
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -175,7 +160,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <LinqMark size={30} className="text-accent" />
             )}
           </Link>
-          <NotificationButton />
+          <NotificationCenter />
         </header>
 
         <main
@@ -219,7 +204,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="hidden lg:ml-[248px] lg:block">
         <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-line bg-bg/85 px-8 backdrop-blur-xl">
           <p className="text-sm font-medium text-text-muted">{pageTitle}</p>
-          <NotificationButton />
+          <NotificationCenter />
         </header>
         <main
           key={pathname}

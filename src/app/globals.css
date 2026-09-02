@@ -141,6 +141,18 @@
     -webkit-text-size-adjust: 100%;
   }
 
+  /* iOS Safari zooms the whole viewport in on focus for any input/select/
+     textarea under 16px. Floor it everywhere on mobile once, here, rather
+     than hunting down every text-sm field across the app (and the ones
+     added after this comment). */
+  @media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
   body {
     @apply bg-bg text-text antialiased;
     font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -210,6 +222,17 @@ dynamic-widget,
 }
 .linq-sheet-up {
   animation: linq-sheet-up var(--dur-slow) var(--ease) both;
+}
+
+/* The reverse, played on close (tap-dismiss) or as the release-animation
+   after a drag that passed the dismiss threshold — the sheet actually
+   leaves down the bottom of the screen rather than just cutting away. */
+@keyframes linq-sheet-down {
+  from { opacity: 1; transform: translateY(var(--sheet-drag-y, 0px)); }
+  to { opacity: 0; transform: translateY(100%); }
+}
+.linq-sheet-down {
+  animation: linq-sheet-down var(--dur-slow) var(--ease) both;
 }
 
 @keyframes linq-fade-in {

@@ -2,33 +2,79 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowRight, ChevronRight, Eye, EyeOff, Receipt } from "lucide-react";
+import { ArrowDownLeft, ChevronRight, Download, Eye, EyeOff, Mail, Receipt as ReceiptIcon, RefreshCcw } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { ChartFrame } from "@/components/ui/chart-frame";
-import { buttonClasses } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, SectionHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BalanceSkeleton, RowSkeleton } from "@/components/ui/skeleton";
+import { Sheet } from "@/components/ui/sheet";
 import { StatusPill } from "@/components/ui/status";
+import { useToast } from "@/components/ui/toast";
 import { NetworkLogo } from "@/components/icons/NetworkLogos";
-import { listOrders } from "@/lib/api-client";
+import { Receipt } from "@/components/brand/Receipt";
+import { apiUrl, getMerchantMe, listOrders, retryTransfer, sendOrderReceipt } from "@/lib/api-client";
 import { chainDisplayName } from "@/lib/chains";
+import { explorerTxUrl, shortenHash } from "@/lib/explorer";
 import { formatCurrency } from "@/lib/payment-data";
-import type { OrderRecord } from "@/server/types";
+import type { MerchantRecord, OrderRecord } from "@/server/types";
 
 const IN_FLIGHT = ["initiated", "deposited", "pending", "fulfilling", "validated", "settling"];
+/** States where the Naira leg can be attempted again. */
+const RETRYABLE = new Set(["failed", "refunded", "expired", "cancelled"]);
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [hidden, setHidden] = useState(false);
+  const [openOrder, setOpenOrder] = useState<OrderRecord | null>(null);
+  const [busy, setBusy] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     listOrders()
       .then(({ orders: data }) => setOrders(data))
       .catch(() => undefined)
       .finally(() => setLoading(false));
+    getMerchantMe()
+      .then((data) => setMerchant(data.merchant))
+      .catch(() => undefined);
   }, []);
+
+  const retry = async (order: OrderRecord) => {
+    setBusy(true);
+    try {
+      const response = await retryTransfer(order.id);
+      toast(response.message ?? "Retry queued");
+      const { orders: data } = await listOrders();
+      setOrders(data);
+      setOpenOrder((current) => (current ? data.find((entry) => entry.id === current.id) ?? current : current));
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "Retry failed", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const emailReceipt = async (
+    order: OrderRecord,
+    kind: "payer_transaction_success" | "merchant_fiat_received" | "merchant_payout_failed",
+  ) => {
+    setBusy(true);
+    try {
+      await sendOrderReceipt(order.id, {
+        kind,
+        audience: kind === "payer_transaction_success" ? "payer" : "merchant",
+      });
+      toast("Receipt queued for delivery");
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "Could not send receipt", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const settled = orders.filter((order) => order.status === "settled");
   const pending = orders.filter((order) => IN_FLIGHT.includes(order.status));
@@ -97,15 +143,6 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </ChartFrame>
         </div>
-
-        <div className="mt-7">
-          <Link
-            href="/dashboard/receive"
-            className={buttonClasses({ size: "lg", className: "w-full sm:w-auto" })}
-          >
-            Convert to cash <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
       </section>
 
       {/* Two ways to get paid, given equal weight. */}
@@ -120,7 +157,7 @@ export default function DashboardPage() {
           {
             label: "Request",
             hint: "You set the amount",
-            icon: Receipt,
+            icon: ReceiptIcon,
             href: "/dashboard/receive?mode=fixed",
           },
         ].map((action) => (
@@ -164,27 +201,100 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-2.5">
             {orders.slice(0, 5).map((order) => (
-              <Card key={order.id} interactive className="flex items-center gap-3.5 py-4">
-                <NetworkLogo network={order.network} size={32} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{order.payerName}</p>
-                  <p className="truncate text-xs text-text-muted">
-                    {chainDisplayName(order.network)} ·{" "}
-                    {new Date(order.createdAt).toLocaleDateString(undefined, {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1.5">
-                  <p className="tnum text-sm font-medium">+{formatCurrency(order.amountNgn, "NGN")}</p>
-                  <StatusPill status={order.status} />
-                </div>
-              </Card>
+              <button
+                key={order.id}
+                type="button"
+                onClick={() => setOpenOrder(order)}
+                className="block w-full text-left"
+              >
+                <Card interactive className="flex items-center gap-3.5 py-4">
+                  <NetworkLogo network={order.network} size={32} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{order.payerName}</p>
+                    <p className="truncate text-xs text-text-muted">
+                      {chainDisplayName(order.network)} ·{" "}
+                      {new Date(order.createdAt).toLocaleDateString(undefined, {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <p className="tnum text-sm font-medium">+{formatCurrency(order.amountNgn, "NGN")}</p>
+                    <StatusPill status={order.status} />
+                  </div>
+                </Card>
+              </button>
             ))}
           </div>
         )}
       </section>
+
+      {/* Tapping a row opens its receipt — the same ticket the payer received. */}
+      <Sheet
+        open={Boolean(openOrder)}
+        onClose={() => setOpenOrder(null)}
+        title="Transaction"
+        className="bg-bg"
+      >
+        {openOrder ? (
+          <>
+            <Receipt order={openOrder} merchant={merchant} />
+
+            {explorerTxUrl(openOrder.network, openOrder.depositDigest) ? (
+              <a
+                href={explorerTxUrl(openOrder.network, openOrder.depositDigest)!}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-5 flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2.5 text-xs transition duration-fast ease-linq hover:bg-surface-3"
+              >
+                <span className="text-text-muted">Deposit transaction</span>
+                <span className="flex items-center gap-1.5 font-medium text-text">
+                  <span className="font-mono">{shortenHash(openOrder.depositDigest!)}</span>
+                </span>
+              </a>
+            ) : null}
+
+            <div className="mt-7 grid grid-cols-2 gap-2">
+              <a
+                href={apiUrl(`/api/orders/${openOrder.id}/receipt.pdf?kind=payer_transaction_success`)}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonClasses({ variant: "secondary", size: "sm" })}
+              >
+                <Download className="h-3.5 w-3.5" /> Download PDF
+              </a>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={busy}
+                onClick={() => emailReceipt(openOrder, "payer_transaction_success")}
+              >
+                <Mail className="h-3.5 w-3.5" /> Email payer
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={busy}
+                className="col-span-2"
+                onClick={() =>
+                  emailReceipt(
+                    openOrder,
+                    openOrder.status === "settled" ? "merchant_fiat_received" : "merchant_payout_failed",
+                  )
+                }
+              >
+                <Mail className="h-3.5 w-3.5" /> Email myself the invoice
+              </Button>
+              {RETRYABLE.has(openOrder.status) ? (
+                <Button className="col-span-2" loading={busy} onClick={() => retry(openOrder)}>
+                  <RefreshCcw className="h-4 w-4" /> Retry payout to verified account
+                </Button>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+      </Sheet>
     </div>
   );
 }

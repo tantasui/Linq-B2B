@@ -1,5 +1,5 @@
 /**
- * Base-14 Helvetica has no encoding declared, so it falls back to
+ * Base-14 fonts have no encoding declared, so they fall back to
  * StandardEncoding — a single byte per glyph, and one that doesn't contain
  * ₦, ✓, or typographic spaces at all. Left alone, those come out as raw
  * UTF-8 bytes misread as separate Latin-1 glyphs (garbage like "âƒ"). Swap
@@ -20,68 +20,139 @@ function escapePdfText(value: string) {
   return sanitizePdfText(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
-function wrapText(value: string, maxChars = 78) {
-  const words = value.split(/\s+/);
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    if ((current + " " + word).trim().length > maxChars) {
-      if (current) lines.push(current);
-      current = word;
-    } else {
-      current = `${current} ${word}`.trim();
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
+/** Courier is monospace and one of the 14 base fonts: every character is exactly 0.6em wide. */
+const CHAR_WIDTH_EM = 0.6;
+function textWidth(text: string, size: number) {
+  return text.length * CHAR_WIDTH_EM * size;
 }
 
-type PdfLine = {
-  text: string;
-  size?: number;
-  x?: number;
-  gapAfter?: number;
-  muted?: boolean;
-};
+/**
+ * A believable barcode, not a scannable one: alternating black/white bars
+ * whose widths are pseudo-random but deterministic from `seed`, so the same
+ * order always draws the same pattern instead of a fresh one per render.
+ */
+export function barcodeBars(seed: string, count = 34) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(h, 31) + seed.charCodeAt(i)) >>> 0;
+  const bars: { width: number; black: boolean }[] = [];
+  for (let i = 0; i < count; i++) {
+    h = (Math.imul(h, 1103515245) + 12345) >>> 0;
+    bars.push({ width: 1 + (h % 3), black: i % 2 === 0 });
+  }
+  return bars;
+}
 
-export function createSimplePdf(title: string, lines: PdfLine[]) {
-  const width = 612;
-  const height = 792;
-  let y = 688;
-  // Light page, purple accent bar and dark ink — the same palette as the
-  // in-app ticket (`components/brand/Receipt.tsx`), not a generic dark card.
-  const content: string[] = [
-    "1 1 1 rg",
-    `0 0 ${width} ${height} re f`,
-    "0.541 0.310 1 rg",
-    "40 712 532 3 re f",
-    "0.078 0.071 0.086 rg",
-    "BT /F1 28 Tf 40 736 Td (" + escapePdfText(title) + ") Tj ET",
-  ];
+type ReceiptRow = { label: string; value: string };
 
-  for (const line of lines) {
-    const size = line.size ?? 11;
-    const x = line.x ?? 40;
-    const color = line.muted ? "0.44 0.43 0.46 rg" : "0.078 0.071 0.086 rg";
-    const wrapped = wrapText(line.text, size > 15 ? 48 : 86);
-    for (const row of wrapped) {
-      content.push(color);
-      content.push(`BT /F1 ${size} Tf ${x} ${y} Td (${escapePdfText(row)}) Tj ET`);
-      y -= Math.max(size + 5, 15);
-      if (y < 70) break;
+/**
+ * A printable receipt/invoice, styled to match the in-app ticket's content
+ * and the brand's paper-receipt reference: RECEIPT / No., a centred
+ * wordmark, dashed rules, dotted-leader field rows, a bold total, a barcode,
+ * and a footer — all in a fixed-width font so the dotted leaders and
+ * right-aligned columns line up without needing real font metrics.
+ */
+export function createReceiptPdf(params: {
+  title: string;
+  receiptNumber: string;
+  brand: string;
+  tagline: string;
+  dateLine: string;
+  rows: ReceiptRow[];
+  totalLabel: string;
+  totalValue: string;
+  footerLeft: string;
+  footerRight: string;
+}) {
+  const width = 340;
+  const height = 700;
+  const margin = 28;
+  const columnWidth = width - margin * 2;
+  let y = height - 50;
+
+  const content: string[] = ["0.961 0.941 0.902 rg", `0 0 ${width} ${height} re f`];
+
+  const text = (value: string, size: number, x: number, yPos: number, bold: boolean, color: string) => {
+    content.push(color);
+    content.push(`BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${yPos} Td (${escapePdfText(value)}) Tj ET`);
+  };
+  const centered = (value: string, size: number, yPos: number, bold: boolean, color: string) => {
+    text(value, size, (width - textWidth(value, size)) / 2, yPos, bold, color);
+  };
+  const dashedRule = (yPos: number) => {
+    content.push("0.694 0.663 0.596 rg");
+    for (let x = margin; x < width - margin; x += 8) {
+      content.push(`${x} ${yPos} 4 1 re f`);
     }
-    y -= line.gapAfter ?? 4;
-    if (y < 70) break;
+  };
+
+  const ink = "0.102 0.098 0.102 rg";
+  const muted = "0.29 0.29 0.29 rg";
+  const purple = "0.486 0.157 0.851 rg";
+
+  // Header: e.g. "RECEIPT" (left) / No. (right)
+  text(params.title.toUpperCase(), 12, margin, y, true, purple);
+  const numberLabel = `No. ${params.receiptNumber}`;
+  text(numberLabel, 12, width - margin - textWidth(numberLabel, 12), y, true, ink);
+  y -= 34;
+
+  // Brand + tagline
+  centered(params.brand, 20, y, true, purple);
+  y -= 18;
+  centered(params.tagline, 8, y, false, muted);
+  y -= 16;
+
+  dashedRule(y);
+  y -= 18;
+  centered(params.dateLine, 9, y, false, ink);
+  y -= 10;
+  dashedRule(y);
+  y -= 22;
+
+  // Field rows with a dotted leader between label and value.
+  for (const row of params.rows) {
+    const size = 9;
+    const charWidth = CHAR_WIDTH_EM * size;
+    const totalChars = Math.floor(columnWidth / charWidth);
+    const dotsNeeded = Math.max(2, totalChars - row.label.length - row.value.length - 1);
+    const line = `${row.label} ${".".repeat(dotsNeeded)} ${row.value}`;
+    text(line, size, margin, y, false, ink);
+    y -= 16;
   }
 
-  content.push("0.61 0.60 0.64 rg");
-  content.push("BT /F1 9 Tf 40 42 Td (Generated by Linq) Tj ET");
+  y -= 4;
+  dashedRule(y);
+  y -= 22;
+
+  // Total, bold, both ends of the line.
+  text(params.totalLabel, 12, margin, y, true, ink);
+  text(params.totalValue, 12, width - margin - textWidth(params.totalValue, 12), y, true, ink);
+  y -= 36;
+
+  // Barcode.
+  content.push("0.102 0.098 0.102 rg");
+  const bars = barcodeBars(params.receiptNumber);
+  const barcodeWidth = bars.reduce((sum, bar) => sum + bar.width, 0);
+  let barX = (width - barcodeWidth) / 2;
+  for (const bar of bars) {
+    if (bar.black) content.push(`${barX.toFixed(1)} ${y - 30} ${bar.width} 30 re f`);
+    barX += bar.width;
+  }
+  y -= 46;
+
+  centered("Thank You!", 18, y, true, purple);
+  y -= 30;
+
+  dashedRule(y);
+  y -= 18;
+  text(params.footerLeft, 8, margin, y, false, muted);
+  text(params.footerRight, 8, width - margin - textWidth(params.footerRight, 8), y, false, muted);
 
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>`,
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >>",
     `<< /Length ${Buffer.byteLength(content.join("\n"), "utf8")} >>\nstream\n${content.join("\n")}\nendstream`,
   ];
 
