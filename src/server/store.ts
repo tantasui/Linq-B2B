@@ -356,10 +356,18 @@ export async function getPaymentLink(idOrSlug: string) {
   return state().paymentLinks.find((link) => link.id === idOrSlug || link.slug === idOrSlug);
 }
 
+// SAFETY_CAP is a sanity bound, not real pagination — analytics/page.tsx sums
+// and averages the full listOrders() result client-side, so a small LIMIT
+// here would silently under-report revenue for a high-volume merchant. This
+// only guards against an unbounded scan as data grows; it doesn't change
+// behavior for any realistic dataset size today. Real pagination (moving the
+// analytics aggregation server-side, date-scoped) is separate follow-up work.
+const SAFETY_CAP = 2000;
+
 export async function listPaymentLinks(businessId?: string) {
   if (!businessId) return [];
   if (databaseEnabled) {
-    const result = await queryDb<Row>("select * from payment_links where business_id = $1 order by created_at desc", [businessId]);
+    const result = await queryDb<Row>(`select * from payment_links where business_id = $1 order by created_at desc limit ${SAFETY_CAP}`, [businessId]);
     return result?.rows.map(mapPaymentLink) ?? [];
   }
   return state().paymentLinks.filter((link) => link.businessId === businessId);
@@ -407,7 +415,7 @@ export async function createOrder(input: Omit<OrderRecord, "id" | "createdAt" | 
 export async function listOrders(businessId?: string) {
   if (!businessId) return [];
   if (databaseEnabled) {
-    const result = await queryDb<Row>("select * from orders where business_id = $1 order by created_at desc", [businessId]);
+    const result = await queryDb<Row>(`select * from orders where business_id = $1 order by created_at desc limit ${SAFETY_CAP}`, [businessId]);
     const transfers = await queryDb<Row>("select * from transfer_attempts where order_id = any($1::uuid[]) order by created_at desc", [result?.rows.map((row) => row.id) ?? []]);
     const attempts = transfers?.rows.map(mapTransfer) ?? [];
     return result?.rows.map((row) => mapOrder(row, attempts.filter((attempt) => attempt.orderId === row.id))) ?? [];
@@ -500,13 +508,14 @@ export async function addOrderEvent(orderId: string | undefined, source: "app" |
 
 export async function createTransferAttempt(orderId: string, status: TransferAttemptRecord["status"], resultPayload?: unknown, errorMessage?: string) {
   if (databaseEnabled) {
-    const count = await queryDb<Row>("select count(*)::int as count from transfer_attempts where order_id = $1", [orderId]);
-    const attemptNumber = Number(count?.rows[0]?.count ?? 0) + 1;
+    // attempt_number computed inline instead of a separate count(*) round-trip
+    // beforehand — same (best-effort, non-unique-constrained) semantics, one
+    // fewer query per call.
     const result = await queryDb<Row>(
       `insert into transfer_attempts (order_id, status, attempt_number, paycrest_reference, result_payload, error_message)
-       values ($1, $2, $3, $4, $5::jsonb, $6)
+       values ($1, $2, (select count(*) + 1 from transfer_attempts where order_id = $1), $3, $4::jsonb, $5)
        returning *`,
-      [orderId, status, attemptNumber, makeSlug("retry"), JSON.stringify(resultPayload ?? null), errorMessage ?? null],
+      [orderId, status, makeSlug("retry"), JSON.stringify(resultPayload ?? null), errorMessage ?? null],
     );
     return mapTransfer(result!.rows[0]);
   }
@@ -574,7 +583,7 @@ export async function addWalletIncoming(input: Omit<WalletIncomingRecord, "id" |
 
 export async function listWalletIncoming(businessId: string) {
   if (databaseEnabled) {
-    const result = await queryDb<Row>("select * from wallet_incoming where business_id = $1 order by created_at desc", [businessId]);
+    const result = await queryDb<Row>(`select * from wallet_incoming where business_id = $1 order by created_at desc limit ${SAFETY_CAP}`, [businessId]);
     return result?.rows.map((row) => ({
       id: row.id,
       businessId: row.business_id,

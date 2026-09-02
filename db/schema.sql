@@ -64,6 +64,8 @@ create table if not exists payment_links (
   updated_at timestamptz not null default now()
 );
 
+create index if not exists payment_links_business_id_idx on payment_links(business_id);
+
 create table if not exists orders (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references merchant_businesses(id) on delete cascade,
@@ -92,6 +94,8 @@ create table if not exists orders (
 -- existing database keeps its original columns and needs this explicitly.
 alter table orders add column if not exists deposit_digest text;
 
+create index if not exists orders_business_id_idx on orders(business_id);
+
 create table if not exists order_events (
   id uuid primary key default gen_random_uuid(),
   order_id uuid references orders(id) on delete set null,
@@ -114,6 +118,8 @@ create table if not exists transfer_attempts (
   created_at timestamptz not null default now()
 );
 
+create index if not exists transfer_attempts_order_id_idx on transfer_attempts(order_id);
+
 create table if not exists receipts (
   id uuid primary key default gen_random_uuid(),
   order_id uuid references orders(id) on delete set null,
@@ -131,6 +137,9 @@ create table if not exists receipts (
   created_at timestamptz not null default now()
 );
 
+create index if not exists receipts_order_id_idx on receipts(order_id);
+create index if not exists receipts_business_id_idx on receipts(business_id);
+
 create table if not exists wallet_incoming (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references merchant_businesses(id) on delete cascade,
@@ -144,3 +153,5 @@ create table if not exists wallet_incoming (
   raw_payload jsonb,
   created_at timestamptz not null default now()
 );
+
+create index if not exists wallet_incoming_business_id_idx on wallet_incoming(business_id);

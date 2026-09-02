@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "bunx tsc --noEmit && next lint",
-    "format": "bunx biome format --write"
+    "format": "bunx biome format --write",
+    "test:migrations": "bunx tsx scripts/migrations-smoketest.ts"
   },
   "dependencies": {
     "@dynamic-labs/ethereum": "4.84.1",
