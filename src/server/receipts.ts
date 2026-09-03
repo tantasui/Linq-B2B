@@ -11,6 +11,10 @@ function formatToken(value: number, token: string) {
   return `${value.toLocaleString("en-US", { maximumFractionDigits: 8 })} ${token}`;
 }
 
+function esc(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function statusCopy(kind: ReceiptKind) {
   switch (kind) {
     case "payer_transaction_success":
@@ -107,6 +111,14 @@ function buildReceiptView(params: {
   return { copy, statusLabel, settled, totalValue, subValue, rows };
 }
 
+/**
+ * The rendered ticket image is decorative, not the only copy of the data:
+ * `data:` URI images are known to get stripped by some mail clients (Gmail
+ * and Outlook both have a history of this), and an image-only receipt would
+ * then read as empty. Every figure it shows — status, total, rows — is
+ * repeated below as real HTML text, so the recipient gets the details
+ * whether or not the image itself renders.
+ */
 export async function renderReceiptHtml(params: {
   kind: ReceiptKind;
   order?: OrderRecord;
@@ -116,11 +128,30 @@ export async function renderReceiptHtml(params: {
   const view = buildReceiptView(params);
   const { jpeg, pointWidth } = await renderReceiptJpeg(view);
   const imageDataUri = `data:image/jpeg;base64,${jpeg.toString("base64")}`;
+  const imageAlt = [view.statusLabel, view.totalValue, view.subValue].filter(Boolean).join(" — ");
+
+  const rowsHtml = view.rows
+    .map(
+      (row) => `<tr>
+        <td style="padding:9px 0;font-size:12px;color:#5B5568;border-bottom:1px solid #EDE7F8;">${esc(row.label)}</td>
+        <td style="padding:9px 0;font-size:12px;font-weight:700;color:#1A1A1A;text-align:right;border-bottom:1px solid #EDE7F8;">${esc(row.value)}</td>
+      </tr>`,
+    )
+    .join("");
+
   return `<!doctype html>
 <html>
   <body style="margin:0;background:#6d28d9;padding:32px 14px;font-family:Inter,Segoe UI,Arial,sans-serif;">
-    <img src="${imageDataUri}" width="${pointWidth}" alt="${view.copy.title}" style="display:block;width:100%;max-width:${pointWidth}px;margin:0 auto;" />
-    <p style="max-width:380px;margin:20px auto 0;text-align:center;color:#E9DFFB;font-size:12px;line-height:1.6;">${view.copy.summary}</p>
+    <img src="${imageDataUri}" width="${pointWidth}" alt="${esc(imageAlt)}" style="display:block;width:100%;max-width:${pointWidth}px;margin:0 auto;" />
+
+    <div style="max-width:380px;margin:20px auto 0;background:#ffffff;border-radius:12px;padding:20px 22px;">
+      <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7737E6;">${esc(view.statusLabel)}</p>
+      <p style="margin:0 0 4px;font-size:26px;font-weight:800;color:#0B0B0E;">${esc(view.totalValue)}</p>
+      ${view.subValue ? `<p style="margin:0 0 16px;font-size:13px;color:#71717A;">${esc(view.subValue)}</p>` : ""}
+      <table role="presentation" width="100%" style="width:100%;border-collapse:collapse;margin-top:${view.subValue ? "0" : "16px"};">${rowsHtml}</table>
+    </div>
+
+    <p style="max-width:380px;margin:20px auto 0;text-align:center;color:#E9DFFB;font-size:12px;line-height:1.6;">${esc(view.copy.summary)}</p>
   </body>
 </html>`;
 }
@@ -132,8 +163,8 @@ export async function renderReceiptPdf(params: {
   walletIncoming?: WalletIncomingRecord;
 }) {
   const view = buildReceiptView(params);
-  const { jpeg, pixelWidth, pixelHeight, pointWidth, pointHeight } = await renderReceiptJpeg(view);
-  return createImagePdf({ jpeg, pixelWidth, pixelHeight, pointWidth, pointHeight });
+  const { jpeg, pointWidth, pointHeight } = await renderReceiptJpeg(view);
+  return createImagePdf({ jpeg, pointWidth, pointHeight });
 }
 
 async function sendResendEmail(input: {

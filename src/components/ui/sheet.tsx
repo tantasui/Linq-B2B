@@ -60,6 +60,10 @@ export function Sheet({
 }) {
   const [closing, setClosing] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
+  // The scrollable body only — the drag handle and header sit outside it and
+  // never scroll, so a tall screen (the QR/transfer step, say) doesn't carry
+  // its title and close button away as you scroll past them.
+  const contentRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLButtonElement>(null);
   // "pending": waiting to see which way the first real movement goes.
   // "sheet": dragging the whole sheet — engaged once we see downward motion
@@ -130,7 +134,7 @@ export function Sheet({
       // "drag the sheet": moving down, and the content has nowhere left to
       // scroll up to. Anything else — moving up, or down while there's still
       // scrolled content above — is left entirely to native scrolling.
-      const atTop = (section?.scrollTop ?? 0) <= 0;
+      const atTop = (contentRef.current?.scrollTop ?? 0) <= 0;
       state.mode = rawOffset > 0 && atTop ? "sheet" : "scroll";
       if (state.mode === "sheet") {
         (event.target as HTMLElement).setPointerCapture(event.pointerId);
@@ -211,9 +215,9 @@ export function Sheet({
         aria-label={title}
         onAnimationEnd={onAnimationEnd}
         className={cn(
-          "relative z-10 max-h-[88vh] w-full max-w-[460px] overflow-y-auto",
-          "rounded-t-xl bg-surface px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 shadow-xl",
-          "sm:rounded-xl sm:pb-6",
+          "relative z-10 flex max-h-[88vh] w-full max-w-[460px] flex-col overflow-hidden",
+          "rounded-t-xl bg-surface pt-4 shadow-xl",
+          "sm:rounded-xl",
           closing ? "linq-sheet-down" : "linq-sheet-up",
           className,
         )}
@@ -222,17 +226,19 @@ export function Sheet({
             anywhere in the sheet, same as it can be tapped anywhere in it —
             onPointerMove decides per-gesture whether that means "drag the
             sheet" or "let this scroll", so it never steals a tap on a
-            button in here either. */}
+            button in here either. The handle and header sit outside the
+            scrollable body below, so they stay put on a tall screen instead
+            of scrolling away with the content. */}
         <div
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
-          className="sm:cursor-default"
+          className="flex min-h-0 flex-1 flex-col sm:cursor-default"
         >
-          <div className="mx-auto mb-5 h-1 w-10 touch-none rounded-full bg-surface-3 sm:hidden" />
+          <div className="mx-auto mb-5 h-1 w-10 shrink-0 touch-none rounded-full bg-surface-3 sm:hidden" />
           {title ? (
-            <header className="mb-6 flex items-center gap-3">
+            <header className="mb-6 flex shrink-0 items-center gap-3 px-5">
               {leading}
               <h2 className="flex-1 text-lg font-medium tracking-[-0.02em]">{title}</h2>
               <button
@@ -245,7 +251,12 @@ export function Sheet({
               </button>
             </header>
           ) : null}
-          {children}
+          <div
+            ref={contentRef}
+            className="min-h-0 flex-1 overflow-y-auto px-5 pb-[max(2rem,env(safe-area-inset-bottom))] sm:pb-6"
+          >
+            {children}
+          </div>
         </div>
       </section>
     </div>,
