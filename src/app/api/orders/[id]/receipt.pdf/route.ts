@@ -12,7 +12,7 @@ export async function GET(request: Request, { params }: Params) {
     const { searchParams } = new URL(request.url);
     const kind = receiptKindSchema.parse(searchParams.get("kind") ?? "payer_transaction_success");
     const context = await getReceiptContext(id, kind);
-    const pdf = renderReceiptPdf(context);
+    const pdf = await renderReceiptPdf(context);
     return new Response(pdf, {
       headers: {
         "Content-Type": "application/pdf",

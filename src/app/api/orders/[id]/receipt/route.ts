@@ -12,7 +12,7 @@ export async function GET(request: Request, { params }: Params) {
     const { searchParams } = new URL(request.url);
     const kind = receiptKindSchema.parse(searchParams.get("kind") ?? "payer_transaction_success");
     const context = await getReceiptContext(id, kind);
-    const html = renderReceiptHtml(context);
+    const html = await renderReceiptHtml(context);
     return new Response(html, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",

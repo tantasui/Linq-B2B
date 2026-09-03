@@ -1,5 +1,6 @@
 import { env, resendEnabled } from "./env";
-import { barcodeBars, createReceiptPdf } from "./pdf";
+import { createImagePdf } from "./pdf";
+import { renderReceiptJpeg } from "./receipt-image";
 import { makeSlug } from "./security";
 import { addReceipt, addWalletIncoming, formatNaira, getMerchant, getOrder, listReceipts } from "./store";
 import { chainDisplayName } from "@/lib/chains";
@@ -57,23 +58,12 @@ function receiptNumber(kind: ReceiptKind, id: string) {
 }
 
 /**
- * The UI ticket uses the real ₦ glyph because it always has the app's own
- * webfont loaded, which renders it correctly. Email and PDF have no such
- * guarantee -- an unknown mail client's fallback font can substitute a
- * different font just for that one glyph, and some of those draw it wide
- * enough to overlap the digit after it no matter how much space follows.
- * Spell the currency out instead, and flatten the typographic space this
- * shares a source with formatCurrency/formatRate down to a plain one too.
- */
-function emailSafeCurrency(text: string) {
-  return text.replace(/₦/g, "N").replace(/ /g, " ");
-}
-
-/**
- * The one place that turns an order/wallet-event into "what the receipt says" -
- * shared by the emailed HTML and the downloadable PDF, so both stay in lockstep
- * with each other and with the in-app ticket (`components/brand/Receipt.tsx`),
- * which reads the same `ORDER_STATUS_LABELS` and field order.
+ * The one place that turns an order/wallet-event into "what the receipt
+ * says" — shared by the emailed image and the downloadable PDF, so both stay
+ * in lockstep with each other and with the in-app ticket
+ * (`components/brand/Receipt.tsx`): status and the paid amount live in the
+ * hero header exactly as they do there, and the row order matches its detail
+ * rows one for one.
  */
 function buildReceiptView(params: {
   kind: ReceiptKind;
@@ -85,133 +75,65 @@ function buildReceiptView(params: {
   const copy = statusCopy(kind);
   const statusLabel = order ? ORDER_STATUS_LABELS[order.status] ?? copy.headline : copy.headline;
   const settled = order?.status === "settled" || order?.status === "fulfilled";
-  const number = receiptNumber(kind, order?.id ?? walletIncoming?.id ?? makeSlug("notice"));
   const fee = order ? (order.transactionFee ?? 0) + (order.senderFee ?? 0) : 0;
   const date = order ? new Date(order.createdAt) : new Date();
-  const dateLine = date
-    .toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
-    .toUpperCase();
+  const dateLine = date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
   const totalValue = order
-    ? emailSafeCurrency(formatNaira(order.amountNgn))
+    ? formatNaira(order.amountNgn)
     : walletIncoming
       ? formatToken(walletIncoming.amountToken, walletIncoming.token)
       : "Not available";
+  const subValue = order ? formatToken(order.cryptoAmountDue, order.token) : undefined;
 
-  // Line items, dotted-leader style — the same facts as the ticket's detail
-  // rows, plus an explicit Status row since (unlike a retail receipt) a Linq
-  // receipt can represent a failed or refunded event, not only a paid one.
-  const rows: [string, string][] = order
+  const rows: { label: string; value: string }[] = order
     ? [
-        ["Status", statusLabel],
-        ["From", order.payerName || "—"],
-        ["To", merchant.businessName],
-        ["Network", chainDisplayName(order.network)],
-        ["Paid", formatToken(order.cryptoAmountDue, order.token)],
-        ["Rate", emailSafeCurrency(formatRate(order.quotedRate, order.token))],
-        ["Fee", fee > 0 ? `${fee.toFixed(2)} ${order.token}` : "No fee"],
-        ["Ref", order.paycrestOrderId ?? order.id],
+        { label: "Date & time", value: dateLine },
+        { label: "From", value: order.payerName || "—" },
+        { label: "To", value: merchant.businessName },
+        { label: "Network", value: chainDisplayName(order.network) },
+        { label: "Rate", value: formatRate(order.quotedRate, order.token) },
+        { label: "Fee", value: fee > 0 ? `${fee.toFixed(2)} ${order.token}` : "No fee" },
+        { label: "Transaction ID", value: order.paycrestOrderId ?? order.id },
       ]
     : [
-        ["Status", statusLabel],
-        ["From", "Direct wallet activity"],
-        ["To", merchant.businessName],
-        ["Network", walletIncoming ? chainDisplayName(walletIncoming.network) : "—"],
-        ["Ref", walletIncoming?.transactionHash ?? "Not available"],
+        { label: "Date & time", value: dateLine },
+        { label: "From", value: "Direct wallet activity" },
+        { label: "To", value: merchant.businessName },
+        { label: "Network", value: walletIncoming ? chainDisplayName(walletIncoming.network) : "—" },
+        { label: "Transaction ID", value: walletIncoming?.transactionHash ?? "Not available" },
       ];
 
-  return { copy, number, statusLabel, settled, dateLine, totalValue, rows };
+  return { copy, statusLabel, settled, totalValue, subValue, rows };
 }
 
-const RECEIPT_TAGLINE = "/ Stablecoins In, Naira Out /";
-
-/** The same deterministic bars as the PDF, rendered as table cells (works in Outlook too). */
-function barcodeHtml(seed: string) {
-  const cells = barcodeBars(seed)
-    .map(
-      (bar) =>
-        `<td style="width:${bar.width}px;height:36px;padding:0;line-height:0;font-size:0;background:${bar.black ? "#1A1A1A" : "transparent"};">&nbsp;</td>`,
-    )
-    .join("");
-  return `<table role="presentation" style="margin:0 auto;border-collapse:collapse;"><tr>${cells}</tr></table>`;
-}
-
-export function renderReceiptHtml(params: {
+export async function renderReceiptHtml(params: {
   kind: ReceiptKind;
   order?: OrderRecord;
   merchant: MerchantRecord;
   walletIncoming?: WalletIncomingRecord;
 }) {
   const view = buildReceiptView(params);
-  const mono = "ui-monospace, SFMono-Regular, 'Courier New', monospace";
-  const rowsHtml = view.rows
-    .map(
-      ([label, value]) => `<tr>
-        <td style="padding:7px 0;font-size:11px;color:#3A3A3A;white-space:nowrap;">${label}</td>
-        <td style="width:100%;padding:7px 6px;border-bottom:1px dotted #B8AF9C;"></td>
-        <td style="padding:7px 0;font-size:11px;font-weight:700;color:#1A1A1A;white-space:nowrap;text-align:right;">${value}</td>
-      </tr>`,
-    )
-    .join("");
+  const { jpeg, pointWidth } = await renderReceiptJpeg(view);
+  const imageDataUri = `data:image/jpeg;base64,${jpeg.toString("base64")}`;
   return `<!doctype html>
 <html>
-  <body style="margin:0;background:#6D28D9;padding:40px 14px;font-family:${mono};">
-    <div style="max-width:380px;margin:0 auto;background:#F5F0E6;color:#1A1A1A;padding:26px 24px 30px;">
-      <table role="presentation" style="width:100%;"><tr>
-        <td style="font-size:12px;font-weight:700;letter-spacing:.05em;color:#7C3AED;">${view.copy.title.toUpperCase()}</td>
-        <td style="font-size:12px;font-weight:700;text-align:right;">No. ${view.number}</td>
-      </tr></table>
-
-      <p style="margin:22px 0 2px;text-align:center;font-size:26px;font-weight:800;font-style:italic;color:#7C3AED;">LINQ</p>
-      <p style="margin:0 0 16px;text-align:center;font-size:10px;letter-spacing:.04em;color:#4A4A4A;">${RECEIPT_TAGLINE}</p>
-
-      <div style="border-top:2px dashed #C9C2B4;"></div>
-      <p style="margin:14px 0;text-align:center;font-size:11px;letter-spacing:.03em;">DATE: ${view.dateLine}</p>
-      <div style="border-top:2px dashed #C9C2B4;margin-bottom:6px;"></div>
-
-      <table role="presentation" style="width:100%;border-collapse:collapse;">${rowsHtml}</table>
-
-      <div style="border-top:2px dashed #C9C2B4;margin:16px 0 18px;"></div>
-      <table role="presentation" style="width:100%;"><tr>
-        <td style="font-size:14px;font-weight:700;">TOTAL:</td>
-        <td style="font-size:14px;font-weight:700;text-align:right;">${view.totalValue}</td>
-      </tr></table>
-
-      <div style="margin:24px 0 10px;">${barcodeHtml(view.number)}</div>
-      <p style="margin:6px 0 20px;text-align:center;font-size:22px;font-weight:800;font-style:italic;color:#7C3AED;">Thank You!</p>
-
-      <div style="border-top:2px dashed #C9C2B4;"></div>
-      <table role="presentation" style="width:100%;margin-top:14px;"><tr>
-        <td style="font-size:9px;color:#4A4A4A;">
-          <a href="mailto:support@linq.xyz" style="color:#4A4A4A;">support@linq.xyz</a>
-        </td>
-        <td style="font-size:9px;color:#4A4A4A;text-align:right;letter-spacing:.04em;">LINQ.XYZ</td>
-      </tr></table>
-    </div>
-    <p style="max-width:380px;margin:18px auto 0;text-align:center;color:#E9DFFB;font-size:11px;font-family:Inter,Segoe UI,Arial,sans-serif;">${view.copy.summary}</p>
+  <body style="margin:0;background:#6d28d9;padding:32px 14px;font-family:Inter,Segoe UI,Arial,sans-serif;">
+    <img src="${imageDataUri}" width="${pointWidth}" alt="${view.copy.title}" style="display:block;width:100%;max-width:${pointWidth}px;margin:0 auto;" />
+    <p style="max-width:380px;margin:20px auto 0;text-align:center;color:#E9DFFB;font-size:12px;line-height:1.6;">${view.copy.summary}</p>
   </body>
 </html>`;
 }
 
-export function renderReceiptPdf(params: {
+export async function renderReceiptPdf(params: {
   kind: ReceiptKind;
   order?: OrderRecord;
   merchant: MerchantRecord;
   walletIncoming?: WalletIncomingRecord;
 }) {
   const view = buildReceiptView(params);
-  return createReceiptPdf({
-    title: view.copy.title,
-    receiptNumber: view.number,
-    brand: "LINQ",
-    tagline: RECEIPT_TAGLINE,
-    dateLine: view.dateLine,
-    rows: view.rows.map(([label, value]) => ({ label, value })),
-    totalLabel: "TOTAL:",
-    totalValue: view.totalValue,
-    footerLeft: "support@linq.xyz",
-    footerRight: "LINQ.XYZ",
-  });
+  const { jpeg, pixelWidth, pixelHeight, pointWidth, pointHeight } = await renderReceiptJpeg(view);
+  return createImagePdf({ jpeg, pixelWidth, pixelHeight, pointWidth, pointHeight });
 }
 
 async function sendResendEmail(input: {
@@ -263,16 +185,20 @@ export async function createAndSendReceipt(params: {
     if (existing) return existing;
   }
   const copy = statusCopy(params.kind);
-  const html = renderReceiptHtml(params);
-  const pdf = renderReceiptPdf(params);
   const subject = `Linq: ${copy.headline}`;
+  const filename = `${receiptNumber(params.kind, params.order?.id ?? params.walletIncoming?.id ?? makeSlug("notice"))}.pdf`;
+  // Rendered outside the retry-relevant part of the try so a render that
+  // succeeds but a send that fails still leaves something to inspect below.
+  let html = "";
+  let pdf = Buffer.alloc(0);
   try {
+    [html, pdf] = await Promise.all([renderReceiptHtml(params), renderReceiptPdf(params)]);
     const delivery = await sendResendEmail({
       to: params.recipientEmail,
       subject,
       html,
       pdf,
-      filename: `${receiptNumber(params.kind, params.order?.id ?? params.walletIncoming?.id ?? "notice")}.pdf`,
+      filename,
     });
     return addReceipt({
       orderId: params.order?.id,

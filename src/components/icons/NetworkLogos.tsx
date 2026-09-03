@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getChain, normalizeNetworkKey } from "@/lib/chains";
+import { cn } from "@/lib/utils";
 
 /**
  * Network badges, served as the source brand SVGs.
@@ -102,7 +103,15 @@ export function NetworkLogo({
       loading="lazy"
       decoding="async"
       onError={() => setFailed(true)}
-      className={className}
+      className={cn(
+        // Stellar's source mark is a flat black silhouette with no colour of its
+        // own — on dark surfaces (payer checkout follows the OS theme) it
+        // disappears against the near-black background, so it inverts to white
+        // there. Every other badge here is genuinely multi-colour and stays that
+        // way in both themes.
+        chain?.id === "stellar" && "dark:brightness-0 dark:invert",
+        className,
+      )}
       style={{ width: size, height: size, display: "block", flexShrink: 0, borderRadius: "50%" }}
     />
   );

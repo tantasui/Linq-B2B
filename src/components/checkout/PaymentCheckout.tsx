@@ -311,23 +311,25 @@ export function PaymentCheckout({
         <span className="w-10" />
       </header>
 
-      <section className="px-5 pb-8 pt-9 text-center">
-        <MerchantAvatar className="mx-auto h-[72px] w-[72px] rounded-full" />
-        {loading ? (
-          <div className="mt-5 flex flex-col items-center gap-2">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-3 w-24" />
-          </div>
-        ) : (
-          <>
-            <h1 className="mt-5 text-2xl font-semibold tracking-[-0.02em]">
-              {activeMerchant.businessName || "Merchant"}
-            </h1>
-            {activeMerchant.location ? (
-              <p className="mt-1.5 text-sm text-text-muted">{activeMerchant.location}</p>
-            ) : null}
-          </>
-        )}
+      <section className="px-5 pb-8 pt-9">
+        <div className="flex items-center gap-3.5">
+          <MerchantAvatar className="h-14 w-14 rounded-2xl" />
+          {loading ? (
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ) : (
+            <div className="min-w-0">
+              <h1 className="truncate text-xl font-semibold tracking-[-0.02em]">
+                {activeMerchant.businessName || "Merchant"}
+              </h1>
+              {activeMerchant.location ? (
+                <p className="mt-1 truncate text-sm text-text-muted">{activeMerchant.location}</p>
+              ) : null}
+            </div>
+          )}
+        </div>
 
         {locked ? (
           <div className="mt-7 rounded-lg bg-accent-soft px-5 py-6">
