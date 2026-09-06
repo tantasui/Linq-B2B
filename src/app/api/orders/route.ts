@@ -1,6 +1,7 @@
 import { chainSupportsToken, getChain } from "@/lib/chains";
 import { fail, handleApiError, ok } from "@/server/http";
 import { createLinqOrder } from "@/server/linq-offramp";
+import { createStellarOrder } from "@/server/linq-stellar";
 import { DEPOSIT_WINDOW_MS, expireOrderIfDue } from "@/server/order-expiry";
 import { getRequestMerchant } from "@/server/request-merchant";
 import { getClientKey, rateLimit } from "@/server/security";
@@ -59,27 +60,31 @@ export async function POST(request: Request) {
     });
     await addOrderEvent(order.id, "app", "order.initiated", { idempotencyKey, paymentLinkId: link.id, token, network: chain.id, amountNgn });
     try {
-      const linq = await createLinqOrder({
-        idempotencyKey,
-        amountNgn,
-        token,
-        network: chain.id,
-        bank,
-        payerName: input.payerName,
-      });
+      // Stellar is settled by its own standalone service, which owns its
+      // deposit accounts and confirms on-chain itself; every other chain goes
+      // through Linq's native /b2b/offramp, as before.
+      const result =
+        chain.id === "stellar"
+          ? await createStellarOrder({ idempotencyKey, amountNgn, bank, payerName: input.payerName })
+          : await createLinqOrder({ idempotencyKey, amountNgn, token, network: chain.id, bank, payerName: input.payerName });
       order = await updateOrder(order.id, {
-        quotedRate: linq.quotedRate,
-        cryptoAmountDue: linq.cryptoAmountDue,
-        paycrestOrderId: linq.linqOrderId,
-        providerReceiveAddress: linq.providerReceiveAddress,
-        // Linq only watches the deposit wallet for 10 minutes.
-        validUntil: new Date(Date.now() + DEPOSIT_WINDOW_MS).toISOString(),
-        status: linq.status,
-        paycrestPayload: linq.raw,
+        quotedRate: result.quotedRate,
+        cryptoAmountDue: result.cryptoAmountDue,
+        paycrestOrderId: result.linqOrderId,
+        providerReceiveAddress: result.providerReceiveAddress,
+        // Each provider watches its own deposit wallet for its own window —
+        // linq-stellar reports its real deadline; Linq's native flow doesn't,
+        // so 10 minutes (its own window) is assumed for it.
+        validUntil:
+          "depositDeadline" in result
+            ? result.depositDeadline
+            : new Date(Date.now() + DEPOSIT_WINDOW_MS).toISOString(),
+        status: result.status,
+        paycrestPayload: result.raw,
       }) ?? order;
-      await addOrderEvent(order.id, "app", `order.created.${linq.status}`, linq.raw);
+      await addOrderEvent(order.id, "app", `order.created.${result.status}`, result.raw);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Linq order creation failed.";
+      const message = error instanceof Error ? error.message : "Order creation failed.";
       await updateOrder(order.id, { status: "failed", paycrestPayload: { error: message } });
       await addOrderEvent(order.id, "app", "order.create_failed", { message });
       throw error;

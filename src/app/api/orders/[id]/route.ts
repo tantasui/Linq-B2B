@@ -1,6 +1,7 @@
 import { fail, handleApiError, ok } from "@/server/http";
-import { liveLinqEnabled } from "@/server/env";
+import { liveLinqEnabled, stellarServiceEnabled } from "@/server/env";
 import { getLinqOrderStatus } from "@/server/linq-offramp";
+import { getStellarOrderStatus } from "@/server/linq-stellar";
 import { logger } from "@/server/logger";
 import { expireOrderIfDue } from "@/server/order-expiry";
 import { addOrderEvent, getOrder, updateOrder } from "@/server/store";
@@ -17,31 +18,38 @@ export async function GET(_request: Request, { params }: Params) {
     let order = await getOrder(id);
     if (!order) return fail("Order not found.", 404);
 
-    // Only poll Linq if the order is non-terminal and has a Linq order ID
-    if (order.paycrestOrderId && liveLinqEnabled && !TERMINAL.has(order.status)) {
+    // Stellar orders are refreshed against the standalone Stellar service;
+    // every other chain is refreshed against Linq's native /b2b/status.
+    const isStellar = order.network === "stellar";
+    const providerEnabled = isStellar ? stellarServiceEnabled : liveLinqEnabled;
+
+    if (order.paycrestOrderId && providerEnabled && !TERMINAL.has(order.status)) {
       try {
-        const linq = await getLinqOrderStatus(order.paycrestOrderId);
-        const statusChanged = linq.status !== order.status;
+        const remote = isStellar
+          ? await getStellarOrderStatus(order.paycrestOrderId)
+          : await getLinqOrderStatus(order.paycrestOrderId);
+        const statusChanged = remote.status !== order.status;
         // The deposit digest appears once the payment is seen on-chain, which
         // does not always coincide with a status change — so it is saved on
         // its own rather than only riding along with one.
-        const digestArrived = Boolean(linq.depositDigest) && linq.depositDigest !== order.depositDigest;
+        const digestArrived = Boolean(remote.depositDigest) && remote.depositDigest !== order.depositDigest;
 
         if (statusChanged || digestArrived) {
           order = await updateOrder(order.id, {
-            ...(statusChanged ? { status: linq.status } : {}),
-            ...(digestArrived ? { depositDigest: linq.depositDigest } : {}),
-            paycrestPayload: linq.raw,
+            ...(statusChanged ? { status: remote.status } : {}),
+            ...(digestArrived ? { depositDigest: remote.depositDigest } : {}),
+            paycrestPayload: remote.raw,
           }) ?? order;
         }
         if (statusChanged) {
-          await addOrderEvent(order.id, "linq", `order.refresh.${linq.status}`, linq.raw);
+          await addOrderEvent(order.id, "linq", `order.refresh.${remote.status}`, remote.raw);
         }
       } catch (error) {
-        logger.warn("linq.order_refresh_failed", {
+        logger.warn("order_refresh_failed", {
           orderId: order.id,
-          linqOrderId: order.paycrestOrderId,
-          message: error instanceof Error ? error.message : "Linq order refresh failed.",
+          provider: isStellar ? "linq-stellar" : "linq",
+          providerOrderId: order.paycrestOrderId,
+          message: error instanceof Error ? error.message : "Order refresh failed.",
         });
       }
     }

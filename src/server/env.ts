@@ -18,6 +18,12 @@ const rawEnv = z.object({
   LINQ_OFFRAMP_API_KEY: optionalString,
   LINQ_OFFRAMP_API_URL: defaultedUrl("https://confidential-brianna-uselinq-52e2b233.koyeb.app"),
   LINQ_OFFRAMP_WEBHOOK_SECRET: optionalString,
+  // The standalone Stellar settlement service (github.com/Rinku-Labs/linq-stellar).
+  // It owns its own deposit accounts and confirms deposits on-chain itself, so a
+  // Stellar order goes here directly rather than through LINQ_OFFRAMP_API_URL's
+  // /b2b/offramp, which mints a wallet from Linq's separate, native per-chain
+  // workers instead.
+  STELLAR_SERVICE_URL: defaultedUrl("https://linq-stellar-uselinq-4c0e2a4f.koyeb.app"),
   NEXT_PUBLIC_DYNAMIC_ENV_ID: optionalString,
   DYNAMIC_API_TOKEN: optionalString,
   DYNAMIC_WEBHOOK_SECRET: optionalString,
@@ -41,6 +47,7 @@ export const env = rawEnv.parse({
   LINQ_OFFRAMP_API_KEY: process.env.LINQ_OFFRAMP_API_KEY,
   LINQ_OFFRAMP_API_URL: process.env.LINQ_OFFRAMP_API_URL,
   LINQ_OFFRAMP_WEBHOOK_SECRET: process.env.LINQ_OFFRAMP_WEBHOOK_SECRET,
+  STELLAR_SERVICE_URL: process.env.STELLAR_SERVICE_URL,
   NEXT_PUBLIC_DYNAMIC_ENV_ID: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID,
   DYNAMIC_API_TOKEN: process.env.DYNAMIC_API_TOKEN,
   DYNAMIC_WEBHOOK_SECRET: process.env.DYNAMIC_WEBHOOK_SECRET,
@@ -56,6 +63,9 @@ export const env = rawEnv.parse({
 
 export const livePaycrestEnabled = Boolean(env.PAYCREST_API_KEY);
 export const liveLinqEnabled = Boolean(env.LINQ_OFFRAMP_API_KEY);
+// The Stellar service takes no API key today, so this is just whether a base
+// URL is configured — true unless STELLAR_SERVICE_URL is deliberately cleared.
+export const stellarServiceEnabled = Boolean(env.STELLAR_SERVICE_URL);
 export const liveDynamicEnabled = Boolean(env.NEXT_PUBLIC_DYNAMIC_ENV_ID);
 export const databaseEnabled = Boolean(env.DATABASE_URL);
 export const redisEnabled = Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN);
