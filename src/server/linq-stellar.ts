@@ -11,8 +11,9 @@ import type { BankAccountRecord, OrderRecord } from "./types";
  * Unlike every other chain, Stellar orders do not go through Linq's
  * `/b2b/offramp` — this service owns its own deposit accounts, watches Horizon
  * itself, and asks the Linq backend to pay the merchant only once it has
- * confirmed a deposit on-chain. It has no API key today; the request never
- * leaves this server, so the payer's browser never sees its URL.
+ * confirmed a deposit on-chain. Order creation and lookup are gated on a
+ * shared secret (X-API-Key); the request never leaves this server, so the
+ * payer's browser never sees its URL or the key.
  */
 async function requestStellar<T>(path: string, init?: RequestInit): Promise<T> {
   if (!stellarServiceEnabled) throw new ApiError("Stellar settlement service is not configured.", 503);
@@ -20,7 +21,11 @@ async function requestStellar<T>(path: string, init?: RequestInit): Promise<T> {
   const startedAt = Date.now();
   const response = await fetch(`${env.STELLAR_SERVICE_URL}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": env.STELLAR_SERVICE_API_KEY!,
+      ...init?.headers,
+    },
     cache: "no-store",
   });
   const body = await response.json().catch(() => ({})) as Record<string, unknown>;

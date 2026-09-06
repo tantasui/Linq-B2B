@@ -24,6 +24,10 @@ const rawEnv = z.object({
   // /b2b/offramp, which mints a wallet from Linq's separate, native per-chain
   // workers instead.
   STELLAR_SERVICE_URL: defaultedUrl("https://linq-stellar-uselinq-4c0e2a4f.koyeb.app"),
+  // Shared secret sent as X-API-Key to linq-stellar's POST /orders and
+  // GET /orders/{id} — the only two routes it gates. Must match ORDERS_API_KEY
+  // on that service.
+  STELLAR_SERVICE_API_KEY: optionalString,
   NEXT_PUBLIC_DYNAMIC_ENV_ID: optionalString,
   DYNAMIC_API_TOKEN: optionalString,
   DYNAMIC_WEBHOOK_SECRET: optionalString,
@@ -48,6 +52,7 @@ export const env = rawEnv.parse({
   LINQ_OFFRAMP_API_URL: process.env.LINQ_OFFRAMP_API_URL,
   LINQ_OFFRAMP_WEBHOOK_SECRET: process.env.LINQ_OFFRAMP_WEBHOOK_SECRET,
   STELLAR_SERVICE_URL: process.env.STELLAR_SERVICE_URL,
+  STELLAR_SERVICE_API_KEY: process.env.STELLAR_SERVICE_API_KEY,
   NEXT_PUBLIC_DYNAMIC_ENV_ID: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID,
   DYNAMIC_API_TOKEN: process.env.DYNAMIC_API_TOKEN,
   DYNAMIC_WEBHOOK_SECRET: process.env.DYNAMIC_WEBHOOK_SECRET,
@@ -63,9 +68,9 @@ export const env = rawEnv.parse({
 
 export const livePaycrestEnabled = Boolean(env.PAYCREST_API_KEY);
 export const liveLinqEnabled = Boolean(env.LINQ_OFFRAMP_API_KEY);
-// The Stellar service takes no API key today, so this is just whether a base
-// URL is configured — true unless STELLAR_SERVICE_URL is deliberately cleared.
-export const stellarServiceEnabled = Boolean(env.STELLAR_SERVICE_URL);
+// POST /orders and GET /orders/{id} on the Stellar service now require
+// X-API-Key, so this is only true once both the URL and the key are set.
+export const stellarServiceEnabled = Boolean(env.STELLAR_SERVICE_URL && env.STELLAR_SERVICE_API_KEY);
 export const liveDynamicEnabled = Boolean(env.NEXT_PUBLIC_DYNAMIC_ENV_ID);
 export const databaseEnabled = Boolean(env.DATABASE_URL);
 export const redisEnabled = Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN);
