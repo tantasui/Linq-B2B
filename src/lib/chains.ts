@@ -19,6 +19,12 @@ import type { StablecoinSymbol } from "@/lib/payment-data";
  * - Chains enabled here are settled by Linq (the upstream offramp). `linqNetwork` is
  *   the exact chain string sent to Linq's /b2b/offramp; adjust it in one place if Linq
  *   expects a different identifier for a given chain.
+ * - ORDER IS DISPLAY ORDER. Every chain list in the UI renders CHAINS/ENABLED_CHAINS
+ *   in array order, and two of them truncate: the "Pay with crypto" button shows the
+ *   first four logos and the design-system preview the first three tabs. Stellar is
+ *   deliberately first — it is the chain we lead with, and anywhere a default network
+ *   is picked, it is the one that wins. Re-sorting this array (alphabetically, say)
+ *   silently changes what payers see and can drop a chain out of the truncated lists.
  */
 
 export type ChainFamily = "sui" | "evm" | "solana" | "tron" | "stellar";
@@ -43,6 +49,25 @@ export interface ChainConfig {
 }
 
 export const CHAINS: ChainConfig[] = [
+  {
+    id: "stellar",
+    name: "Stellar",
+    // The chain, not the asset. Payers send USDC on Stellar, never XLM, so
+    // labelling the network "XLM" invited exactly the mistake the SEP-7 QR
+    // below exists to prevent.
+    shortName: "Stellar",
+    family: "stellar",
+    tokens: ["USDC"],
+    linqNetwork: "stellar",
+    // Dynamic has no Stellar connector, so merchants cannot hold an embedded
+    // Stellar wallet; this is payer-deposit only, like Tron.
+    hasWalletConnector: false,
+    // Stellar public keys are 56 chars of base32 (RFC4648, no 0/1/8) starting
+    // with G. Strict enough that no other chain's address shape can pass.
+    addressPattern: /^G[A-Z2-7]{55}$/,
+    color: "#7D00FF",
+    enabled: true,
+  },
   {
     id: "sui",
     name: "Sui",
@@ -92,25 +117,6 @@ export const CHAINS: ChainConfig[] = [
     hasWalletConnector: true,
     addressPattern: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
     color: "#14F195",
-    enabled: true,
-  },
-  {
-    id: "stellar",
-    name: "Stellar",
-    // The chain, not the asset. Payers send USDC on Stellar, never XLM, so
-    // labelling the network "XLM" invited exactly the mistake the SEP-7 QR
-    // below exists to prevent.
-    shortName: "Stellar",
-    family: "stellar",
-    tokens: ["USDC"],
-    linqNetwork: "stellar",
-    // Dynamic has no Stellar connector, so merchants cannot hold an embedded
-    // Stellar wallet; this is payer-deposit only, like Tron.
-    hasWalletConnector: false,
-    // Stellar public keys are 56 chars of base32 (RFC4648, no 0/1/8) starting
-    // with G. Strict enough that no other chain's address shape can pass.
-    addressPattern: /^G[A-Z2-7]{55}$/,
-    color: "#7D00FF",
     enabled: true,
   },
   {

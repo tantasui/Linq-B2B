@@ -37,11 +37,11 @@ const sampleOrder: OrderRecord = {
   payerEmail: "adaeze@example.com",
   amountNgn: 485_000,
   token: "USDC",
-  network: "base",
+  network: "stellar",
   quotedRate: 1612,
   cryptoAmountDue: 300.87,
   transactionFee: 0.45,
-  paycrestOrderId: "0x7d3f9ac41b8e25f6a0c9",
+  paycrestOrderId: "3f8a1c7d92b45e60a1d83c4f7e29b0d6c58a3719fe402bd6183c9a75e4b02d18",
   status: "settled",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -69,8 +69,8 @@ function Swatch({ name, className }: { name: string; className: string }) {
 }
 
 export default function PreviewPage() {
-  const [network, setNetwork] = useState("base");
-  const [tab, setTab] = useState("sui");
+  const [network, setNetwork] = useState("stellar");
+  const [tab, setTab] = useState("stellar");
   const [date, setDate] = useState(new Date());
   const [armed, setArmed] = useState(false);
   const [notify, setNotify] = useState(true);
