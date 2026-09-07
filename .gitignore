@@ -19,6 +19,7 @@
 .claude/
 .env
 .env*
+!.env.example
 .npm-cache/
 .pnp.*
 .pnpm-debug.log*
