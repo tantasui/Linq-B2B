@@ -478,10 +478,7 @@ export function PaymentCheckout({
           </Button>
         }
       >
-        {/* pt-3: clears room for the "0 fees" pill, which sits above the tile
-            top edge — with no top padding here it pokes above the sheet's
-            scroll container and gets clipped at scrollTop 0. */}
-        <div className="grid grid-cols-3 gap-3 pt-3">
+        <div className="grid grid-cols-3 gap-3">
           {ENABLED_CHAINS.map((chain) => (
             <ChoiceTile
               key={chain.id}
