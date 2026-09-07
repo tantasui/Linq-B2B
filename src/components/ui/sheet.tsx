@@ -253,7 +253,12 @@ export function Sheet({
           ) : null}
           <div
             ref={contentRef}
-            className="min-h-0 flex-1 overflow-y-auto px-5 pb-[max(2rem,env(safe-area-inset-bottom))] sm:pb-6"
+            // pt-3: this is a scroll container, so anything content renders
+            // above its own top edge — a badge, a focus ring, a negative
+            // margin — is clipped the instant scrollTop is 0, with nothing
+            // in the DOM to suggest why. A little headroom here means
+            // content doesn't each need to work around that individually.
+            className="min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-[max(2rem,env(safe-area-inset-bottom))] sm:pb-6"
           >
             {children}
           </div>

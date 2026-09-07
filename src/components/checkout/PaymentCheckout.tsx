@@ -121,27 +121,53 @@ function ChoiceTile({
   selected,
   onClick,
   children,
+  highlighted,
+  badge,
 }: {
   selected: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  /** Draws the accent ring at rest, not just once picked — for steering a
+   * payer toward one option (e.g. Stellar's zero fee) without disabling the
+   * rest. Selection still wins once tapped; this only affects the idle look. */
+  highlighted?: boolean;
+  /** Small pill centered on the tile's top edge, e.g. "0 fees". */
+  badge?: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex h-24 flex-col items-center justify-center gap-2.5 rounded-md bg-surface",
-        "ring-1 ring-line transition duration-fast ease-linq active:scale-[0.97]",
-        // Selected badges get a ring and a slight lift rather than being greyed
-        // out — payers rely on true brand colour to recognise a chain.
-        selected ? "shadow-md ring-2 ring-accent" : "hover:shadow-md",
-      )}
-    >
-      <span className={cn("transition-transform duration-fast ease-linq", selected && "scale-105")}>
-        {children}
-      </span>
-    </button>
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "flex h-24 w-full flex-col items-center justify-center gap-2.5 rounded-md bg-surface",
+          "ring-1 ring-line transition duration-fast ease-linq active:scale-[0.97]",
+          // Selected badges get a ring and a slight lift rather than being greyed
+          // out — payers rely on true brand colour to recognise a chain.
+          selected
+            ? "shadow-md ring-2 ring-accent"
+            : highlighted
+              ? "ring-accent/40 hover:shadow-md hover:ring-accent/60"
+              : "hover:shadow-md",
+        )}
+      >
+        <span className={cn("transition-transform duration-fast ease-linq", selected && "scale-105")}>
+          {children}
+        </span>
+      </button>
+      {badge ? (
+        <span
+          className={cn(
+            "pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full",
+            // ring-surface (not ring-bg): this sheet's body is bg-surface, so a
+            // ring in that colour is what actually reads as a clean notch here.
+            "bg-accent-soft px-2 py-0.5 text-[10px] font-medium leading-none text-accent-text ring-2 ring-surface",
+          )}
+        >
+          {badge}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -458,6 +484,12 @@ export function PaymentCheckout({
               key={chain.id}
               selected={networkId === chain.id}
               onClick={() => setNetworkId(chain.id)}
+              // Stellar is the chain we settle ourselves and charge nothing on,
+              // so it gets a quiet nudge here: the accent ring at rest and a
+              // "0 fees" pill, not a louder treatment that would read as an
+              // alert rather than a nudge.
+              highlighted={chain.id === "stellar"}
+              badge={chain.id === "stellar" ? "0 fees" : undefined}
             >
               <NetworkLogo network={chain.id} size={32} />
               {/* Paired with its label the first time it is shown, so the payer
