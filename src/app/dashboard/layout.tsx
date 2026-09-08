@@ -2,16 +2,14 @@
 
 import type { AnimationEvent } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Home, LogOut, QrCode, ReceiptText, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getMerchantMe, setActiveBusinessId, setActiveDynamicUserId, syncMerchantWallets } from "@/lib/api-client";
-import { tokensForNetwork } from "@/lib/chains";
-import type { MerchantRecord, StablecoinSymbol } from "@/server/types";
+import { clearActiveSession, getMerchantMe, setActiveBusinessId } from "@/lib/api-client";
+import type { MerchantRecord } from "@/server/types";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
 import { NotificationCenter } from "@/components/NotificationCenter";
-import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
 import { LinqMark, LinqWordmark } from "@/components/brand/LinqMark";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
@@ -36,47 +34,24 @@ function clearPageInAnimation(event: AnimationEvent<HTMLElement>) {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const dynamic = useDynamicBridge();
   const isDashboardHome = pathname === "/dashboard";
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
-  const lastWalletSync = useRef("");
-  const dynamicUserId = dynamic.user?.id ?? "";
-  const walletPayload = useMemo(
-    () =>
-      dynamic.wallets.map((wallet) => ({
-        walletId: wallet.id,
-        chain: wallet.chain,
-        network: wallet.network,
-        address: wallet.address,
-        walletType: wallet.walletType,
-        tokenSupport: (tokensForNetwork(wallet.network).length
-          ? tokensForNetwork(wallet.network)
-          : ["USDC"]) as StablecoinSymbol[],
-      })),
-    [dynamic.wallets],
-  );
+  const router = useRouter();
 
+  // Sessions come from the email sign-in code now, so signing out means
+  // clearing the local session rather than disconnecting a wallet provider.
+  const signOut = () => {
+    clearActiveSession();
+    router.replace("/login");
+  };
   useEffect(() => {
-    if (dynamicUserId) setActiveDynamicUserId(dynamicUserId);
     getMerchantMe()
       .then((data) => {
         setMerchant(data.merchant);
         if (data.merchant?.id) setActiveBusinessId(data.merchant.id);
       })
       .catch(() => setMerchant(null));
-  }, [dynamicUserId]);
-
-  useEffect(() => {
-    if (!merchant?.id || !walletPayload.length) return;
-    const signature = JSON.stringify({ businessId: merchant.id, walletPayload });
-    if (lastWalletSync.current === signature) return;
-    lastWalletSync.current = signature;
-    syncMerchantWallets({ businessId: merchant.id, wallets: walletPayload })
-      .then(({ wallets }) => setMerchant((current) => (current ? { ...current, wallets } : current)))
-      .catch(() => {
-        lastWalletSync.current = "";
-      });
-  }, [merchant?.id, walletPayload]);
+  }, []);
 
   const pageTitle = navigation.find((entry) => entry.href === pathname)?.name ?? "Dashboard";
 
@@ -126,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-4">
           <button
             type="button"
-            onClick={dynamic.disconnect}
+            onClick={signOut}
             className={cn(
               "flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium text-text-muted",
               "transition-colors duration-fast ease-linq hover:bg-danger-soft hover:text-danger",

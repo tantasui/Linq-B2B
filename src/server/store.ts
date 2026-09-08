@@ -219,6 +219,31 @@ export async function getMerchantByDynamicUserId(dynamicUserId?: string) {
   return state().merchants.find((merchant) => merchant.dynamicUserId === dynamicUserId);
 }
 
+/**
+ * Looks a merchant up by the email they sign in with.
+ *
+ * This is the lookup behind email one-time-code sign-in. Emails are compared
+ * case-insensitively because an address typed with different capitalisation is
+ * the same mailbox, and someone locked out of their own account by a capital
+ * letter would have no way to tell why.
+ */
+export async function getMerchantByEmail(email?: string) {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (databaseEnabled) {
+    const result = await queryDb<Row>(
+      `select b.*, u.dynamic_user_id, u.email as user_email, u.name as user_name
+       from merchant_businesses b
+       join users u on u.id = b.user_id
+       where lower(u.email) = $1
+       limit 1`,
+      [normalized],
+    );
+    return hydrateMerchant(result?.rows[0]);
+  }
+  return state().merchants.find((merchant) => merchant.userEmail?.toLowerCase() === normalized);
+}
+
 export async function upsertMerchant(input: Omit<MerchantRecord, "id" | "onboardingStatus" | "bankAccounts" | "wallets"> & {
   bankAccounts: BankAccountRecord[];
   wallets: MerchantWalletRecord[];

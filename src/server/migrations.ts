@@ -45,6 +45,24 @@ const REGISTRY: Migration[] = [
       "CREATE INDEX CONCURRENTLY IF NOT EXISTS wallet_incoming_business_id_idx ON wallet_incoming(business_id)",
     ],
   },
+  {
+    // Email sign-in codes, replacing the Dynamic-hosted login. Also in
+    // db/schema.sql for fresh databases; this is what brings existing ones up.
+    id: "2026_09_08_login_codes",
+    statements: [
+      `CREATE TABLE IF NOT EXISTS login_codes (
+         id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+         email       text NOT NULL,
+         code_hash   text NOT NULL,
+         attempts    integer NOT NULL DEFAULT 0,
+         expires_at  timestamptz NOT NULL,
+         consumed_at timestamptz,
+         created_at  timestamptz NOT NULL DEFAULT now()
+       )`,
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS login_codes_email_live_idx
+         ON login_codes (email, created_at DESC) WHERE consumed_at IS NULL`,
+    ],
+  },
 ];
 
 // Safe to call on every boot: already-applied migrations are skipped, and

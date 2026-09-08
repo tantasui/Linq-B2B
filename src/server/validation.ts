@@ -37,8 +37,10 @@ export const walletSyncSchema = z.object({
 });
 
 export const merchantOnboardingSchema = z.object({
-  dynamicUserId: text(120),
-  userEmail: emailSchema,
+  // Proof from the sign-in code flow that the caller controls the address this
+  // account is created under. The address itself is read out of the token, not
+  // out of the request — see the onboarding route.
+  emailProof: text(600),
   userName: text(120).optional(),
   businessName: text(140),
   merchantName: text(120),
