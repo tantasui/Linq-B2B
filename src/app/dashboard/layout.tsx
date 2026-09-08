@@ -2,11 +2,11 @@
 
 import type { AnimationEvent } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Home, LogOut, QrCode, ReceiptText, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getMerchantMe, setActiveBusinessId, setActiveDynamicUserId, syncMerchantWallets } from "@/lib/api-client";
+import { clearActiveSession, getMerchantMe, setActiveBusinessId, setActiveDynamicUserId, syncMerchantWallets } from "@/lib/api-client";
 import { tokensForNetwork } from "@/lib/chains";
 import type { MerchantRecord, StablecoinSymbol } from "@/server/types";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
@@ -40,7 +40,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isDashboardHome = pathname === "/dashboard";
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
   const lastWalletSync = useRef("");
+  const router = useRouter();
   const dynamicUserId = dynamic.user?.id ?? "";
+
+  // Sessions come from the email sign-in code now, so signing out means
+  // clearing the local session rather than disconnecting a wallet provider.
+  const signOut = () => {
+    clearActiveSession();
+    dynamic.disconnect();
+    router.replace("/login");
+  };
   const walletPayload = useMemo(
     () =>
       dynamic.wallets.map((wallet) => ({
@@ -126,7 +135,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-4">
           <button
             type="button"
-            onClick={dynamic.disconnect}
+            onClick={signOut}
             className={cn(
               "flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium text-text-muted",
               "transition-colors duration-fast ease-linq hover:bg-danger-soft hover:text-danger",

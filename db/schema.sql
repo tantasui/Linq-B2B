@@ -155,3 +155,21 @@ create table if not exists wallet_incoming (
 );
 
 create index if not exists wallet_incoming_business_id_idx on wallet_incoming(business_id);
+
+-- Email one-time codes for merchant sign-in.
+-- Codes are stored hashed; a database dump must not yield working credentials.
+CREATE TABLE IF NOT EXISTS login_codes (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email       text NOT NULL,
+  code_hash   text NOT NULL,
+  attempts    integer NOT NULL DEFAULT 0,
+  expires_at  timestamptz NOT NULL,
+  consumed_at timestamptz,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+-- Every lookup is "the newest live code for this email", so the index carries
+-- the filter columns rather than just the email.
+CREATE INDEX IF NOT EXISTS login_codes_email_live_idx
+  ON login_codes (email, created_at DESC)
+  WHERE consumed_at IS NULL;

@@ -6,7 +6,7 @@ import { MerchantAvatar, merchantLogoChangedEvent, merchantLogoStorageKey } from
 import { MerchantOnboarding } from "@/components/onboarding/MerchantOnboarding";
 import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
 import { useTheme } from "@/components/providers/ThemeProvider";
-import { getMerchantMe } from "@/lib/api-client";
+import { clearActiveSession, getMerchantMe } from "@/lib/api-client";
 import { getBankLogo } from "@/lib/banks";
 import { formatWalletLabel, shortAddress } from "@/lib/wallets";
 import type { MerchantRecord } from "@/server/types";
@@ -271,7 +271,11 @@ export default function SettingsPage() {
         </>
       ) : null}
 
-      <Button variant="danger" size="lg" className="w-full" onClick={dynamic.disconnect}>
+      <Button variant="danger" size="lg" className="w-full" onClick={() => {
+          clearActiveSession();
+          dynamic.disconnect();
+          window.location.href = "/login";
+        }}>
         <LogOut className="h-4 w-4" /> Log out
       </Button>
     </div>
