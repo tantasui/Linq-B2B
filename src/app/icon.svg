@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Linq">
+  <!-- Solid brand-accent tile rather than a transparent glyph: a favicon sits on
+       whatever colour the browser chooses for its tab strip, and a transparent
+       mark disappears against one of the two themes. -->
+  <rect width="512" height="512" rx="112" fill="#8A4FFF"/>
+  <!-- The Linq mark, centred on the tile. The transform is derived from the
+       paths' real bounds (105.84 x 99.77), not the source viewBox, which is
+       larger than the glyph and would push it off-centre. -->
+  <g transform="translate(111.07 119.69) scale(2.8342)" fill="#FFFFFF">
+    <path transform="translate(-191 -152.67)" d="M251.773 157.934L277.89 187.63L266.03 198.138L243.5 172.519C241.636 170.399 238.41 170.198 236.297 172.069L210.774 194.683C208.661 196.556 208.461 199.791 210.325 201.912L232.854 227.531C234.718 229.652 237.944 229.853 240.057 227.982L242.709 225.632L253.178 237.537L246.462 243.488C240.042 249.175 230.246 248.562 224.579 242.119L194.881 208.345C189.214 201.902 189.825 192.068 196.243 186.381L229.89 156.567C236.31 150.88 246.107 151.492 251.773 157.934Z"/>
+    <path transform="translate(-191 -152.67)" d="M247.564 203.386L270.094 229.005C271.96 231.126 275.184 231.326 277.297 229.455L284.587 222.997L295.056 234.902L283.704 244.959C277.286 250.647 267.487 250.034 261.821 243.592L232.118 209.819C226.452 203.375 227.062 193.542 233.48 187.854L244.832 177.797L255.301 189.702L248.011 196.16C245.898 198.031 245.698 201.269 247.562 203.39L247.564 203.386Z"/>
+  </g>
+</svg>

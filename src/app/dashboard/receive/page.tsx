@@ -325,7 +325,14 @@ export default function ReceivePage() {
           <Button variant="secondary" onClick={share}>
             <Share2 className="h-4 w-4" /> Share
           </Button>
-          <Link href={relativeLink} className={buttonClasses({ variant: "secondary" })}>
+          {/* Opens in a new tab: previewing is a side trip, and navigating away
+              would lose the link the merchant is part-way through sharing. */}
+          <Link
+            href={relativeLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClasses({ variant: "secondary" })}
+          >
             <ExternalLink className="h-4 w-4" /> Preview
           </Link>
         </div>
