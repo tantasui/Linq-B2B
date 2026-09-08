@@ -11,10 +11,6 @@
     "test:migrations": "bunx tsx scripts/migrations-smoketest.ts"
   },
   "dependencies": {
-    "@dynamic-labs/ethereum": "4.84.1",
-    "@dynamic-labs/sdk-react-core": "4.84.1",
-    "@dynamic-labs/solana": "4.84.1",
-    "@dynamic-labs/sui": "4.84.1",
     "@upstash/redis": "^1.38.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

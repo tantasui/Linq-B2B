@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import ClientBody from "./ClientBody";
-import { DynamicBridgeProvider } from "@/components/providers/DynamicBridgeProvider";
 import { ThemeProvider, themeBootScript } from "@/components/providers/ThemeProvider";
 import { ToastProvider } from "@/components/ui/toast";
 
@@ -42,9 +41,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body suppressHydrationWarning className="antialiased">
         <ThemeProvider>
           <ToastProvider>
-            <DynamicBridgeProvider>
-              <ClientBody>{children}</ClientBody>
-            </DynamicBridgeProvider>
+            <ClientBody>{children}</ClientBody>
           </ToastProvider>
         </ThemeProvider>
       </body>

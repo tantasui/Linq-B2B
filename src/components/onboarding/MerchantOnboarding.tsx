@@ -3,11 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Mail, Search, ShieldCheck } from "lucide-react";
-import { getActiveBusinessId, getActiveDynamicUserId, getActiveSessionToken, getMerchantMe, onboardMerchant, setActiveBusinessId, setActiveDynamicUserId, verifyBank } from "@/lib/api-client";
-import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
+import { getActiveBusinessId, getActiveSessionToken, getMerchantMe, onboardMerchant, setActiveBusinessId, verifyBank } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { getBankByCode, nigerianBanks } from "@/lib/banks";
-import { tokensForNetwork } from "@/lib/chains";
 import { SegmentedBar } from "@/components/brand/SegmentedBar";
 import { LinqMark } from "@/components/brand/LinqMark";
 import { Button } from "@/components/ui/button";
@@ -25,8 +23,14 @@ const steps: Array<{ id: Step; label: string }> = [
 
 export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string }) {
   const router = useRouter();
-  const dynamic = useDynamicBridge();
   const [step, setStep] = useState<Step>("account");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  // Server-signed proof that this address was confirmed by a one-time code.
+  // The account is created under the address inside it, not the one typed in.
+  const [emailProof, setEmailProof] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [merchantName, setMerchantName] = useState("");
   const [businessEmail, setBusinessEmail] = useState("");
@@ -49,30 +53,18 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
       .filter((bank) => bank.name.toLowerCase().includes(query) || bank.code.includes(query))
       .slice(0, 10);
   }, [bankQuery]);
-  const accountSignedIn = dynamic.connected && Boolean(dynamic.user?.id);
+  const accountSignedIn = Boolean(emailProof);
   const continueDisabled = saving;
-
-  const wallets = dynamic.wallets.map((wallet) => ({
-    walletId: wallet.id,
-    chain: wallet.chain,
-    network: wallet.network,
-    address: wallet.address,
-    walletType: wallet.walletType,
-    tokenSupport: tokensForNetwork(wallet.network).length ? tokensForNetwork(wallet.network) : ["USDC"],
-  }));
 
   useEffect(() => {
     if (!onCompleteHref) return;
     let cancelled = false;
     const storedBusinessId = getActiveBusinessId();
-    const storedDynamicUserId = getActiveDynamicUserId();
     const storedSessionToken = getActiveSessionToken();
-    if (dynamic.user?.id) setActiveDynamicUserId(dynamic.user.id);
-    if (!dynamic.user?.id && !storedBusinessId && !storedDynamicUserId && !storedSessionToken) return;
+    if (!storedBusinessId && !storedSessionToken) return;
     getMerchantMe()
       .then(({ merchant }) => {
         if (cancelled || !merchant?.id) return;
-        if (dynamic.user?.id && merchant.dynamicUserId !== dynamic.user.id) return;
         setActiveBusinessId(merchant.id);
         router.replace(onCompleteHref);
       })
@@ -80,7 +72,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
     return () => {
       cancelled = true;
     };
-  }, [dynamic.user?.id, onCompleteHref, router]);
+  }, [onCompleteHref, router]);
 
   useEffect(() => {
     setVerifiedName(undefined);
@@ -101,25 +93,70 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
     return () => window.clearTimeout(timer);
   }, [institutionCode, accountIdentifier]);
 
-  const startSignIn = async () => {
+  const sendCode = async () => {
     setFeedback("");
+    setSendingCode(true);
     try {
-      await dynamic.connect();
-      if (!dynamic.connected) setFeedback("Complete sign in, then continue.");
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Sign-in could not start.");
+      const response = await fetch("/api/auth/request-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setFeedback(body?.message ?? "Could not send a code. Try again.");
+        return;
+      }
+      setCodeSent(true);
+    } catch {
+      setFeedback("Could not reach the server. Check your connection.");
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const confirmCode = async () => {
+    setFeedback("");
+    setSendingCode(true);
+    try {
+      const response = await fetch("/api/auth/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setFeedback(body?.message ?? "That code is incorrect or has expired.");
+        return;
+      }
+      // An address that already has a merchant account signs straight in
+      // rather than being walked through setup a second time.
+      if (body.token) {
+        setActiveBusinessId(body.merchant?.id ?? "");
+        router.replace(onCompleteHref ?? "/dashboard");
+        return;
+      }
+      if (!body.emailProof) {
+        setFeedback("Could not verify that address. Try again.");
+        return;
+      }
+      setEmailProof(body.emailProof);
+      // Prefill the business email with the verified one; most merchants use
+      // the same address for both, and it stays editable.
+      setBusinessEmail((current) => current || body.email || email.trim());
+      setStep("business");
+    } catch {
+      setFeedback("Could not reach the server. Check your connection.");
+    } finally {
+      setSendingCode(false);
     }
   };
 
   const next = async () => {
     setFeedback("");
     if (step === "account") {
-      if (!dynamic.connected) {
-        await startSignIn();
-        return;
-      }
-      if (!dynamic.user?.id || !dynamic.user.email) {
-        setFeedback("Finish sign in before continuing.");
+      if (!accountSignedIn) {
+        setFeedback("Verify your email before continuing.");
         return;
       }
       setStep("business");
@@ -159,19 +196,12 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
     setSaving(true);
     setFeedback("");
     try {
-      if (!dynamic.connected) {
-        await dynamic.connect();
-        setFeedback("Complete sign in, then press save again.");
-        return;
+      if (!emailProof) {
+        throw new Error("Verify your email before saving merchant setup.");
       }
-      if (!dynamic.user?.id || !dynamic.user.email) {
-        throw new Error("Sign in before saving merchant setup.");
-      }
-      setActiveDynamicUserId(dynamic.user.id);
       const response = await onboardMerchant({
-        dynamicUserId: dynamic.user.id,
-        userEmail: dynamic.user.email,
-        userName: dynamic.user.name ?? merchantName,
+        emailProof,
+        userName: merchantName,
         businessName,
         merchantName,
         businessEmail,
@@ -182,7 +212,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
           institutionName: selectedBank?.name,
           resolvedAccountName: verifiedName,
         },
-        wallets,
+        wallets: [],
       });
       setFeedback(`Saved ${response.merchant.businessName}. Bank account is ${response.merchant.bankAccounts[0]?.verificationStatus}.`);
       if (onCompleteHref) router.push(onCompleteHref);
@@ -230,12 +260,12 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
           <div className="rounded-md bg-surface-2 p-4">
             <p className="flex items-center gap-2 text-sm font-medium">
               <Mail className="h-4 w-4 text-accent-text" />
-              {accountSignedIn ? "Signed in" : "Create your account"}
+              {accountSignedIn ? "Email verified" : "Create your account"}
             </p>
             <p className="mt-2 text-xs leading-5 text-text-muted">
               {accountSignedIn
-                ? `Signed in as ${dynamic.user?.email}. Continue to your business details.`
-                : "Use email or Google. This is also how you will log in later."}
+                ? `Verified ${email.trim()}. Continue to your business details.`
+                : "We'll email you a 6-digit code. This is also how you will log in later."}
             </p>
           </div>
 
@@ -243,10 +273,73 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
             <p className="flex items-center gap-2 text-xs text-success">
               <Check className="h-3.5 w-3.5" /> Account ready
             </p>
+          ) : codeSent ? (
+            <div className="space-y-3">
+              <Field label="Sign-in code">
+                <Input
+                  value={code}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  // Digits only: a pasted code carrying a stray space would
+                  // otherwise fail with no explanation.
+                  onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="000000"
+                />
+              </Field>
+              <Button
+                size="lg"
+                className="w-full"
+                loading={sendingCode}
+                disabled={code.length !== 6}
+                onClick={confirmCode}
+              >
+                Verify email
+              </Button>
+              <div className="flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCodeSent(false);
+                    setCode("");
+                    setFeedback("");
+                  }}
+                  className="inline-flex items-center gap-1 text-text-muted transition-opacity hover:opacity-75"
+                >
+                  <ArrowLeft className="h-3 w-3" /> Change email
+                </button>
+                <button
+                  type="button"
+                  onClick={sendCode}
+                  disabled={sendingCode}
+                  className="font-medium text-accent-text transition-opacity hover:opacity-75 disabled:opacity-50"
+                >
+                  Resend code
+                </button>
+              </div>
+            </div>
           ) : (
-            <Button size="lg" className="w-full" onClick={startSignIn}>
-              <Mail className="h-4 w-4" /> Continue with email or Google
-            </Button>
+            <div className="space-y-3">
+              <Field label="Email address">
+                <Input
+                  value={email}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@business.com"
+                />
+              </Field>
+              <Button
+                size="lg"
+                className="w-full"
+                loading={sendingCode}
+                disabled={!email.includes("@")}
+                onClick={sendCode}
+              >
+                <Mail className="h-4 w-4" /> Send code
+              </Button>
+            </div>
           )}
         </div>
       ) : null}
@@ -373,7 +466,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
             ["Bank", selectedBank?.name ?? institutionCode],
             ["Account", accountIdentifier],
             ["Account name", verifiedName ?? "Not resolved"],
-            ["Wallets", wallets.length ? `${wallets.length} connected` : "None yet"],
+            ["Sign-in email", email.trim() || "—"],
           ].map(([label, answer]) => (
             <div key={label} className="flex justify-between gap-4 py-3">
               <dt className="text-text-muted">{label}</dt>

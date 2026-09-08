@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyLoginCode } from "@/server/otp";
 import { getMerchantByEmail } from "@/server/store";
-import { createSessionToken } from "@/server/session";
+import { createEmailProofToken, createSessionToken } from "@/server/session";
 import { logger } from "@/server/logger";
 
 /**
@@ -30,10 +30,15 @@ export async function POST(request: Request) {
   if (!merchant) {
     // The code was valid, so this address does own the inbox — it just has no
     // merchant account yet. Say so plainly; there is nothing to leak now.
-    return NextResponse.json(
-      { message: "No merchant account found for this email. Complete setup first.", needsOnboarding: true },
-      { status: 404 },
-    );
+    // The code was valid, so this address does own the inbox — it just has no
+    // merchant account yet. Hand back a short-lived proof so onboarding can
+    // create one against an address it does not have to take on trust.
+    return NextResponse.json({
+      needsOnboarding: true,
+      emailProof: createEmailProofToken(result.email),
+      email: result.email,
+      message: "No merchant account found for this email. Complete setup to continue.",
+    });
   }
 
   const token = createSessionToken(merchant);

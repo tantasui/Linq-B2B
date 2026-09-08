@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Bell, Building2, ImagePlus, LogOut, Moon, ShieldCheck, Trash2, Wallet } from "lucide-react";
 import { MerchantAvatar, merchantLogoChangedEvent, merchantLogoStorageKey } from "@/components/MerchantAvatar";
 import { MerchantOnboarding } from "@/components/onboarding/MerchantOnboarding";
-import { useDynamicBridge } from "@/components/providers/DynamicBridgeProvider";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { clearActiveSession, getMerchantMe } from "@/lib/api-client";
 import { getBankLogo } from "@/lib/banks";
@@ -52,7 +51,6 @@ function Section({
 }
 
 export default function SettingsPage() {
-  const dynamic = useDynamicBridge();
   const { theme } = useTheme();
   const { toast } = useToast();
   const [switches, setSwitches] = useState({ notifications: true, verification: true, biometric: false });
@@ -273,7 +271,6 @@ export default function SettingsPage() {
 
       <Button variant="danger" size="lg" className="w-full" onClick={() => {
           clearActiveSession();
-          dynamic.disconnect();
           window.location.href = "/login";
         }}>
         <LogOut className="h-4 w-4" /> Log out

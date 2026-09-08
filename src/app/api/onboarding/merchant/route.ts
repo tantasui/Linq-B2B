@@ -1,13 +1,30 @@
+import { NextResponse } from "next/server";
 import { handleApiError, ok } from "@/server/http";
 import { verifyBankAccount } from "@/server/paycrest";
 import { makeSlug } from "@/server/security";
-import { createSessionToken } from "@/server/session";
+import { createSessionToken, verifyEmailProofToken } from "@/server/session";
 import { upsertMerchant } from "@/server/store";
 import { merchantOnboardingSchema } from "@/server/validation";
 
 export async function POST(request: Request) {
   try {
     const input = merchantOnboardingSchema.parse(await request.json());
+
+    // The account is created under the address the token proves, never one the
+    // caller supplied. Without this, anyone could onboard under someone else's
+    // email and then sign in to the account with their own one-time codes.
+    const userEmail = verifyEmailProofToken(input.emailProof);
+    if (!userEmail) {
+      return NextResponse.json(
+        { message: "Verify your email again before completing setup." },
+        { status: 401 },
+      );
+    }
+
+    // Identity key for the users table. Derived from the proven address so it
+    // is stable across re-onboarding, and namespaced so it can never collide
+    // with an id issued by the wallet provider this replaced.
+    const userKey = `email:${userEmail}`;
     const verification = await verifyBankAccount(input.bank.institutionCode, input.bank.accountIdentifier, input.bank.institutionName).catch((error) => ({
       institutionCode: input.bank.institutionCode,
       accountIdentifier: input.bank.accountIdentifier,
@@ -18,8 +35,8 @@ export async function POST(request: Request) {
     }));
     const businessId = makeSlug("biz");
     const merchant = await upsertMerchant({
-      dynamicUserId: input.dynamicUserId,
-      userEmail: input.userEmail,
+      dynamicUserId: userKey,
+      userEmail,
       userName: input.userName,
       businessName: input.businessName,
       merchantName: input.merchantName,
