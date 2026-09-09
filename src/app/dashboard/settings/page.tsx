@@ -37,7 +37,7 @@ function Section({
   return (
     <Card>
       <div className="mb-5 flex items-center justify-between gap-4 border-b border-line pb-3">
-        <h2 className="flex items-center gap-2 font-mono text-label uppercase tracking-mono text-text-subtle">
+        <h2 className="flex items-center gap-2 font-sans font-medium text-label tracking-mono text-text-subtle">
           <Icon className="h-4 w-4 text-accent-text" />
           {title}
         </h2>
@@ -100,8 +100,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-5">
       <header>
-        <p className="font-mono text-label uppercase tracking-mono text-accent-text">05 — Settings</p>
-        <h1 className="u-display mt-3 text-hero">BUSINESS</h1>
+        <p className="font-sans font-medium text-label tracking-mono text-accent-text">05 — Settings</p>
+        <h1 className="u-display mt-3 text-hero">Business</h1>
       </header>
 
       {loading ? (
@@ -137,7 +137,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="mt-5 flex gap-2">
-              <label className="flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 bg-transparent font-mono text-xs uppercase tracking-mono text-text ring-1 ring-inset ring-text-subtle transition duration-fast ease-linq hover:bg-text hover:text-bg active:scale-[0.98]">
+              <label className="flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-transparent font-sans font-medium text-sm tracking-mono text-text ring-1 ring-inset ring-text-subtle transition duration-fast ease-linq hover:bg-text hover:text-bg active:scale-[0.98]">
                 <ImagePlus className="h-4 w-4" />
                 Upload logo
                 <input
@@ -147,7 +147,7 @@ export default function SettingsPage() {
                   onChange={(event) => uploadLogo(event.target.files?.[0])}
                 />
               </label>
-              <Button variant="secondary" size="icon" className="h-11 w-11" aria-label="Remove logo" onClick={removeLogo}>
+              <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full" aria-label="Remove logo" onClick={removeLogo}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
@@ -165,10 +165,10 @@ export default function SettingsPage() {
                     alt=""
                     loading="eager"
                     decoding="async"
-                    className="h-11 w-11 bg-white object-contain ring-1 ring-line"
+                    className="h-11 w-11 rounded-full bg-white object-contain ring-1 ring-line"
                   />
                 ) : (
-                  <span className="h-11 w-11 bg-surface-2" />
+                  <span className="h-11 w-11 rounded-full bg-surface-2" />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{verifiedBank.resolvedAccountName}</p>

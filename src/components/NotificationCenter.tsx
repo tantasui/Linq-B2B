@@ -37,7 +37,7 @@ export function NotificationCenter() {
         aria-label="Notifications"
         onClick={() => setOpen(true)}
         className={cn(
-          "relative grid h-10 w-10 place-items-center bg-transparent text-text-muted ring-1 ring-inset ring-line",
+          "relative grid h-10 w-10 place-items-center rounded-full bg-transparent text-text-muted ring-1 ring-inset ring-line",
           "transition duration-fast ease-linq hover:text-text hover:ring-line-strong active:scale-[0.97]",
         )}
       >

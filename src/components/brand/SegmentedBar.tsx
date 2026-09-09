@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
  *
  * The fill steps through the brand's purple ramp across the segments, matching
  * the source asset, so a full bar reads as the gradient it was drawn as.
- * Unfilled segments sit at ~15% of the accent hue rather than gray, so an
- * incomplete bar still reads as on-brand; in dark mode they fall back to 15%
- * white, where a 15% purple would sink into the surface.
+ * Unfilled segments sit at ~18% of the accent hue rather than gray, so an
+ * incomplete bar still reads as on-brand — and so the remaining track is
+ * visible at all, which is what tells you how much is left.
  *
  * Omit `value` for the indeterminate case: segments pulse in sequence, a soft
  * opacity wave travelling left to right, which keeps the segmented identity
@@ -59,7 +59,7 @@ export function SegmentedBar({
                 filled || indeterminate ? "opacity-100" : "opacity-[0.18]",
               )}
               style={{
-                backgroundColor: filled || indeterminate ? tint : undefined,
+                backgroundColor: tint,
                 ...(indeterminate
                   ? {
                       animation: "linq-segment-wave 1.4s ease-in-out infinite",

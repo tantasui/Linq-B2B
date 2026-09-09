@@ -14,11 +14,9 @@ import type { MerchantRecord, OrderRecord } from "@/server/types";
  * card: a printer dispensing a scalloped-edge ticket with a dashed tear line,
  * matching the source asset's construction.
  *
- * One component with a light and a dark variant — not two designs. Light mode
- * is the source of truth and dark mode is the same structure on dark tokens:
- * nothing moves, resizes or reorders between modes, only colour values change.
- * That is also why export renders in whatever mode the app is currently in
- * rather than forcing light.
+ * One component, one mode: the ticket is built entirely from tokens, so an
+ * exported receipt is the same object as the one on screen and there is nothing
+ * to reconcile between them.
  *
  * Used for the success confirmation (`printing`), the historical detail view
  * (static), and image/PDF export.
@@ -49,7 +47,7 @@ function Printer() {
 function DetailRow({ label, children, suppressWarning }: { label: string; children: React.ReactNode; suppressWarning?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-6 py-2.5">
-      <span className="shrink-0 font-mono text-micro uppercase tracking-mono text-text-subtle">{label}</span>
+      <span className="shrink-0 font-sans font-medium text-micro tracking-mono text-text-subtle">{label}</span>
       <span suppressHydrationWarning={suppressWarning} className="min-w-0 text-right text-xs font-medium text-text">{children}</span>
     </div>
   );
@@ -88,7 +86,7 @@ export function Receipt({
         <div className="rounded-t-md bg-ticket px-5 pt-6">
           <div className="flex items-center justify-between gap-3">
             <LinqMark size={28} className="text-accent" />
-            <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-mono text-accent-text">
+            <span className="inline-flex items-center gap-1.5 font-sans font-medium text-[11px] tracking-mono text-accent-text">
               {settled ? <Check className="h-3.5 w-3.5" /> : null}
               {status}
             </span>
@@ -130,10 +128,10 @@ export function Receipt({
               <span className="tnum">{formatRate(order.quotedRate, order.token)}</span>
             </DetailRow>
             <DetailRow label="Fee">
-              <span className="tnum">{fee > 0 ? `${fee.toFixed(2)} ${order.token}` : "No fee"}</span>
+              <span className="tnum">{fee > 0 ? `${fee.toFixed(2)} ${order.token}` : "No fees"}</span>
             </DetailRow>
             <div className="flex items-center justify-between gap-4 py-1.5">
-              <span className="shrink-0 font-mono text-micro uppercase tracking-mono text-text-subtle">
+              <span className="shrink-0 font-sans font-medium text-micro tracking-mono text-text-subtle">
                 Transaction ID
               </span>
               <span className="flex min-w-0 items-center gap-1">
@@ -143,7 +141,7 @@ export function Receipt({
             </div>
           </div>
 
-          <p className="mt-7 text-center font-mono text-[10px] uppercase tracking-mono text-text-subtle">
+          <p className="mt-7 text-center font-sans font-medium text-[10px] tracking-mono text-text-subtle">
             linq.xyz ·{" "}
             <a href="mailto:support@linq.xyz" className="underline underline-offset-2 hover:text-text-muted">
               support

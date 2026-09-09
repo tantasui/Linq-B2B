@@ -42,7 +42,9 @@ const sceneReceipt: OrderRecord = {
   network: "stellar",
   quotedRate: 1612,
   cryptoAmountDue: 300.87,
-  transactionFee: 0.45,
+  // No fee: the receipt on the marketing page should show what the product
+  // actually charges the payer, and <Receipt> prints "No fees" when this is 0.
+  transactionFee: 0,
   paycrestOrderId: "3f8a1c7d92b45e60a1d83c4f7e29b0d6c58a3719fe402bd6183c9a75e4b02d18",
   status: "settled",
   createdAt: "2026-01-14T10:24:00.000Z",
@@ -75,31 +77,51 @@ function readableOn(hex: string) {
   return luminance > 0.4 ? "var(--ink)" : "var(--paper)";
 }
 
-/** The word the rates headline rolls through. Coins first, then the chains they land on. */
-const RATE_WORDS = ["CRYPTO.", "USDC.", "USDT.", "USDSUI.", ...ENABLED_CHAINS.map((c) => `${c.shortName.toUpperCase()}.`)];
-
 /**
- * The cards that ride the rail. Every one names a chain the platform actually
- * settles and carries that chain's coin — the Telegram page's Bitcoin and
- * Ethereum cards would be a promise this product does not make.
+ * The rates climax, as ONE list.
+ *
+ * main.js runs the headline's wheel and the rail off the same number — "card i
+ * is dead centre exactly when the wheel is showing word i" — so the word and
+ * the coin under it have to be written down together or they drift, which is
+ * what put SOL. over a Stellar card. Pairing them here makes that structural:
+ * RATE_WORDS is derived from this, so the two lists cannot disagree again.
+ *
+ * The first four words name coins rather than chains, so each rides the chain
+ * it is most at home on (USDSUI only exists on Sui). The rest name their own.
+ *
+ * Every card names a chain the platform actually settles. rail-cards.svg also
+ * ships an Arbitrum and a Bitcoin card; both are left out for the same reason
+ * the Telegram page's Bitcoin and Ethereum cards were, which is that the
+ * backend cannot issue an address on either and the card would be a promise
+ * this product does not make. Adding a chain means adding a row here.
  */
 const RAIL_CARDS = [
-  { coin: "base", sent: "Sent 300 USDC", got: "Ravel Studio received ₦483,600", short: "Received ₦483,600" },
-  { coin: "sui", sent: "Sent 1,200 USDSUI", got: "Sable & Co received ₦1,934,400", short: "Received ₦1,934,400" },
-  { coin: "sol", sent: "Sent 850 USDC", got: "Nnamdi Ltd received ₦1,370,200", short: "Received ₦1,370,200" },
-  { coin: "bnb", sent: "Sent 590 USDC", got: "Mama Tolu Foods received ₦951,080", short: "Received ₦951,080" },
-  { coin: "base", sent: "Sent 500 USDC", got: "Lagos Print Co received ₦806,000", short: "Received ₦806,000" },
-  { coin: "sol", sent: "Sent 135 USDT", got: "Kọ́lá Logistics received ₦217,620", short: "Received ₦217,620" },
-  { coin: "sui", sent: "Sent 623 USDC", got: "Verde Farms received ₦1,004,276", short: "Received ₦1,004,276" },
-  { coin: "bnb", sent: "Sent 2,400 USDC", got: "Ayo Motors received ₦3,868,800", short: "Received ₦3,868,800" },
+  { word: "Crypto.", coin: "stellar", sent: "Sent 750 USDC", got: "Ilé Interiors received ₦1,209,000", short: "Received ₦1,209,000" },
+  { word: "USDC.", coin: "base", sent: "Sent 300 USDC", got: "Ravel Studio received ₦483,600", short: "Received ₦483,600" },
+  { word: "USDT.", coin: "tron", sent: "Sent 410 USDT", got: "Benin Craft Co received ₦661,120", short: "Received ₦661,120" },
+  { word: "USDSUI.", coin: "sui", sent: "Sent 1,200 USDSUI", got: "Sable & Co received ₦1,934,400", short: "Received ₦1,934,400" },
+  { word: "STELLAR.", coin: "stellar", sent: "Sent 1,050 USDT", got: "Zuri Textiles received ₦1,692,600", short: "Received ₦1,692,600" },
+  { word: "SUI.", coin: "sui", sent: "Sent 623 USDC", got: "Verde Farms received ₦1,004,276", short: "Received ₦1,004,276" },
+  { word: "BASE.", coin: "base", sent: "Sent 500 USDC", got: "Lagos Print Co received ₦806,000", short: "Received ₦806,000" },
+  { word: "BNB.", coin: "bnb", sent: "Sent 590 USDC", got: "Mama Tolu Foods received ₦951,080", short: "Received ₦951,080" },
+  { word: "SOL.", coin: "solana", sent: "Sent 850 USDC", got: "Nnamdi Ltd received ₦1,370,200", short: "Received ₦1,370,200" },
+  { word: "TRX.", coin: "tron", sent: "Sent 135 USDT", got: "Kọ́lá Logistics received ₦217,620", short: "Received ₦217,620" },
 ];
+
+/** The words the rates headline rolls through — one per card, in card order. */
+const RATE_WORDS = RAIL_CARDS.map((card) => card.word);
+
+/** One card face per chain, sliced out of rail-cards.svg with its coin baked in. */
+function railCardArt(coin: string) {
+  return `url("/landing/assets/rails/card-${coin}.svg")`;
+}
 
 /** B2B — set up once, get paid forever. Written against the dashboard, not a chat. */
 const STEPS = [
-  ["01", "CREATE YOUR ACCOUNT", "Business name and email. No paperwork to upload."],
-  ["02", "VERIFY YOUR PAYOUT", "Link the bank account we settle into. About a minute, once."],
-  ["03", "SHARE A PAYMENT LINK", "Price it once. Your customer picks the chain and the coin."],
-  ["04", "GET NAIRA", "We convert and settle, with a receipt. Usually before the tab closes."],
+  ["01", "Create your account", "Business name and email. No paperwork to upload."],
+  ["02", "Verify your payout", "Link the bank account we settle into. About a minute, once."],
+  ["03", "Share a payment link", "Price it once. Your customer picks the chain and the coin."],
+  ["04", "Get Naira", "We convert and settle, with a receipt. Usually before the tab closes."],
 ];
 
 /** The 19 stamps, in the passport grid's own order. `null` is a deliberate gap. */
@@ -148,32 +170,32 @@ export default function Home() {
           <ul className="nav__links">
             <li>
               <a href="#receive">
-                <span className="nav__num">01</span> ACCEPT
+                <span className="nav__num">01</span> Accept
               </a>
             </li>
             <li>
               <a href="#payment-links">
-                <span className="nav__num">02</span> PAYMENT LINKS
+                <span className="nav__num">02</span> Payment links
               </a>
             </li>
             <li>
               <a href="#chains">
-                <span className="nav__num">03</span> CHAINS
+                <span className="nav__num">03</span> Chains
               </a>
             </li>
             <li>
               <a href="#rates">
-                <span className="nav__num">04</span> RATES
+                <span className="nav__num">04</span> Rates
               </a>
             </li>
           </ul>
 
           {/* B2B — the bot has no account to return to; a dashboard does. */}
           <Link className="nav__login" href="/login">
-            LOG IN
+            Log in
           </Link>
           <Link className="btn btn--nav" href={START_HREF}>
-            START ACCEPTING <span aria-hidden="true">↗</span>
+            Start accepting <span aria-hidden="true">↗</span>
           </Link>
         </nav>
         <span className="nav__progress" aria-hidden="true" />
@@ -186,31 +208,31 @@ export default function Home() {
           <div className="globe" aria-hidden="true" />
           <div className="l-grid scene__inner">
             <h1 id="hero-h" className="display hero__title">
-              RECEIVE
+              Receive
               <br />
-              FROM ANYWHERE.
+              from anywhere.
               <br />
-              SETTLE IN
+              Settle in
               <br />
-              NAIRA.
+              Naira.
             </h1>
             {/* B2B — the bot's promise was "inside Telegram, no app". This one's
                 is the dashboard the merchant runs their business from. */}
-            <p className="mono hero__sub">CRYPTO &rarr; NAIRA. PAYMENT LINKS, RECEIPTS, ONE DASHBOARD.</p>
+            <p className="mono hero__sub">Crypto &rarr; Naira. Payment links, receipts, one dashboard.</p>
           </div>
         </section>
 
         {/* ===================== SCENE 02 — ACCEPT / FLAG STAMPS ===================== */}
         <section id="receive" className="scene scene--receive" aria-labelledby="receive-h">
           <span className="marker mono" aria-hidden="true">
-            01 — ACCEPT
+            01 — Accept
           </span>
           <div className="l-grid scene__inner">
             <div className="receive__copy">
               <h2 id="receive-h" className="display scene__title">
-                195+ COUNTRIES PAY YOU.
+                195+ countries pay you.
                 <br />
-                YOU GET NAIRA.
+                you get Naira.
               </h2>
               <p className="body scene__body">
                 A customer in Lisbon checks out in USDC. A client in Toronto settles an invoice in
@@ -250,18 +272,18 @@ export default function Home() {
             different object: a payment link and the receipt it prints. */}
         <section id="payment-links" className="scene scene--links" aria-labelledby="links-h">
           <span className="marker mono" aria-hidden="true">
-            02 — PAYMENT LINKS
+            02 — Payment links
           </span>
           <div className="l-grid scene__inner">
             <div className="links__copy">
               <h2 id="links-h" className="display scene__title">
-                ONE LINK.
+                One link.
                 <br />
-                ANY CHAIN.
+                Any chain.
                 <br />
-                PAID IN
+                Paid in
                 <br />
-                NAIRA.
+                Naira.
               </h2>
               <p className="body scene__body">
                 Send a customer one payment link. They pick the chain and the stablecoin they
@@ -269,7 +291,7 @@ export default function Home() {
                 your dashboard with a receipt attached. No exchange account, no P2P merchant, no
                 waiting on a &ldquo;vendor&rdquo; to come online.
               </p>
-              <p className="mono scene__handle">A RECEIPT FOR EVERY PAYMENT</p>
+              <p className="mono scene__handle">A receipt for every payment</p>
             </div>
 
             {/* The receipt is the product's signature surface — show it, don't
@@ -284,14 +306,14 @@ export default function Home() {
         {/* ===================== SCENE 04 — CHAINS ===================== */}
         <section id="chains" className="scene scene--chains" aria-labelledby="chains-h">
           <span className="marker mono" aria-hidden="true">
-            03 — CHAINS
+            03 — Chains
           </span>
           <div className="l-grid scene__inner">
             <div className="chains__copy">
               <h2 id="chains-h" className="display scene__title">
-                {TOKEN_COUNT} STABLECOINS.
+                {TOKEN_COUNT} stablecoins.
                 <br />
-                {CHAIN_COUNT} CHAINS.
+                {CHAIN_COUNT} chains.
               </h2>
               <ul className="chain-list">
                 {ENABLED_CHAINS.map((chain) => (
@@ -338,9 +360,9 @@ export default function Home() {
                   sentence. */}
               <h2 id="rates-h" className="display scene__title rates__title">
                 <span className="rates__lead">
-                  YOU GET MORE
+                  You get more
                   <br />
-                  FOR YOUR
+                  for your
                 </span>
                 <span className="picker" aria-hidden="true">
                   <span className="picker__list">
@@ -351,7 +373,7 @@ export default function Home() {
                     ))}
                   </span>
                 </span>
-                <span className="sr-only">CRYPTO.</span>
+                <span className="sr-only">Crypto.</span>
               </h2>
             </div>
           </div>
@@ -366,25 +388,15 @@ export default function Home() {
                 <li
                   key={card.got}
                   className="rail__card"
+                  style={{ "--card-art": railCardArt(card.coin) } as React.CSSProperties}
                   data-sent={card.sent}
                   data-got={card.got}
                   data-short={card.short}
                 >
+                  {/* The card's own piece of the wire, painted over the face and
+                      through its punched hole. The coin is part of the artwork
+                      now, so nothing else is layered on top. */}
                   <span className="rail__thread" aria-hidden="true" />
-                  <img
-                    className="rail__coin"
-                    src={`/landing/assets/rails/${card.coin}.png`}
-                    alt=""
-                    width={76}
-                    height={76}
-                  />
-                  <img
-                    className="rail__naira"
-                    src="/landing/assets/rails/naira.png"
-                    alt=""
-                    width={34}
-                    height={34}
-                  />
                 </li>
               ))}
             </ul>
@@ -399,13 +411,13 @@ export default function Home() {
         {/* ===================== SCENE 06 — SET UP ===================== */}
         <section id="how-it-works" className="scene scene--steps" aria-labelledby="steps-h">
           <span className="marker mono" aria-hidden="true">
-            05 — SET UP
+            05 — Set up
           </span>
           <div className="l-grid scene__inner">
             <h2 id="steps-h" className="display scene__title steps__title">
-              SET UP ONCE.
+              Set up once.
               <br />
-              GET PAID FOREVER.
+              Get paid forever.
             </h2>
             <ol className="steps">
               {STEPS.map(([num, name, desc]) => (
@@ -423,12 +435,12 @@ export default function Home() {
         {/* ===================== SCENE 07 — SOCIALS ===================== */}
         <section id="socials" className="scene scene--socials" aria-labelledby="socials-h">
           <span className="marker mono" aria-hidden="true">
-            06 — SOCIALS
+            06 — Socials
           </span>
           <div className="l-grid scene__inner">
             <div className="socials__block">
               <h2 id="socials-h" className="display scene__title socials__title">
-                LINQ IS BUILDING IN PUBLIC.
+                Linq is building in public.
               </h2>
               <div className="socials__icons">
                 {LANDING_SOCIALS.map((social) => (
@@ -457,23 +469,23 @@ export default function Home() {
 
             <div className="footer__cta-block">
               <h2 id="footer-h" className="display footer__title">
-                START ACCEPTING
+                Start accepting
                 <br />
-                CRYPTO.
+                crypto.
               </h2>
               {/* B2B — this opens an account, it does not open a chat. */}
               <Link className="btn btn--cta" href={START_HREF}>
-                CREATE YOUR ACCOUNT <span aria-hidden="true">↗</span>
+                Create your account <span aria-hidden="true">↗</span>
               </Link>
               <p className="mono footer__tech">
-                ALREADY SET UP?{" "}
+                Already set up?{" "}
                 <Link href="/login" className="underline underline-offset-4">
-                  LOG IN
+                  Log in
                 </Link>
               </p>
             </div>
 
-            <p className="mono footer__copyright">RINKU TECHNOLOGY LIMITED — 2026</p>
+            <p className="mono footer__copyright">Rinku Technology Limited — 2026</p>
           </div>
 
           <div className="footer__plane" aria-hidden="true">

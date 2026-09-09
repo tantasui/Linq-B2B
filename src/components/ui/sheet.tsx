@@ -206,7 +206,7 @@ export function Sheet({
         ref={backdropRef}
         aria-label="Close"
         onClick={() => requestClose()}
-        className={cn("absolute inset-0 bg-black/50 backdrop-blur-[2px]", !closing && "linq-fade-in")}
+        className={cn("absolute inset-0 bg-text/30 backdrop-blur-[3px]", !closing && "linq-fade-in")}
       />
       <section
         ref={sectionRef}
@@ -216,6 +216,7 @@ export function Sheet({
         onAnimationEnd={onAnimationEnd}
         className={cn(
           "relative z-10 flex max-h-[88vh] w-full max-w-[460px] flex-col overflow-hidden",
+          "rounded-t-xl sm:rounded-xl",
           "bg-surface pt-4 shadow-xl ring-1 ring-line",
           closing ? "linq-sheet-down" : "linq-sheet-up",
           className,

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
  * receiving wallet, a team member, another payout destination.
  *
  * The "+" rotates into an "×" when the control is armed to remove, so a single
- * square handles both directions without a second button appearing. The
+ * key handles both directions without a second button appearing. The
  * stacked card peeking out behind is the "add another" hint — it slides fully
  * behind the button on press, as if the new one has been dealt onto the pile.
  */
@@ -36,7 +36,7 @@ export function AddButton({
         <span
           aria-hidden
           className={cn(
-            "absolute inset-0 bg-surface-2 ring-1 ring-line",
+            "absolute inset-0 rounded-md bg-surface-2 ring-1 ring-line",
             "transition-transform duration-slow ease-linq",
             pressed ? "translate-x-0 translate-y-0" : "translate-x-1.5 translate-y-1.5",
           )}
@@ -51,7 +51,7 @@ export function AddButton({
         onPointerLeave={() => setPressed(false)}
         onClick={onClick}
         className={cn(
-          "relative grid h-12 w-12 place-items-center bg-surface ring-1 ring-inset ring-line",
+          "relative grid h-12 w-12 place-items-center rounded-md bg-surface shadow-sm ring-1 ring-inset ring-line",
           "transition duration-fast ease-linq hover:ring-line-strong active:scale-[0.94]",
           active && "bg-accent-soft ring-accent/50",
         )}

@@ -12,9 +12,9 @@ export interface TabItem {
 
 /**
  * The tab-strip pattern, used here for switching between a merchant's wallets
- * and accounts. The active tab is raised onto the surface while inactive tabs
- * sit recessed into the track, so the current context is legible at a glance
- * rather than only by colour.
+ * and accounts. The active tab is raised onto the surface as a rounded card
+ * while inactive tabs sit recessed into the track, so the current context is
+ * legible at a glance rather than only by colour.
  *
  * Adding animates a tab in from the right; closing collapses its width to zero
  * and lets the remainder slide over to fill the gap.
@@ -40,7 +40,7 @@ export function TabBar({
     <div
       role="tablist"
       className={cn(
-        "flex items-center gap-px overflow-x-auto bg-surface-2 p-1",
+        "flex items-center gap-1 overflow-x-auto rounded-lg bg-surface-2 p-1.5 ring-1 ring-line",
         "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
@@ -51,11 +51,11 @@ export function TabBar({
           <div
             key={tab.id}
             className={cn(
-              "linq-fade-in group flex shrink-0 items-center gap-2 border-b-2 pl-3 pr-1.5",
+              "linq-fade-in group flex shrink-0 items-center gap-2 rounded-md pl-3 pr-1.5",
               "transition-all duration-slow ease-linq",
               active
-                ? "border-accent bg-surface"
-                : "border-transparent bg-transparent hover:bg-surface/60",
+                ? "bg-surface shadow-sm ring-1 ring-line"
+                : "bg-transparent hover:bg-surface/70",
             )}
           >
             <button
@@ -64,7 +64,7 @@ export function TabBar({
               aria-selected={active}
               onClick={() => onSelect(tab.id)}
               className={cn(
-                "flex items-center gap-2 py-2.5 font-mono text-xs uppercase tracking-mono",
+                "flex items-center gap-2 py-2 font-sans font-medium capitalize text-[0.8125rem] tracking-mono",
                 "transition-colors duration-fast ease-linq",
                 active ? "text-text" : "text-text-muted hover:text-text",
               )}
@@ -82,7 +82,7 @@ export function TabBar({
                 aria-label={`Close ${tab.label}`}
                 onClick={() => onClose(tab.id)}
                 className={cn(
-                  "grid h-6 w-6 place-items-center text-text-subtle",
+                  "grid h-6 w-6 place-items-center rounded-full text-text-subtle",
                   "transition duration-fast ease-linq hover:bg-surface-3 hover:text-text active:scale-[0.9]",
                 )}
               >
@@ -101,7 +101,7 @@ export function TabBar({
           aria-label={addLabel}
           onClick={onAdd}
           className={cn(
-            "grid h-9 w-9 shrink-0 place-items-center text-text-muted",
+            "grid h-9 w-9 shrink-0 place-items-center rounded-full text-text-muted",
             "transition duration-fast ease-linq hover:bg-surface hover:text-text active:scale-[0.94]",
           )}
         >

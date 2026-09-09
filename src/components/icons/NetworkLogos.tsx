@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
  *
  * These are the one place multi-colour is right: users confirm they are on the
  * correct chain by recognising the brand mark, so the badges stay full-colour
- * in both light and dark mode — only the surface behind them changes. They are
+ * and are never tinted to the system's palette. They are
  * never stretched or cropped, only scaled, and sit at a fixed diameter per
  * context: 24px in lists, 32px in the selector, 48px on the receive screen.
  *
@@ -105,11 +105,11 @@ export function NetworkLogo({
       onError={() => setFailed(true)}
       className={cn(
         // Stellar's source mark is a flat black silhouette with no colour of its
-        // own — on dark surfaces (payer checkout follows the OS theme) it
-        // disappears against the near-black background, so it inverts to white
-        // there. Every other badge here is genuinely multi-colour and stays that
-        // way in both themes.
-        chain?.id === "stellar" && "brightness-0 invert",
+        // own. It used to invert to white so it would not disappear against the
+        // ink build's near-black surfaces; the product is on paper now, so it
+        // stays black and the invert would make it vanish instead. Every other
+        // badge here is genuinely multi-colour and is never tinted.
+        chain?.id === "stellar" && "brightness-0",
         className,
       )}
       style={{ width: size, height: size, display: "block", flexShrink: 0, borderRadius: "50%" }}

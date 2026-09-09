@@ -3,78 +3,88 @@
 @tailwind utilities;
 
 /* ============================================================================
-   Linq B2B — design tokens (INK)
+   Linq B2B — design tokens (PAPER)
    ----------------------------------------------------------------------------
    One system, one mode. The marketing site and the product share a single
-   palette: ink ground, paper type, one signal purple. There is no light mode
-   and no toggle — the direction is a committed dark editorial surface, so a
-   second palette would only be a second thing to keep honest.
+   palette: warm paper ground, ink type, one signal purple. There is no dark
+   mode and no toggle — the direction is a committed light editorial surface, so
+   a second palette would only be a second thing to keep honest.
 
    Named after the landing's own vocabulary rather than a generic scale, so a
    value here and a value in landing.css are recognisably the same colour:
 
-     --ink      #0A0A0B   the ground
-     --ink-2    #141416   a surface lifted off it
-     --paper    #F4F1EC   type, warm not white
+     --paper    #FAF8F5   the ground, warm not white
+     --paper-2  #FFFFFF   a surface lifted off it
+     --ink      #16161A   type
      --signal   #8A4FFF   the one accent
 
-   Structure carries hierarchy, not elevation: hairline rules and mono labels,
-   square corners, no drop shadows except where something genuinely floats
-   (sheets, popovers) over content.
+   Structure carries hierarchy, but softly: rounded corners, low-contrast warm
+   rules, and a diffuse shadow where something sits above the page. Nothing on
+   this surface is a hard-edged box.
    ========================================================================== */
 
 @layer base {
   :root {
-    /* — surfaces: ink, and three steps up from it — */
-    --bg: 240 5% 4%;               /* #0A0A0B — ink */
-    --surface: 240 5% 8%;          /* #141416 — ink-2 */
-    --surface-2: 240 5% 11%;
-    --surface-3: 240 5% 15%;
+    /* — surfaces: warm paper, and three steps up from it —
+         Up means *toward white* here, the opposite of the ink build: a panel
+         lifts off the page by getting lighter, not darker. */
+    --bg: 36 30% 97%;              /* #FAF8F5 — paper */
+    --surface: 0 0% 100%;          /* #FFFFFF — paper-2, the panel ground */
+    --surface-2: 38 24% 96%;       /* #F7F4EF — a recessed track */
+    --surface-3: 38 18% 91%;       /* #EBE7E0 — a pressed / hovered step */
 
-    /* — type: warm paper, dimmed twice — */
-    --text: 38 27% 94%;            /* #F4F1EC — paper */
-    --text-muted: 40 3% 63%;       /* #A3A19D — mono-dim (a11y floor for <14px) */
-    --text-subtle: 40 3% 54%;      /* #8C8A86 — paper-dim */
+    /* — type: ink, dimmed twice. Both dims clear 4.5:1 on --bg, because the
+         product sets most metadata below 14px and the old palette's floor
+         does not survive the inversion. — */
+    --text: 240 8% 10%;            /* #17171B — ink */
+    --text-muted: 240 4% 40%;      /* #62626B — 6.4:1 on paper */
+    --text-subtle: 240 4% 46%;     /* #71717B — 5.1:1 on paper */
 
-    /* — lines: the landing's paper-dim hairline, composited onto ink — */
-    --border: 40 3% 18%;
-    --border-strong: 40 3% 30%;
+    /* — lines: a warm hairline, kept soft. On paper a dark rule reads as a
+         cut, so the border is barely there and the shadow does the lifting. — */
+    --border: 38 16% 89%;
+    --border-strong: 38 12% 78%;
 
-    /* — the one accent — */
+    /* — the one accent —
+         #8A4FFF is kept exactly: white on it is 4.52:1, which clears AA, so the
+         brand purple does not have to be re-mixed for the light ground. */
     --accent: 262 100% 65%;        /* #8A4FFF — signal */
-    --accent-hover: 262 100% 74%;
-    --accent-text: 262 100% 78%;   /* lifted for AA on ink; #8A4FFF alone is 4.3:1 */
-    --accent-soft: 260 60% 20%;    /* #281450 — signal-dark */
-    --accent-contrast: 240 5% 4%;  /* ink on purple, as the purple scene inverts */
+    --accent-hover: 262 80% 57%;   /* deepens on hover; on ink it lightened */
+    --accent-text: 262 72% 52%;    /* #6B29E0 — 6.3:1, for purple *type* on paper */
+    --accent-soft: 262 100% 96%;   /* #EDE5FF — signal-tint */
+    --accent-contrast: 0 0% 100%;  /* paper on purple */
 
-    /* — state: desaturated so nothing outshouts the signal — */
-    --success: 152 48% 58%;
-    --success-soft: 152 40% 13%;
-    --warning: 38 80% 62%;
-    --warning-soft: 36 44% 13%;
-    --danger: 0 65% 66%;
-    --danger-soft: 0 38% 14%;
+    /* — state: darkened for the light ground, still desaturated so nothing
+         outshouts the signal — */
+    --success: 152 62% 28%;
+    --success-soft: 152 45% 94%;
+    --warning: 32 88% 34%;
+    --warning-soft: 38 92% 94%;
+    --danger: 0 68% 47%;
+    --danger-soft: 0 80% 96%;
 
     /* — brand illustration layer (receipts, tickets) — */
-    --ticket: 260 45% 12%;
-    --ticket-edge: 260 32% 27%;
+    --ticket: 262 100% 97%;
+    --ticket-edge: 262 45% 87%;
     --printer: 262 100% 65%;
 
-    /* — radii: none. Every corner on this surface is square (§6/§9). Circles
-         are still circles — they come from `rounded-full`, not from these. — */
-    --r-xs: 0px;
-    --r-sm: 0px;
-    --r-md: 0px;
-    --r-lg: 0px;
-    --r-xl: 0px;
-    --radius: 0px;
+    /* — radii: the system is rounded now. One ramp, used everywhere; a control
+         picks the step that matches its height rather than inventing a value.
+         Circles still come from `rounded-full`, not from these. — */
+    --r-xs: 6px;
+    --r-sm: 10px;
+    --r-md: 12px;
+    --r-lg: 16px;
+    --r-xl: 24px;
+    --radius: 12px;
 
-    /* — elevation: only for things that genuinely float. Everything else
-         separates with a rule. — */
-    --shadow-sm: none;
-    --shadow-md: 0 8px 24px hsl(0 0% 0% / 0.45);
-    --shadow-lg: 0 18px 44px hsl(0 0% 0% / 0.55);
-    --shadow-xl: 0 32px 80px hsl(0 0% 0% / 0.65);
+    /* — elevation: soft and warm-tinted, never a black halo. Two layers each —
+         a tight contact shadow so the edge is defined, and a wide diffuse one
+         so the panel has air under it. — */
+    --shadow-sm: 0 1px 2px hsl(240 8% 10% / 0.04), 0 1px 3px hsl(240 8% 10% / 0.05);
+    --shadow-md: 0 2px 4px hsl(240 8% 10% / 0.04), 0 8px 20px hsl(240 8% 10% / 0.07);
+    --shadow-lg: 0 4px 8px hsl(240 8% 10% / 0.04), 0 16px 40px hsl(240 8% 10% / 0.10);
+    --shadow-xl: 0 8px 16px hsl(240 8% 10% / 0.05), 0 32px 72px hsl(240 8% 10% / 0.14);
 
     /* — motion: the landing's curve, so product and site move alike — */
     --dur-fast: 160ms;
@@ -82,9 +92,13 @@
     --dur-slow: 280ms;
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-    /* — type: shared with the landing — */
-    --track-mono: 0.12em;
-    --track-display: -0.04em;
+    /* — type: shared with the landing.
+         Both tracks are relaxed from where they started. 0.12em on an uppercase
+         mono label is what made every piece of metadata read as a stamped
+         block; 0.02em keeps the label legible as a word. The display track
+         loosens too, because -0.04em is a poster setting and this is a page. — */
+    --track-mono: 0.02em;
+    --track-display: -0.02em;
 
     /* shadcn compatibility aliases */
     --background: var(--bg);
@@ -147,7 +161,7 @@
   }
 
   ::selection {
-    background: hsl(var(--accent) / 0.3);
+    background: hsl(var(--accent) / 0.18);
     color: hsl(var(--text));
   }
 
@@ -160,41 +174,60 @@
 /* ============================================================================
    Shared type utilities
    ----------------------------------------------------------------------------
-   The landing has exactly three voices — display, body, mono — and the product
-   inherits them. `.mono` is the workhorse: every label, column head, status and
-   piece of metadata in the app is uppercase JetBrains Mono at 0.12em, which is
-   what makes a dense dashboard read as the same object as the marketing page.
+   The landing has three voices — display, body and mono — and the product
+   inherits them, but they no longer split the way they used to. Mono used to be
+   the workhorse: every label, column head and status was uppercase JetBrains
+   Mono tracked out to 0.12em, which is what made a dense screen read as a wall
+   of stamped blocks. Mono is now reserved for what is genuinely monospaced
+   *data* — addresses, hashes, reference codes, figures that align down a
+   column — and labels are set in the sans face, sentence case, normal track.
    ========================================================================== */
 
 .u-display {
   font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-weight: 680;
+  /* 600 rather than 680, and a line-height with air in it: at 680/0.94 the
+     headings set as slabs, which is the poster voice, not the page voice. */
+  font-weight: 600;
   letter-spacing: var(--track-display);
-  line-height: 0.94;
+  line-height: 1.06;
   text-wrap: balance;
 }
 
+/* A label. Sans, sentence case, medium — the word you would actually say,
+   rather than an abbreviation stamped into the layout. */
 .u-mono {
-  font-family: var(--font-mono), ui-monospace, "SF Mono", monospace;
-  font-size: 12px;
-  font-weight: 400;
-  text-transform: uppercase;
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-transform: none;
   letter-spacing: var(--track-mono);
   color: hsl(var(--text-muted));
+}
+
+/* Genuine monospaced data: an address, a hash, a reference — anything that has
+   to align down a column or be read character by character. This is the only
+   thing left in the mono face, which is what makes it mean something again. */
+.u-data {
+  font-family: var(--font-mono), ui-monospace, "SF Mono", monospace;
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 /* A section marker, the product's echo of the landing's "01 — GET PAID": a
    number, an em dash, a label. Used above every panel in the dashboard. */
 .u-marker {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 11px;
-  text-transform: uppercase;
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
   letter-spacing: var(--track-mono);
   color: hsl(var(--text-subtle));
 }
 
-/* The hairline. Structure on this surface comes from rules, not from cards
-   floating on shadows, so there is one canonical rule and everything uses it. */
+/* The hairline. Panels separate with a soft rule *and* a little elevation now;
+   on paper a hard rule alone either disappears or reads as a cut. */
 .u-rule {
   border-color: hsl(var(--border));
 }
@@ -295,14 +328,15 @@ dynamic-widget,
 .linq-skeleton {
   position: relative;
   overflow: hidden;
-  background: hsl(var(--surface-2));
+  border-radius: var(--r-sm);
+  background: hsl(var(--surface-3));
 }
 .linq-skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, hsl(var(--text) / 0.05), transparent);
+  background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.85), transparent);
   animation: linq-shimmer 1.4s infinite;
 }
 

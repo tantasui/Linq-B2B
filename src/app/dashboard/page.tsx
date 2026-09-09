@@ -93,7 +93,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => setHidden((value) => !value)}
-              className="flex items-center gap-2 font-mono text-label uppercase tracking-mono text-text-subtle transition-colors duration-fast ease-linq hover:text-text"
+              className="flex items-center gap-2 font-sans font-medium text-label tracking-mono text-text-subtle transition-colors duration-fast ease-linq hover:text-text"
             >
               Total settled
               {hidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -108,7 +108,7 @@ export default function DashboardPage() {
                 <p className="tnum u-display mt-4 text-hero sm:text-display">
                   {hidden ? "••••••" : formatCurrency(totalNgn, "NGN")}
                 </p>
-                <p className="mt-3 font-mono text-label uppercase tracking-mono text-text-muted">
+                <p className="mt-3 font-sans font-medium text-label tracking-mono text-text-muted">
                   {settled.length} settled order{settled.length === 1 ? "" : "s"}
                   {pendingNgn > 0 ? (
                     <>
@@ -167,11 +167,11 @@ export default function DashboardPage() {
             <Card interactive className="h-full">
               <div className="flex items-start justify-between">
                 <action.icon className="h-6 w-6 text-accent" />
-                <span className="font-mono text-micro uppercase tracking-mono text-text-subtle">
+                <span className="font-sans font-medium text-micro tracking-mono text-text-subtle">
                   {action.num}
                 </span>
               </div>
-              <p className="mt-8 font-mono text-xs uppercase tracking-mono">{action.label}</p>
+              <p className="mt-8 font-sans font-medium text-xs tracking-mono">{action.label}</p>
               <p className="mt-1.5 text-xs text-text-muted">{action.hint}</p>
             </Card>
           </Link>
@@ -185,7 +185,7 @@ export default function DashboardPage() {
           action={
             <Link
               href="/dashboard/transactions"
-              className="flex items-center gap-0.5 font-mono text-micro uppercase tracking-mono text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
+              className="flex items-center gap-0.5 font-sans font-medium text-micro tracking-mono text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
             >
               All orders <ChevronRight className="h-3.5 w-3.5" />
             </Link>
@@ -215,12 +215,12 @@ export default function DashboardPage() {
                 key={order.id}
                 type="button"
                 onClick={() => setOpenOrder(order)}
-                className="flex w-full items-center gap-3.5 border-b border-line px-1 py-3.5 text-left transition-colors duration-fast ease-linq hover:bg-surface"
+                className="-mx-2 flex w-full items-center gap-3.5 rounded-md border-b border-line px-2 py-3.5 text-left transition-colors duration-fast ease-linq last:border-b-0 hover:bg-surface-2"
               >
                 <NetworkLogo network={order.network} size={30} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{order.payerName}</p>
-                  <p className="truncate font-mono text-micro uppercase tracking-mono text-text-subtle">
+                  <p className="truncate font-sans font-medium text-micro tracking-mono text-text-subtle">
                     {chainDisplayName(order.network)} ·{" "}
                     {new Date(order.createdAt).toLocaleDateString(undefined, {
                       day: "numeric",
@@ -254,9 +254,9 @@ export default function DashboardPage() {
                 href={explorerTxUrl(openOrder.network, openOrder.depositDigest)!}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-5 flex items-center justify-between gap-3 bg-surface-2 px-3 py-2.5 text-xs transition duration-fast ease-linq hover:bg-surface-3"
+                className="mt-5 flex items-center justify-between gap-3 rounded-md bg-surface-2 px-4 py-2.5 text-xs transition duration-fast ease-linq hover:bg-surface-3"
               >
-                <span className="font-mono text-micro uppercase tracking-mono text-text-subtle">
+                <span className="font-sans font-medium text-micro tracking-mono text-text-subtle">
                   Deposit transaction
                 </span>
                 <span className="flex items-center gap-1.5 font-medium text-text">

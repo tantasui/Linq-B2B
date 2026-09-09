@@ -12,24 +12,41 @@
    `.sr-only` would follow the merchant into the dashboard.
 
    Colour, type and motion tokens live here under the landing's own names
-   (--ink / --paper / --signal). globals.css carries the same values under the
+   (--paper / --ink / --signal). globals.css carries the same values under the
    product's names (--bg / --text / --accent); they are one palette described
    twice, which is what lets a scene and a dashboard panel sit on the same
    ground without either file importing the other.
+
+   The page is set on paper, not on ink. The two roles kept their meaning
+   through the change — --paper is still the ground and --ink is still the type
+   — so every rule below reads the same way it always did; only the two values
+   at the top of the palette changed places. What does NOT invert is anything
+   sitting on the purple climax scene: that ground stays --signal in both
+   directions, so its type is pinned to --on-signal rather than to --ink.
    ============================================================================= */
 
 /* ---- Design tokens -------------------------------------------------------- */
 :root {
   /* §2.1 Colour */
-  --ink:          #0A0A0B;
-  --ink-2:        #141416;
-  --paper:        #F4F1EC;
-  --paper-dim:    #8C8A86;
+  --paper:        #FAF8F5;  /* the ground, warm not white */
+  --paper-2:      #FFFFFF;  /* a surface lifted off it */
+  --ink:          #17171B;  /* type */
+  --ink-dim:      #62626B;  /* dimmed type — 6.4:1 on paper */
   --signal:       #8A4FFF;
   --signal-deep:  #532F99;
   --signal-tint:  #EDE5FF;
   --signal-dark:  #281450;
-  --mono-dim:     #A3A19D; /* §8 a11y bump for small (<14px) mono/technical text */
+  --mono-dim:     #71717B; /* §8 a11y bump for small (<14px) mono/technical text */
+  /* The purple climax does not invert with the page, so what sits on it is
+     pinned here rather than borrowing whichever of ink/paper is the ground. */
+  --on-signal:    #17171B;
+  /* --on-signal is the CLIMAX HEADLINE's colour: 88px display type, where
+     3.96:1 against the purple is fine (AA large is 3:1). A 14px button label on
+     the same purple is not fine at that ratio, so small type on a purple fill
+     uses white instead, which is 4.52:1 — the same call the product's own
+     --accent-contrast makes for exactly the same reason. */
+  --on-signal-sm: #FFFFFF;
+  --line:         rgba(23, 23, 27, 0.12);  /* the hairline, on paper */
 
   /* §2.3 Grid */
   --columns:  12;
@@ -51,10 +68,12 @@
   --fs-body:       17px;
   --fs-mono:       13px;
 
-  --track-display: -0.04em;
+  /* Both tracks are relaxed and the display weight steps down: -0.04em at 680
+     is a poster setting, and it is what made every heading read as a slab. */
+  --track-display: -0.02em;
   --track-body:    0.01em;
-  --track-mono:    0.12em;
-  --w-display:     680;
+  --track-mono:    0.02em;
+  --w-display:     600;
   --w-body:        400;
 
   --nav-h:         60px;
@@ -71,8 +90,8 @@ html, body { overflow-x: clip; } /* §7: no horizontal scroll */
 html { -webkit-text-size-adjust: 100%; }
 .linq-landing {
   margin: 0;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-display);
   font-weight: var(--w-body);
   font-size: var(--fs-body);
@@ -98,7 +117,7 @@ html { -webkit-text-size-adjust: 100%; }
   font-family: var(--font-display);
   font-weight: var(--w-display);
   letter-spacing: var(--track-display);
-  line-height: 0.94;
+  line-height: 1.05;
   text-wrap: balance;
 }
 .linq-landing .body {
@@ -106,13 +125,13 @@ html { -webkit-text-size-adjust: 100%; }
   font-size: var(--fs-body);
   letter-spacing: var(--track-body);
   line-height: 1.5;
-  color: var(--paper);
+  color: var(--ink);
 }
 .linq-landing .mono {
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-size: var(--fs-mono);
-  font-weight: 400;
-  text-transform: uppercase;
+  font-weight: 500;
+  text-transform: none;
   letter-spacing: var(--track-mono);
   color: var(--mono-dim);
 }
@@ -134,12 +153,14 @@ html { -webkit-text-size-adjust: 100%; }
   top: 8px; left: 8px;
   z-index: 100;
   padding: 10px 16px;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: none;
   letter-spacing: var(--track-mono);
+  border-radius: 999px;
   transform: translateY(-160%);
   transition: transform 160ms ease;
 }
@@ -150,11 +171,11 @@ html { -webkit-text-size-adjust: 100%; }
   outline: 2px solid var(--signal);
   outline-offset: 2px;
 }
-/* On the purple scene the focus ring must switch to --ink to stay visible (§8).
+/* On the purple scene the focus ring must switch to --paper to stay visible (§8).
    Covers content links inside the scene AND the nav while it's inverted over it. */
 .linq-landing .scene--rates a:focus-visible,
 .linq-landing .site-header.is-inverted a:focus-visible,
-.linq-landing .site-header.is-inverted .btn:focus-visible { outline-color: var(--ink); }
+.linq-landing .site-header.is-inverted .btn:focus-visible { outline-color: var(--on-signal); }
 
 /* ---- Section markers (left margin, vertical, mono) — §2.3 ----------------- */
 .linq-landing .marker {
@@ -163,7 +184,7 @@ html { -webkit-text-size-adjust: 100%; }
   top: calc(var(--nav-h) + 40px);
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  color: var(--paper-dim);
+  color: var(--ink-dim);
   font-size: 12px;
   pointer-events: none;
 }
@@ -186,8 +207,8 @@ html { -webkit-text-size-adjust: 100%; }
   margin-inline: auto;
   padding-inline: var(--edge);
 }
-.linq-landing .nav__brand { color: var(--paper); flex: 0 0 auto; }
-.linq-landing .wordmark { height: 20px; width: auto; color: var(--paper); }
+.linq-landing .nav__brand { color: var(--ink); flex: 0 0 auto; }
+.linq-landing .wordmark { height: 20px; width: auto; color: var(--ink); }
 
 .linq-landing .nav__links {
   display: flex;
@@ -197,15 +218,16 @@ html { -webkit-text-size-adjust: 100%; }
 }
 .linq-landing .nav__links a {
   position: relative;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-transform: none;
   letter-spacing: var(--track-mono);
-  color: var(--paper-dim);
+  color: var(--ink-dim);
   padding-bottom: 4px;
   transition: color 160ms ease;
 }
-.linq-landing .nav__links a:hover { color: var(--paper); }
+.linq-landing .nav__links a:hover { color: var(--ink); }
 /* Active underline — a 1px --signal rule that wipes in from the left (§6) */
 .linq-landing .nav__links a::after {
   content: "";
@@ -217,9 +239,9 @@ html { -webkit-text-size-adjust: 100%; }
   transform-origin: left;
   transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1); /* power2.out-ish */
 }
-.linq-landing .nav__links a.is-active { color: var(--paper); }
+.linq-landing .nav__links a.is-active { color: var(--ink); }
 .linq-landing .nav__links a.is-active::after { transform: scaleX(1); }
-.linq-landing .nav__num { color: var(--paper); opacity: 0.5; margin-right: 4px; }
+.linq-landing .nav__num { color: var(--ink); opacity: 0.5; margin-right: 4px; }
 
 .linq-landing .nav__progress {
   position: absolute;
@@ -241,35 +263,62 @@ html { -webkit-text-size-adjust: 100%; }
               fill 240ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .linq-landing .site-header.is-inverted .wordmark,
-.linq-landing .site-header.is-inverted .nav__num { color: var(--ink); }
-.linq-landing .site-header.is-inverted .nav__links a { color: rgba(10, 10, 11, 0.6); }
+.linq-landing .site-header.is-inverted .nav__num { color: var(--on-signal); }
+.linq-landing .site-header.is-inverted .nav__links a { color: rgba(23, 23, 27, 0.62); }
 .linq-landing .site-header.is-inverted .nav__links a:hover,
-.linq-landing .site-header.is-inverted .nav__links a.is-active { color: var(--ink); }
-.linq-landing .site-header.is-inverted .nav__links a::after { background: var(--ink); }
-.linq-landing .site-header.is-inverted .btn--nav { border-color: var(--ink); color: var(--ink); }
-.linq-landing .site-header.is-inverted .btn--nav:hover { background: var(--ink); color: var(--signal); }
-.linq-landing .site-header.is-inverted .nav__progress { background: var(--ink); }
+.linq-landing .site-header.is-inverted .nav__links a.is-active { color: var(--on-signal); }
+.linq-landing .site-header.is-inverted .nav__links a::after { background: var(--on-signal); }
+.linq-landing .site-header.is-inverted .btn--nav { border-color: var(--on-signal); color: var(--on-signal); }
+.linq-landing .site-header.is-inverted .btn--nav::before { background: var(--on-signal); }
+/* --signal on the dark wipe is 3.96:1 — the same shortfall as dark-on-purple,
+   just mirrored. The tint keeps the purple cast at 14.5:1 instead. */
+.linq-landing .site-header.is-inverted .btn--nav:hover,
+.linq-landing .site-header.is-inverted .btn--nav:focus-visible { color: var(--signal-tint); }
+.linq-landing .site-header.is-inverted .nav__progress { background: var(--on-signal); }
 
-/* Sharp rectangular buttons — border-radius 0 everywhere (§6/§9) */
+/* Fully rounded buttons — the same capsule the product uses (§6/§9) */
 .linq-landing .btn {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
   letter-spacing: var(--track-mono);
-  border-radius: 0;
+  border-radius: 999px;
   white-space: nowrap;
 }
 .linq-landing .btn--nav {
   flex: 0 0 auto;
   padding: 12px 18px;
-  border: 1px solid var(--paper);
-  color: var(--paper);
-  transition: background 160ms ease, color 160ms ease;
+  border: 1px solid var(--signal);
+  color: var(--ink);
+  position: relative;
+  /* The wipe is a z-index:-1 pseudo, same as the CTA's. In the footer that sits
+     inside the scene's own stacking context and lands behind the label; up here
+     the fixed header already has one, and a -1 child would sink behind the
+     bar's scrim instead. Isolation gives the button a context of its own, so
+     -1 means "behind my label" and nothing further back. */
+  isolation: isolate;
+  overflow: hidden;
+  transition: color 160ms ease;
 }
-.linq-landing .btn--nav:hover { background: var(--paper); color: var(--ink); }
+/* The footer CTA's wipe, at nav scale (§6 Scene 08). */
+.linq-landing .btn--nav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--signal);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 280ms cubic-bezier(0.65, 0, 0.35, 1);
+  z-index: -1;
+}
+.linq-landing .btn--nav:hover::before,
+.linq-landing .btn--nav:focus-visible::before { transform: scaleX(1); }
+.linq-landing .btn--nav:hover,
+.linq-landing .btn--nav:focus-visible { color: var(--on-signal-sm); }
 
 /* =============================================================================
    SCENE SCAFFOLD
@@ -278,7 +327,7 @@ html { -webkit-text-size-adjust: 100%; }
   position: relative;
   /* Opaque: a transparent scene over a transparent body is what makes a
      mis-timed pin look like two sections stacked on each other. */
-  background: var(--ink);
+  background: var(--paper);
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -294,14 +343,14 @@ html { -webkit-text-size-adjust: 100%; }
 .linq-landing [tabindex="-1"]:focus { outline: none; }
 .linq-landing .scene__inner { position: relative; z-index: 2; }
 .linq-landing .scene__title {
-  color: var(--paper);
+  color: var(--ink);
   font-size: var(--fs-display-lg);
-  line-height: 0.94;
+  line-height: 1.05;
 }
 .linq-landing .scene__body {
   max-width: 42ch;
   margin-top: 28px;
-  color: var(--paper);
+  color: var(--ink);
 }
 
 /* ---- SCENE 01 — HERO ------------------------------------------------------ */
@@ -309,7 +358,7 @@ html { -webkit-text-size-adjust: 100%; }
 .linq-landing .hero__title {
   grid-column: 1 / 8;
   font-size: var(--fs-hero);
-  line-height: 0.95;
+  line-height: 1.04;
   align-self: center;
 }
 .linq-landing .hero__sub {
@@ -342,7 +391,7 @@ html { -webkit-text-size-adjust: 100%; }
   /* the plane-cursor paints it, so it must not eat the pointer */
   pointer-events: none;
 }
-/* A faint star field, confined to the hero — the globe needs somewhere to be. */
+/* A faint speck field, confined to the hero — the globe needs somewhere to be. */
 .linq-landing .hero__stars {
   position: absolute;
   inset: 0;
@@ -429,9 +478,9 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
 .linq-landing .stamp {
   display: block;
   padding: 6px;
-  border: 1px solid rgba(140, 138, 134, 0.25); /* --paper-dim @ 0.25 */
-  border-radius: 0;
-  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-2);
 }
 .linq-landing .stamp img {
   width: 104px; height: 69px;
@@ -469,24 +518,24 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
   justify-content: space-between;
   gap: 24px;
   padding: 6px 12px;
-  border-top: 1px solid rgba(140, 138, 134, 0.2);
-  color: var(--paper);
+  border-top: 1px solid var(--line);
+  color: var(--ink);
   transition: background 160ms ease, color 160ms ease, padding-inline 160ms ease;
 }
-.linq-landing .chain-list li:last-child { border-bottom: 1px solid rgba(140, 138, 134, 0.2); }
+.linq-landing .chain-list li:last-child { border-bottom: 1px solid var(--line); }
 /* Hover: fill the row in the chain's official brand colour (client-requested) */
 .linq-landing .chain-list li:hover {
   background: var(--chain-bg, var(--signal));
-  color: var(--chain-fg, var(--ink));
+  color: var(--chain-fg, var(--paper));
   padding-inline: 20px;
 }
 .linq-landing .chain-list__name {
   font-size: clamp(22px, 2.9vw, 38px);
-  line-height: 1;
+  line-height: 1.1;
   color: inherit;
 }
-.linq-landing .chain-list__ticker { color: var(--paper-dim); transition: color 160ms ease; }
-.linq-landing .chain-list li:hover .chain-list__ticker { color: var(--chain-fg, var(--ink)); opacity: 0.72; }
+.linq-landing .chain-list__ticker { color: var(--ink-dim); transition: color 160ms ease; }
+.linq-landing .chain-list li:hover .chain-list__ticker { color: var(--chain-fg, var(--paper)); opacity: 0.72; }
 /* Coin cluster overlaying the chain list (client-requested) */
 .linq-landing .chains__coins { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .linq-landing .cc { position: absolute; }
@@ -499,18 +548,18 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
 /* ---- SCENE 05 — RATES / PURPLE CLIMAX ------------------------------------- */
 .linq-landing .scene--rates {
   background: var(--signal);   /* static flip; the wipe is session 6 */
-  color: var(--ink);
+  color: var(--on-signal);
 }
 .linq-landing .rates__copy { grid-column: 1 / 8; align-self: center; }
 /* inline-block so the box shrinks to the widest line: that box IS the gap the
    rail is masked around, so it has to be the word, not the column (§1/§2). */
 .linq-landing .rates__title {
   display: inline-block;
-  color: var(--ink);
+  color: var(--on-signal);
   /* Smaller again (§2): the headline, the wheel and a full card on the rail all
      have to sit inside one screen with air between them. */
   font-size: clamp(38px, 6vw, 88px);
-  line-height: 0.9;
+  line-height: 1.02;
 }
 .linq-landing .rates__lead { display: block; }
 
@@ -520,23 +569,31 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
    the list and dims the items; everything here is just the window. */
 .linq-landing .picker {
   --pi-h: 1em;
+  /* Window height in item-heights, and the half-gap that leaves above the
+     centred word. Kept as tokens because three other numbers derive from them. */
+  --pi-win: 1.7;
+  --pi-gap: calc(var(--pi-h) * (var(--pi-win) - 1) / 2);
   display: block;
   position: relative;
-  height: calc(var(--pi-h) * 2.2);
-  margin-top: calc(var(--pi-h) * -0.1);
+  height: calc(var(--pi-h) * var(--pi-win));
+  /* Pull the window up by its own half-gap: the live word then sits where the
+     next line of the headline would, and the neighbour rolling away occupies
+     the space the negative margin borrowed back. */
+  margin-top: calc(var(--pi-gap) * -1);
   overflow: hidden;
-  /* the fade is what makes it a wheel rather than a list in a box */
+  /* The fade is what makes it a wheel rather than a list in a box — but it
+     belongs to the neighbours, so it starts where the live word ends. */
   -webkit-mask-image: linear-gradient(to bottom,
-    transparent 0%, rgba(0,0,0,0.35) 16%, #000 38%, #000 62%, rgba(0,0,0,0.35) 84%, transparent 100%);
+    transparent 0%, rgba(0,0,0,0.35) 8%, #000 17%, #000 83%, rgba(0,0,0,0.35) 92%, transparent 100%);
           mask-image: linear-gradient(to bottom,
-    transparent 0%, rgba(0,0,0,0.35) 16%, #000 38%, #000 62%, rgba(0,0,0,0.35) 84%, transparent 100%);
+    transparent 0%, rgba(0,0,0,0.35) 8%, #000 17%, #000 83%, rgba(0,0,0,0.35) 92%, transparent 100%);
 }
 /* The list is shifted so the ACTIVE item lands in the middle slot. */
 .linq-landing .picker__list {
   display: block;
   position: absolute;
   left: 0; right: 0;
-  top: calc(var(--pi-h) * 0.6);
+  top: var(--pi-gap);
   will-change: transform;
 }
 .linq-landing .picker__item {
@@ -551,10 +608,22 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
 .linq-landing .wheel {
   position: relative;
   overflow: hidden;
+  /* --lit-a/--lit-b are written by main.js from the measured slot heights, so
+     the opaque band always covers the centred item whole and the fade only
+     ever touches the neighbour at the edge. The fallbacks are the old fixed
+     stops, for the one frame before the first measure. */
   -webkit-mask-image: linear-gradient(to bottom,
-    transparent 0%, rgba(0,0,0,0.5) 7%, #000 20%, #000 80%, rgba(0,0,0,0.5) 93%, transparent 100%);
+    transparent 0%,
+    rgba(0,0,0,0.5) var(--lit-fade, 7%),
+    #000 var(--lit-a, 20%), #000 var(--lit-b, 80%),
+    rgba(0,0,0,0.5) calc(100% - var(--lit-fade, 7%)),
+    transparent 100%);
           mask-image: linear-gradient(to bottom,
-    transparent 0%, rgba(0,0,0,0.5) 7%, #000 20%, #000 80%, rgba(0,0,0,0.5) 93%, transparent 100%);
+    transparent 0%,
+    rgba(0,0,0,0.5) var(--lit-fade, 7%),
+    #000 var(--lit-a, 20%), #000 var(--lit-b, 80%),
+    rgba(0,0,0,0.5) calc(100% - var(--lit-fade, 7%)),
+    transparent 100%);
 }
 .linq-landing .wheel__list {
   position: absolute;
@@ -593,15 +662,15 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
   position: absolute;
   top: 0; left: 0;
   width: 100%; height: 1px;
-  background: var(--paper-dim);
+  background: var(--line);
 }
 .linq-landing .step { position: relative; padding-right: 24px; }
 .linq-landing .step__node {
   position: absolute;
   top: -34px; left: 0;
   width: 10px; height: 10px;
-  background: var(--paper);
-  border-radius: 0;
+  background: var(--ink);
+  border-radius: 999px;
 }
 .linq-landing .step__num { display: block; color: var(--signal); }
 .linq-landing .step__name {
@@ -610,7 +679,7 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
   font-size: 28px;
   line-height: 1.05;
 }
-.linq-landing .step__desc { display: block; margin-top: 12px; color: var(--paper-dim); max-width: 26ch; }
+.linq-landing .step__desc { display: block; margin-top: 12px; color: var(--ink-dim); max-width: 26ch; }
 
 /* ---- SCENE 07 — SOCIALS --------------------------------------------------- */
 .linq-landing .scene--socials .scene__inner { justify-items: center; }
@@ -626,9 +695,9 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
 .linq-landing .social__svg { width: 56px; height: 56px; }
 /* Hover flip (§6 Scene 07) — full behavior/animation refined later */
 .linq-landing .social:hover .social__circle,
-.linq-landing .social:focus-visible .social__circle { fill: var(--paper); }
+.linq-landing .social:focus-visible .social__circle { fill: var(--ink); }
 .linq-landing .social:hover .social__glyph,
-.linq-landing .social:focus-visible .social__glyph { fill: var(--ink); }
+.linq-landing .social:focus-visible .social__glyph { fill: var(--paper); }
 
 /* ---- SCENE 08 — FOOTER ---------------------------------------------------- */
 .linq-landing .scene--footer {
@@ -643,7 +712,7 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
   justify-self: end;
   align-self: end;
   order: 3;
-  color: var(--paper);
+  color: var(--ink);
   position: relative;
   z-index: 2;
 }
@@ -660,7 +729,7 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
   height: 64px;
   padding-inline: 40px;
   border: 1px solid var(--signal);
-  color: var(--paper);
+  color: var(--ink);
   position: relative;
   overflow: hidden;
 }
@@ -678,14 +747,14 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
 .linq-landing .btn--cta:hover::before,
 .linq-landing .btn--cta:focus-visible::before { transform: scaleX(1); }
 .linq-landing .btn--cta:hover,
-.linq-landing .btn--cta:focus-visible { color: var(--ink); }
+.linq-landing .btn--cta:focus-visible { color: var(--on-signal); }
 .linq-landing .footer__tech { margin-top: 24px; color: var(--mono-dim); }
 .linq-landing .footer__copyright {
   grid-column: 1 / 13;
   text-align: center;
   font-size: 10px;
-  color: var(--paper-dim);
-  opacity: 0.5;
+  color: var(--ink-dim);
+  opacity: 0.7;
   margin-top: 40px;
 }
 .linq-landing .footer__plane {
@@ -729,16 +798,16 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
   inset: 0;
   z-index: -1;
   background: linear-gradient(to bottom,
-    rgba(10, 10, 11, 0.96) 0%,
-    rgba(10, 10, 11, 0.82) 42%,
-    rgba(10, 10, 11, 0) 78%);
+    rgba(250, 248, 245, 0.96) 0%,
+    rgba(250, 248, 245, 0.82) 42%,
+    rgba(250, 248, 245, 0) 78%);
   -webkit-backdrop-filter: blur(3px);
           backdrop-filter: blur(3px);
   transition: background 240ms ease;
   pointer-events: none;
 }
 /* Over the purple climax the bar inverts, so its ground has to invert with it or
-   the inverted ink type sits on black and disappears. */
+   the inverted type sits on paper and disappears. */
 .linq-landing .site-header.is-inverted::before {
   background: linear-gradient(to bottom,
     rgba(138, 79, 255, 0.96) 0%,
@@ -788,7 +857,7 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
 
 /* Armed = the scene is still the page's own black and the content is not there
    yet. The purple only exists as the wash, so it can arrive from a point. */
-.linq-landing .scene--rates.is-armed { background: var(--ink); }
+.linq-landing .scene--rates.is-armed { background: var(--paper); }
 .linq-landing .scene--rates.is-armed .rates__lead,
 .linq-landing .scene--rates.is-armed .picker,
 .linq-landing .scene--rates.is-armed .rail { opacity: 0; }
@@ -885,7 +954,7 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
   top: calc(var(--wire-y) - var(--wire-w) / 2);
   height: var(--wire-w);
   border-radius: var(--wire-w);
-  background: #2F1E51;
+  background: linear-gradient(to bottom, var(--signal), #342452);
   transform: scaleX(0);
   transform-origin: left center;
 }
@@ -896,60 +965,43 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
 .linq-landing .rail__thread {
   position: absolute;
   left: -1px; right: -1px;
-  top: calc(var(--card-w) * 0.1346 - var(--wire-w) / 2);
+  top: calc(var(--card-w) * 0.1002 - var(--wire-w) / 2);
   height: var(--wire-w);
   border-radius: var(--wire-w);
-  background: #2F1E51;
+  background: linear-gradient(to bottom, var(--signal), #342452);
   z-index: 2;
 }
 .linq-landing .rail__track { position: absolute; inset: 0; list-style: none; margin: 0; padding: 0; }
 
-/* THE CARD IS THE ASSET. assets/rails/rail-card.svg is review.svg with the
-   review copy and the avatar photo lifted out of it — same body, same edge,
-   same dark band, same punched hole (which is a real hole: the purple shows
-   through it and the wire runs behind). Nothing here is redrawn or guessed;
-   the numbers below are read straight off that file:
+/* THE CARD IS THE ASSET. Each card is one slice of rail-cards.svg, exported to
+   assets/rails/card-<chain>.svg — same body, same edge, same punched hole
+   (which is a real hole: the purple shows through it and the wire runs behind),
+   and now the chain's coin baked into the face rather than layered on top. The
+   strip's own rail line is left out of the slices, because the landing draws
+   that itself as .rail__wire and would otherwise paint it twice.
 
-     card box   411.5 x 530          -> aspect 1.288
-     hole       centre y 55.51       -> 10.47% down
-     band top   y 406.32             -> 76.66% down
+   Nothing here is redrawn or guessed; the numbers are read off the source:
 
-   The coin goes where the photo was; the naira goes in the avatar slot. */
+     card box   405.473 x 523.961    -> aspect 1.2922
+     hole       centre y 52.511      -> 10.02% down
+
+   There is no dark band and no avatar slot in this artwork, so the naira disc
+   the old card carried has nowhere to sit and is gone with it. */
 .linq-landing .rail__card {
   --card-w: 152px;
   position: absolute;
   left: 0;
-  top: calc(var(--wire-y) - var(--card-w) * 0.1348);   /* 10.47% of the height */
+  top: calc(var(--wire-y) - var(--card-w) * 0.1002);   /* 10.02% of the height */
   width: var(--card-w);
-  height: calc(var(--card-w) * 1.288);
-  background: url("/landing/assets/rails/rail-card.svg") center / 100% 100% no-repeat;
+  height: calc(var(--card-w) * 1.2922);
+  /* --card-art is set per card in page.tsx, so the chain a card names and the
+     coin it carries can never drift apart. */
+  background: var(--card-art) center / 100% 100% no-repeat;
   filter: drop-shadow(0 22px 40px rgba(20, 8, 48, 0.34));
   /* swings about the punched hole, the way it hangs in the artwork — main.js
      runs a damped pendulum per card off that pivot (1b/1d) */
-  transform-origin: 50% calc(var(--card-w) * 0.1346);
+  transform-origin: 50% calc(var(--card-w) * 0.1002);
   will-change: transform;
-}
-/* the face, between the hole and the band */
-.linq-landing .rail__coin {
-  position: absolute;
-  left: 50%;
-  top: calc(var(--card-w) * 0.52);
-  width: calc(var(--card-w) * 0.5);
-  height: calc(var(--card-w) * 0.5);
-  translate: -50% -50%;
-  border-radius: 50%;
-}
-/* the avatar slot in the dark band — naira.png, cut to a circle */
-.linq-landing .rail__naira {
-  position: absolute;
-  left: 50%;
-  top: calc(var(--card-w) * 1.028);                    /* middle of the band */
-  width: calc(var(--card-w) * 0.235);
-  height: calc(var(--card-w) * 0.235);
-  translate: -50% -50%;
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 0 0 2px #E8DDFF;
 }
 
 /* --- the pills: impacts, not scrubbed state ------------------------------- */
@@ -971,21 +1023,22 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
   white-space: nowrap;
   padding: 9px 15px;
   border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 500;
   letter-spacing: var(--track-mono);
-  text-transform: uppercase;
-  box-shadow: 0 10px 26px rgba(20, 8, 48, 0.35);
+  text-transform: none;
+  box-shadow: 0 10px 26px rgba(20, 8, 48, 0.22);
 }
 .linq-landing .rail__pill--left {
   translate: -50% 0;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--paper);
+  color: var(--ink);
 }
 .linq-landing .rail__pill--right {
   translate: -50% 0;
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
   top: 108px;                      /* clears the card and comes out underneath */
 }
 
@@ -1170,7 +1223,7 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
     --fs-display-md: 31px;
     --nav-h: 54px;
   }
-  .linq-landing .display { line-height: 0.94; }
+  .linq-landing .display { line-height: 1.05; }
 
   .linq-landing .scene { min-height: 92vh; padding-block: calc(var(--nav-h) + 44px) 32px; }
   @supports (height: 100svh) { .linq-landing .scene { min-height: 92svh; } }
@@ -1215,19 +1268,20 @@ html.plane-is-cursor :focus-visible { cursor: auto !important; }
    ============================================================================= */
 
 /* The bot has no "log in" — a merchant dashboard does, and it sits next to the
-   primary CTA in the same mono voice as the section links. */
+   primary CTA in the same label voice as the section links. */
 .linq-landing .nav__login {
   flex: 0 0 auto;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-transform: none;
   letter-spacing: var(--track-mono);
-  color: var(--paper-dim);
+  color: var(--ink-dim);
   transition: color 160ms ease;
 }
-.linq-landing .nav__login:hover { color: var(--paper); }
-.linq-landing .site-header.is-inverted .nav__login { color: rgba(10, 10, 11, 0.6); }
-.linq-landing .site-header.is-inverted .nav__login:hover { color: var(--ink); }
+.linq-landing .nav__login:hover { color: var(--ink); }
+.linq-landing .site-header.is-inverted .nav__login { color: rgba(23, 23, 27, 0.62); }
+.linq-landing .site-header.is-inverted .nav__login:hover { color: var(--on-signal); }
 
 /* Scene 03 renders the real <Receipt />, not an exported screenshot. A receipt
    is a document, so unlike the chat screen it must not be cropped by the

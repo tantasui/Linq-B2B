@@ -102,10 +102,10 @@ export function NairaTransferDetails({
             alt=""
             loading="eager"
             decoding="async"
-            className="h-11 w-11 bg-white object-contain ring-1 ring-line"
+            className="h-11 w-11 rounded-full bg-white object-contain ring-1 ring-line"
           />
         ) : (
-          <span className="grid h-11 w-11 place-items-center bg-accent-soft text-accent-text">
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-accent-soft text-accent-text">
             <Landmark className="h-5 w-5" />
           </span>
         )}

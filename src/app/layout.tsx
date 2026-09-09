@@ -32,12 +32,14 @@ export const metadata: Metadata = {
 
 /**
  * One mode, so the browser is told once. There is no boot script and no
- * `.dark` class any more: the tokens in globals.css are the ink palette
- * unconditionally, which also means no light-flash to suppress.
+ * `.dark` class: the tokens in globals.css are the paper palette
+ * unconditionally, which also means no dark-flash to suppress. Telling the UA
+ * `light` is what keeps form controls, scrollbars and autofill from being
+ * rendered in the platform's dark styling over a light page.
  */
 export const viewport: Viewport = {
-  themeColor: "#0A0A0B",
-  colorScheme: "dark",
+  themeColor: "#FAF8F5",
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -46,7 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       lang="en"
       suppressHydrationWarning
       className={`${interTight.variable} ${jetbrainsMono.variable}`}
-      style={{ colorScheme: "dark" }}
+      style={{ colorScheme: "light" }}
     >
       <head>
         <link rel="preconnect" href="https://nigerianbanklogos.xyz" />

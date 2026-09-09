@@ -129,17 +129,17 @@ export default function TransactionsPage() {
       {/* Page headers read like the landing's scene markers: a numbered mono
           label over a display-weight title. */}
       <header>
-        <p className="font-mono text-label uppercase tracking-mono text-accent-text">03 — Orders</p>
-        <h1 className="u-display mt-3 text-hero">PAYMENTS</h1>
+        <p className="font-sans font-medium text-label tracking-mono text-accent-text">03 — Orders</p>
+        <h1 className="u-display mt-3 text-hero">Payments</h1>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
         <Card>
-          <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">Settled</p>
+          <p className="font-sans font-medium text-micro tracking-mono text-text-subtle">Settled</p>
           <p className="tnum u-display mt-3 text-2xl">{formatCurrency(settledTotal, "NGN")}</p>
         </Card>
         <Card>
-          <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">In flight</p>
+          <p className="font-sans font-medium text-micro tracking-mono text-text-subtle">In flight</p>
           <p className="tnum u-display mt-3 text-2xl text-accent-text">
             {formatCurrency(pendingTotal, "NGN")}
           </p>
@@ -149,7 +149,7 @@ export default function TransactionsPage() {
       {/* Period scrubber — the selected day animates to the centre. */}
       <Card className="px-0 py-3">
         <div className="mb-1 flex items-center justify-between px-5">
-          <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">
+          <p className="font-sans font-medium text-micro tracking-mono text-text-subtle">
             {day
               ? day.toLocaleDateString(undefined, { dateStyle: "full" })
               : "All time"}
@@ -158,7 +158,7 @@ export default function TransactionsPage() {
             <button
               type="button"
               onClick={() => setDay(null)}
-              className="font-mono text-micro uppercase tracking-mono text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
+              className="font-sans font-medium text-micro tracking-mono text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
             >
               Clear
             </button>
@@ -168,7 +168,7 @@ export default function TransactionsPage() {
       </Card>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <label className="flex h-12 flex-1 items-center gap-3 bg-surface px-4 text-text-muted ring-1 ring-inset ring-line focus-within:ring-2 focus-within:ring-accent">
+        <label className="flex h-12 flex-1 items-center gap-3 rounded-full bg-surface px-5 text-text-muted ring-1 ring-inset ring-line transition-shadow duration-fast ease-linq focus-within:ring-2 focus-within:ring-accent focus-within:shadow-[0_0_0_4px_hsl(var(--accent)/0.12)]">
           <Search className="h-4 w-4 shrink-0" />
           <input
             type="search"
@@ -253,12 +253,12 @@ export default function TransactionsPage() {
                 key={order.id}
                 type="button"
                 onClick={() => setOpenOrder(order)}
-                className="flex w-full items-center gap-3.5 border-b border-line px-1 py-3.5 text-left transition-colors duration-fast ease-linq hover:bg-surface"
+                className="-mx-2 flex w-full items-center gap-3.5 rounded-md border-b border-line px-2 py-3.5 text-left transition-colors duration-fast ease-linq last:border-b-0 hover:bg-surface-2"
               >
                 <NetworkLogo network={order.network} size={32} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{order.payerName}</p>
-                  <p className="truncate font-mono text-micro uppercase tracking-mono text-text-subtle">
+                  <p className="truncate font-sans font-medium text-micro tracking-mono text-text-subtle">
                     {order.cryptoAmountDue.toFixed(2)} {order.token} ·{" "}
                     {new Date(order.createdAt).toLocaleDateString(undefined, {
                       day: "numeric",
@@ -295,9 +295,9 @@ export default function TransactionsPage() {
                 href={explorerTxUrl(openOrder.network, openOrder.depositDigest)!}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-5 flex items-center justify-between gap-3 bg-surface-2 px-3 py-2.5 text-xs transition duration-fast ease-linq hover:bg-surface-3"
+                className="mt-5 flex items-center justify-between gap-3 rounded-md bg-surface-2 px-4 py-2.5 text-xs transition duration-fast ease-linq hover:bg-surface-3"
               >
-                <span className="font-mono text-micro uppercase tracking-mono text-text-subtle">
+                <span className="font-sans font-medium text-micro tracking-mono text-text-subtle">
                   Deposit transaction
                 </span>
                 <span className="flex items-center gap-1.5 font-medium text-text">

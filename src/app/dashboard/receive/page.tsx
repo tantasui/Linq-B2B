@@ -209,16 +209,16 @@ export default function ReceivePage() {
   return (
     <div className="space-y-7">
       <header>
-        <p className="font-mono text-label uppercase tracking-mono text-accent-text">02 — Receive</p>
-        <h1 className="u-display mt-3 text-hero">COLLECT PAYMENT</h1>
+        <p className="font-sans font-medium text-label tracking-mono text-accent-text">02 — Receive</p>
+        <h1 className="u-display mt-3 text-hero">Collect payment</h1>
         <p className="mt-3 text-sm text-text-muted">
           Share a checkout link, or charge a set amount.
         </p>
       </header>
 
-      {/* Two modes, equal weight. The active one is marked by a signal rule
-          along its top edge rather than by being raised off the track. */}
-      <div className="grid grid-cols-2 ring-1 ring-inset ring-line">
+      {/* Two modes, equal weight. The active one is raised out of the track as
+          its own rounded card rather than marked by a rule along its edge. */}
+      <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-surface-2 p-1.5 ring-1 ring-inset ring-line">
         {[
           { value: "open" as const, title: "Open receive", hint: "Payer enters amount" },
           { value: "fixed" as const, title: "Payment request", hint: "Locked amount" },
@@ -230,13 +230,13 @@ export default function ReceivePage() {
               type="button"
               onClick={() => setMode(entry.value)}
               className={cn(
-                "border-t-2 px-3.5 py-3 text-left transition duration-fast ease-linq active:scale-[0.99]",
-                active ? "border-accent bg-surface" : "border-transparent hover:bg-surface/60",
+                "rounded-md px-3.5 py-3 text-left transition duration-fast ease-linq active:scale-[0.99]",
+                active ? "bg-surface shadow-sm ring-1 ring-line" : "hover:bg-surface/70",
               )}
             >
               <p
                 className={cn(
-                  "font-mono text-xs uppercase tracking-mono",
+                  "font-sans font-medium text-[0.8125rem] tracking-mono",
                   active ? "text-text" : "text-text-muted",
                 )}
               >
@@ -251,11 +251,11 @@ export default function ReceivePage() {
       {mode === "open" ? (
         <Card className="space-y-5">
           <div className="flex items-start gap-3.5">
-            <span className="grid h-11 w-11 shrink-0 place-items-center bg-accent-soft text-accent-text">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-text">
               <Link2 className="h-5 w-5" />
             </span>
             <div>
-              <p className="font-mono text-xs uppercase tracking-mono">Open receive link</p>
+              <p className="font-sans font-medium text-[0.9375rem] tracking-mono">Open receive link</p>
               <p className="mt-1.5 text-xs leading-5 text-text-muted">
                 Customers enter the amount at checkout, choose a stablecoin and network, and Linq
                 settles the Naira to your verified account.
@@ -269,7 +269,7 @@ export default function ReceivePage() {
       ) : (
         <Card className="space-y-5">
           <Field label="Amount to charge">
-            <div className="flex items-center bg-surface ring-1 ring-inset ring-line focus-within:ring-2 focus-within:ring-accent">
+            <div className="flex items-center rounded-md bg-surface ring-1 ring-inset ring-line transition-shadow duration-fast ease-linq focus-within:ring-2 focus-within:ring-accent focus-within:shadow-[0_0_0_4px_hsl(var(--accent)/0.12)]">
               <span className="pl-4 text-text-muted">₦</span>
               <input
                 value={amount}
@@ -282,7 +282,7 @@ export default function ReceivePage() {
                 type="button"
                 aria-label="Open calculator"
                 onClick={() => setCalculator(true)}
-                className="mr-2 grid h-10 w-10 place-items-center text-accent-text transition duration-fast ease-linq hover:bg-accent-soft active:scale-[0.94]"
+                className="mr-2 grid h-10 w-10 place-items-center rounded-full text-accent-text transition duration-fast ease-linq hover:bg-accent-soft active:scale-[0.94]"
               >
                 <Calculator className="h-[18px] w-[18px]" />
               </button>
@@ -300,7 +300,7 @@ export default function ReceivePage() {
       )}
 
       {error ? (
-        <p className="linq-fade-in border-l-2 border-danger bg-danger-soft px-4 py-3 text-xs text-danger">
+        <p className="linq-fade-in rounded-md bg-danger-soft px-4 py-3 text-xs text-danger ring-1 ring-inset ring-danger/20">
           {error}
         </p>
       ) : null}
@@ -310,7 +310,7 @@ export default function ReceivePage() {
         onClose={() => setReady(false)}
         title={mode === "fixed" ? "Payment request ready" : "Receive link ready"}
       >
-        <div className="mx-auto w-fit bg-white p-4 ring-1 ring-line">
+        <div className="mx-auto w-fit rounded-lg bg-white p-4 shadow-sm ring-1 ring-line">
           <QRCodeSVG value={publicLink} size={176} fgColor="#09090d" bgColor="#ffffff" />
         </div>
 

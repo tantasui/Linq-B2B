@@ -66,7 +66,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-bg text-text">
       {/* ── Desktop sidebar (lg+) ── */}
-      <aside className="fixed left-0 top-0 z-40 hidden h-full w-[248px] flex-col bg-surface px-4 pb-8 pt-6 ring-1 ring-line lg:flex">
+      <aside className="fixed left-0 top-0 z-40 hidden h-full w-[248px] flex-col border-r border-line bg-surface px-4 pb-8 pt-6 lg:flex">
         <Link
           href="/dashboard"
           className="mb-8 flex items-center gap-2.5 px-2 text-accent transition-opacity duration-fast ease-linq hover:opacity-80"
@@ -79,7 +79,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <MerchantAvatar className="h-9 w-9 shrink-0" />
           <div className="min-w-0">
             <p className="truncate text-xs font-medium">{merchant?.businessName ?? "Set up business"}</p>
-            <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">Merchant</p>
+            <p className="font-sans font-medium text-micro tracking-mono text-text-subtle">Merchant</p>
           </div>
         </div>
 
@@ -92,12 +92,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 border-l-2 py-2.5 pl-3",
-                  "font-mono text-xs uppercase tracking-mono",
+                  "flex items-center gap-3 rounded-md px-3 py-2.5",
+                  "font-sans font-medium text-[0.8125rem] tracking-mono",
                   "transition-colors duration-fast ease-linq",
                   active
-                    ? "border-accent bg-accent-soft/40 text-text"
-                    : "border-transparent text-text-muted hover:border-line-strong hover:text-text",
+                    ? "bg-accent-soft text-accent-text"
+                    : "text-text-muted hover:bg-surface-2 hover:text-text",
                 )}
               >
                 <item.icon className="h-[18px] w-[18px] shrink-0" />
@@ -115,9 +115,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             type="button"
             onClick={signOut}
             className={cn(
-              "flex items-center gap-3 border-l-2 border-transparent py-2.5 pl-3 text-text-muted",
-              "font-mono text-xs uppercase tracking-mono",
-              "transition-colors duration-fast ease-linq hover:border-danger hover:text-danger",
+              "flex items-center gap-3 rounded-md px-3 py-2.5 text-text-muted",
+              "font-sans font-medium text-[0.8125rem] tracking-mono",
+              "transition-colors duration-fast ease-linq hover:bg-danger-soft hover:text-danger",
             )}
           >
             <LogOut className="h-[18px] w-[18px] shrink-0" />
@@ -137,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <>
                 <MerchantAvatar className="h-10 w-10" />
                 <div className="min-w-0">
-                  <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">Welcome back</p>
+                  <p className="font-sans font-medium text-micro tracking-mono text-text-subtle">Welcome back</p>
                   <p className="truncate text-sm font-medium">
                     {merchant?.businessName ?? "Set up business"}
                   </p>
@@ -167,12 +167,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-w-[62px] flex-col items-center gap-1 border-t-2 pb-1 pt-2",
-                  "font-mono text-micro uppercase tracking-mono",
+                  "flex min-w-[62px] flex-col items-center gap-1 rounded-lg px-2 pb-1.5 pt-2",
+                  "font-sans font-medium text-micro tracking-mono",
                   "transition duration-fast ease-linq active:scale-[0.94]",
                   active
-                    ? "border-accent text-text"
-                    : "border-transparent text-text-subtle hover:text-text-muted",
+                    ? "bg-accent-soft text-accent-text"
+                    : "text-text-subtle hover:text-text-muted",
                 )}
               >
                 <item.icon className="h-[18px] w-[18px]" />
@@ -186,7 +186,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ── Desktop content (lg+) ── */}
       <div className="hidden lg:ml-[248px] lg:block">
         <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-line bg-bg/85 px-8 backdrop-blur-xl">
-          <p className="font-mono text-label uppercase tracking-mono text-text-subtle">
+          <p className="font-sans font-medium text-label tracking-mono text-text-subtle">
             <span className="text-text-muted">{pageIndex} — </span>
             {pageTitle}
           </p>

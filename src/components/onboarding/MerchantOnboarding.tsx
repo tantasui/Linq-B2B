@@ -228,7 +228,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
       <div className="mb-6 flex items-start gap-3">
         <LinqMark size={30} className="mt-0.5 shrink-0 text-accent" />
         <div>
-          <h2 className="font-mono text-label uppercase tracking-mono text-text-subtle">Merchant setup</h2>
+          <h2 className="font-sans font-medium text-label tracking-mono text-text-subtle">Merchant setup</h2>
           <p className="mt-1 text-xs leading-5 text-text-muted">
             Four steps to start accepting stablecoins and settling in Naira.
           </p>
@@ -258,7 +258,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
       {step === "account" ? (
         <div className="space-y-4">
           <div className="rounded-md bg-surface-2 p-4">
-            <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-mono">
+            <p className="flex items-center gap-2 font-sans font-medium text-[0.9375rem] tracking-mono">
               <Mail className="h-4 w-4 text-accent-text" />
               {accountSignedIn ? "Email verified" : "Create your account"}
             </p>
@@ -381,7 +381,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
       {step === "bank" ? (
         <div className="space-y-4">
           <div className="rounded-md bg-surface-2 p-4">
-            <p className="font-mono text-xs uppercase tracking-mono">Where should we send your Naira?</p>
+            <p className="font-sans font-medium text-[0.9375rem] tracking-mono">Where should we send your Naira?</p>
             <p className="mt-2 text-xs leading-5 text-text-muted">
               We resolve the account name with your bank and show it to payers before they send —
               so they can confirm they are paying the right business.
@@ -389,7 +389,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
           </div>
 
           <Field label="Bank">
-            <label className="flex h-12 items-center gap-3 bg-surface px-4 text-text-muted ring-1 ring-inset ring-line focus-within:ring-2 focus-within:ring-accent">
+            <label className="flex h-12 items-center gap-3 rounded-md bg-surface px-4 text-text-muted ring-1 ring-inset ring-line transition-shadow duration-fast ease-linq focus-within:ring-2 focus-within:ring-accent focus-within:shadow-[0_0_0_4px_hsl(var(--accent)/0.12)]">
               <Search className="h-4 w-4 shrink-0" />
               <input
                 value={bankQuery}
@@ -412,7 +412,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
                 className={cn(
                   "flex w-full items-center justify-between gap-3 rounded-sm px-3 py-2.5 text-left text-sm",
                   "transition-colors duration-fast ease-linq hover:bg-surface",
-                  institutionCode === bank.code && "bg-surface",
+                  institutionCode === bank.code && "bg-accent-soft text-accent-text",
                 )}
               >
                 <span className="min-w-0 truncate">{bank.name}</span>
@@ -445,10 +445,10 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
 
           {/* The resolved name is the whole point of this step — give it weight. */}
           {verifiedName ? (
-            <div className="linq-fade-in flex items-start gap-2.5 border-l-2 border-success bg-success-soft px-4 py-3.5">
+            <div className="linq-fade-in flex items-start gap-2.5 rounded-lg bg-success-soft px-4 py-3.5 ring-1 ring-inset ring-success/15">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
               <div className="min-w-0">
-                <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">Account name</p>
+                <p className="font-sans font-medium text-micro tracking-mono text-text-subtle">Account name</p>
                 <p className="mt-0.5 truncate text-sm font-semibold">{verifiedName}</p>
               </div>
             </div>
@@ -477,7 +477,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
       ) : null}
 
       {feedback ? (
-        <p className="linq-fade-in mt-4 border-l-2 border-accent bg-accent-soft px-4 py-3 text-xs leading-5 text-accent-text">
+        <p className="linq-fade-in mt-4 rounded-md bg-accent-soft px-4 py-3 text-xs leading-5 text-accent-text ring-1 ring-inset ring-accent/15">
           {feedback}
         </p>
       ) : null}

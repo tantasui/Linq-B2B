@@ -84,14 +84,14 @@ export function DateCarousel({
             aria-current={active ? "date" : undefined}
             onClick={() => onChange(date)}
             className={cn(
-              "flex shrink-0 flex-col items-center justify-center",
+              "flex shrink-0 flex-col items-center justify-center rounded-full",
               "transition-all duration-slow ease-linq",
               active
-                ? "h-14 w-14 bg-accent text-accent-contrast"
-                : "h-11 w-11 text-text-muted opacity-55 hover:opacity-100",
+                ? "h-14 w-14 bg-accent text-accent-contrast shadow-md"
+                : "h-11 w-11 text-text-muted opacity-75 hover:bg-surface-2 hover:opacity-100",
             )}
           >
-            <span className="font-mono text-[10px] uppercase tracking-mono">
+            <span className="font-sans font-medium text-[10px] tracking-mono">
               {showMonth
                 ? date.toLocaleDateString(undefined, { month: "short" })
                 : date.toLocaleDateString(undefined, { weekday: "narrow" })}

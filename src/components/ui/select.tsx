@@ -59,7 +59,7 @@ export function Select({
   return (
     <div ref={wrapper} className={cn("relative", className)}>
       {label ? (
-        <span className="mb-2 block font-mono text-label uppercase tracking-mono text-text-subtle">
+        <span className="mb-2 block font-sans font-medium text-label tracking-mono text-text-subtle">
           {label}
         </span>
       ) : null}
@@ -71,10 +71,10 @@ export function Select({
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
         className={cn(
-          "flex h-12 w-full items-center gap-2.5 bg-surface px-4 text-sm",
+          "flex h-12 w-full items-center gap-2.5 rounded-md bg-surface px-4 text-sm",
           "ring-1 ring-inset ring-line transition duration-fast ease-linq",
           "hover:ring-line-strong active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none",
-          open && "ring-2 ring-accent",
+          open && "ring-2 ring-accent shadow-[0_0_0_4px_hsl(var(--accent)/0.12)]",
         )}
       >
         {selected?.adornment}
@@ -94,7 +94,7 @@ export function Select({
           role="listbox"
           className={cn(
             "linq-pop-in absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden",
-            "bg-surface p-1 shadow-lg ring-1 ring-line",
+            "rounded-lg bg-surface p-1.5 shadow-lg ring-1 ring-line",
             label && "top-[calc(100%+8px)]",
           )}
         >
@@ -112,9 +112,9 @@ export function Select({
                     setOpen(false);
                   }}
                   className={cn(
-                    "flex w-full items-center gap-2.5 border-l-2 px-3 py-2.5 text-left text-sm",
+                    "flex w-full items-center gap-2.5 rounded-sm px-3 py-2.5 text-left text-sm",
                     "transition-colors duration-fast ease-linq hover:bg-surface-2",
-                    active ? "border-accent bg-surface-2" : "border-transparent",
+                    active ? "bg-accent-soft text-accent-text" : "",
                   )}
                 >
                   {option.adornment}

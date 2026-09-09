@@ -88,17 +88,17 @@ export default function PreviewPage() {
         <header className="flex items-start justify-between gap-6 pb-10">
           <div>
             <LinqLockup size={26} className="text-accent" />
-            <h1 className="u-display mt-6 text-hero">DESIGN SYSTEM</h1>
+            <h1 className="u-display mt-6 text-hero">Design system</h1>
             <p className="mt-3 max-w-md text-sm leading-6 text-text-muted">
               One visual and interaction system across iOS and web, and the same one the marketing
               site is built from. Every screen uses these tokens and components, not a
               reconciliation after the fact.
             </p>
           </div>
-          <span className="u-marker">Ink · one mode</span>
+          <span className="u-marker">Paper · one mode</span>
         </header>
 
-        <Row title="Colour" hint="Ink ground, warm paper type, one signal purple. There is no second mode to reconcile — the marketing site and the product share these values.">
+        <Row title="Colour" hint="Warm paper ground, ink type, one signal purple. There is no second mode to reconcile — the marketing site and the product share these values.">
           <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
             <Swatch name="bg" className="bg-bg" />
             <Swatch name="surface" className="bg-surface" />
@@ -115,7 +115,7 @@ export default function PreviewPage() {
             <p className="tnum u-display text-hero">₦485,000</p>
             <p className="text-base">Body — settlement completed to GTBank ••4471</p>
             <p className="text-sm text-text-muted">Metadata — 23 Aug 2026 at 14:32 · Base · USDC</p>
-            <p className="text-micro uppercase tracking-[0.14em] text-text-subtle">Label</p>
+            <p className="u-mono">Label</p>
           </div>
         </Row>
 
@@ -124,8 +124,8 @@ export default function PreviewPage() {
             <LinqMark size={52} className="text-accent" />
             <LinqWordmark size={26} className="text-accent" />
             <LinqLockup size={20} className="text-accent" />
-            <div className="rounded-md bg-accent p-4">
-              <LinqLockup size={20} className="text-white" />
+            <div className="rounded-lg bg-accent p-4">
+              <LinqLockup size={20} className="text-accent-contrast" />
             </div>
           </div>
         </Row>

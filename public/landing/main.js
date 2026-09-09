@@ -95,13 +95,6 @@
         onToggle: function (self) { link.classList.toggle("is-active", self.isActive); },
       });
     });
-    var rates = document.querySelector("#rates");
-    if (rates && header) {
-      ScrollTrigger.create({
-        trigger: rates, start: "top top", end: "bottom top",
-        onToggle: function (self) { header.classList.toggle("is-inverted", self.isActive); },
-      });
-    }
   }
 
   /* =========================================================================
@@ -308,9 +301,10 @@
      tapping a line, and the summoned plane (§2) paints whatever it flies over.
      ========================================================================= */
 
-  // Bright on the dark scenes; deep on the purple one, where the type is ink.
-  var LIT_ON_DARK = ["#8A4FFF", "#BEA4FF", "#4DA2FF", "#2DD4BF", "#F0B90B",
-                     "#F7931A", "#FF7A85", "#9945FF", "#00E5A0"];
+  // Deep on the paper scenes; deeper still on the purple one, where the type is
+  // ink and a mid-tone would sit between the two and read as neither.
+  var LIT_ON_PAPER = ["#8A4FFF", "#6D28D9", "#0052FF", "#0F766E", "#A16207",
+                      "#C2410C", "#BE123C", "#9945FF", "#047857"];
   var LIT_ON_PURPLE = ["#2B0A5E", "#0B3D91", "#0B5132", "#7A3E00", "#7A0B2E",
                        "#111827", "#4C1D95"];
 
@@ -352,7 +346,7 @@
     if (!blocks.length) return;
 
     function paletteFor(el) {
-      return el.closest(".scene--rates") ? LIT_ON_PURPLE : LIT_ON_DARK;
+      return el.closest(".scene--rates") ? LIT_ON_PURPLE : LIT_ON_PAPER;
     }
     var lastColour = "";
     function pick(pal) {
@@ -551,7 +545,7 @@
     rotation: 0.02,      // radians per frame
     fps: 20,
     land: "#8A4FFF",     // the continents are ours
-    sea: "#2C2440",
+    sea: "#D3C9E8",
     texture: "/landing/assets/source/earth-specular.jpg",
   };
   var GLOBE_GROUP_MS = 420;    // how long one colour keeps being handed out
@@ -600,7 +594,7 @@
       function rgb(hex) {
         return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
       }
-      var PALETTE = LIT_ON_DARK.map(rgb);
+      var PALETTE = LIT_ON_PAPER.map(rgb);
       var lastPick = -1;
       function nextColour(now) {
         if (now - groupAt < GLOBE_GROUP_MS && groupColour) return groupColour;
@@ -711,8 +705,8 @@
     var n = 90, out = [];
     for (var i = 0; i < n; i++) {
       out.push("radial-gradient(1px at " + (Math.random() * 100).toFixed(2) + "% " +
-               (Math.random() * 100).toFixed(2) + "%, rgba(255,255,255," +
-               (0.35 + Math.random() * 0.5).toFixed(2) + "), transparent)");
+               (Math.random() * 100).toFixed(2) + "%, rgba(23,23,27," +
+               (0.16 + Math.random() * 0.22).toFixed(2) + "), transparent)");
     }
     el.style.backgroundImage = out.join(",");
   }
@@ -847,7 +841,21 @@
         parseFloat(getComputedStyle(scene).paddingTop || 0) -
         parseFloat(getComputedStyle(scene).paddingBottom || 0);
       if (box > 0) winH = Math.min(winH, Math.round(box * 0.66));
+      // ...but never below the tallest slot plus its fade band. That cap was
+      // landing UNDER the height of the headline it had to show (444 for a
+      // 451px title), so the centred line was cropped top and bottom and the
+      // mask turned the crop into a blur across live copy. A window shorter
+      // than the thing it frames is not a window.
+      winH = Math.max(winH, Math.round(sorted[0] * 1.14));
       wheel.style.height = winH + "px";
+      // The lit band has to cover the centred slot whole. offsetHeight is the
+      // line box, and a display face set at 1.05 puts ascenders and descenders
+      // slightly outside it, so the band is padded past the box by 12%.
+      var litHalf = (sorted[0] / 2) * 1.12;
+      var edge = Math.max(0, ((winH / 2 - litHalf) / winH) * 100);
+      wheel.style.setProperty("--lit-a", edge.toFixed(2) + "%");
+      wheel.style.setProperty("--lit-b", (100 - edge).toFixed(2) + "%");
+      wheel.style.setProperty("--lit-fade", (edge * 0.55).toFixed(2) + "%");
       // Slots are laid out inside an absolutely positioned list, so give the
       // stack the gap the original margins used to provide.
       set(lastT);
@@ -1066,9 +1074,9 @@
       // cools to the page's own ink — so the handover from the rule to the step
       // is one continuous piece of colour rather than two separate events.
       tl.fromTo(step.querySelector(".step__name"),
-        { color: "#8A4FFF" }, { color: "#F4F1EC", duration: 0.30, ease: "power1.out" }, at + 0.04);
+        { color: "#8A4FFF" }, { color: "#17171B", duration: 0.30, ease: "power1.out" }, at + 0.04);
       tl.fromTo(step.querySelector(".step__desc"),
-        { color: "#8A4FFF" }, { color: "#8C8A86", duration: 0.32, ease: "power1.out" }, at + 0.06);
+        { color: "#8A4FFF" }, { color: "#62626B", duration: 0.32, ease: "power1.out" }, at + 0.06);
       tl.call(function () { step.classList.add("is-reached"); }, null, at);
       // scrubbing back has to take the lit state off again
       tl.call(function () { step.classList.remove("is-reached"); }, null, at - 0.001);
@@ -1101,6 +1109,8 @@
     if (reduced) {
       scene.classList.add("is-open");
       if (rail) rail.classList.add("is-open");
+      var staticHeader = document.querySelector(".site-header");
+      if (staticHeader) staticHeader.classList.add("is-inverted");
       return;
     }
 
@@ -1317,8 +1327,15 @@
                      { scale: 0.8, opacity: 0, duration: 0.06, ease: "power2.out" }, 0.015);
     // 2. the purple chases it out from the same point
     tl.fromTo(wash, { scale: 0 }, { scale: 1, duration: 0.11, ease: "power3.inOut" }, 0.02);
-    tl.call(function () { scene.classList.add("is-open"); }, null, 0.09);
-    tl.call(function () { scene.classList.remove("is-open"); }, null, 0.089);
+    var header = document.querySelector(".site-header");
+    function setOpen(on) {
+      scene.classList.toggle("is-open", on);
+      // The bar sits over this scene and nothing else on the page is purple,
+      // so its scrim follows the scene rather than the scroll position.
+      if (header) header.classList.toggle("is-inverted", on);
+    }
+    tl.call(function () { setOpen(true); }, null, 0.09);
+    tl.call(function () { setOpen(false); }, null, 0.089);
     // 3. the centred type falls down into it — the two fixed lines and then the
     //    wheel, so the headline assembles top to bottom
     var fallers = gsap.utils.toArray(".rates__lead, .picker", scene);

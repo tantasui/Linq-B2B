@@ -8,8 +8,7 @@ import type { OrderStatus } from "@/server/types";
  * where half the rows glow amber trains people to ignore colour, so "pending"
  * is deliberately quiet and only settled, failed and expired carry a tone.
  *
- * Set in mono and uppercase, like every other label in the system — the status
- * of an order is metadata about it, and metadata is mono here.
+ * Set in the sans face, sentence case, like every other label in the system.
  */
 
 type Tone = "neutral" | "positive" | "negative" | "progress";
@@ -31,15 +30,16 @@ const TONES: Record<OrderStatus, Tone> = {
 };
 
 /**
- * A left rule in the tone's colour rather than a filled pill: on ink, six
- * filled pills down a table read as a stack of buttons. The rule marks the row
- * without competing with the amount at the end of it.
+ * A soft tinted capsule. The ink build used a hard left rule instead, because on
+ * a dark ground six filled pills down a table read as a stack of buttons — but
+ * on paper a 10% tint is quiet enough to repeat down a column and still gives
+ * the status a shape of its own, which a bare rule never did.
  */
 const STYLES: Record<Tone, string> = {
-  neutral: "border-text-subtle/50 text-text-muted",
-  positive: "border-success text-success",
-  negative: "border-danger text-danger",
-  progress: "border-accent text-accent-text",
+  neutral: "bg-surface-3 text-text-muted",
+  positive: "bg-success-soft text-success",
+  negative: "bg-danger-soft text-danger",
+  progress: "bg-accent-soft text-accent-text",
 };
 
 export function StatusPill({ status, className }: { status: OrderStatus; className?: string }) {
@@ -49,8 +49,8 @@ export function StatusPill({ status, className }: { status: OrderStatus; classNa
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 border-l-2 py-0.5 pl-2",
-        "font-mono text-[10px] uppercase tracking-mono",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
+        "font-sans font-medium capitalize text-[11px] leading-none tracking-mono",
         STYLES[tone],
         className,
       )}

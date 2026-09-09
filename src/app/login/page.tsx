@@ -118,11 +118,11 @@ export default function LoginPage() {
         </header>
 
 <section className="mb-8">
-          <p className="font-mono text-label uppercase tracking-mono text-accent-text">Welcome back</p>
+          <p className="font-sans font-medium text-label tracking-mono text-accent-text">Welcome back</p>
           <h1 className="u-display mt-4 text-hero">
-            LOG IN TO
+            Log in to
             <br />
-            YOUR ACCOUNT.
+            your account.
           </h1>
           <p className="mt-5 text-sm leading-6 text-text-muted">
             {step === "email"
@@ -210,7 +210,7 @@ export default function LoginPage() {
           ) : null}
 
           {error ? (
-            <div className="linq-fade-in mt-4 border-l-2 border-danger bg-danger-soft px-4 py-3 text-xs leading-5 text-danger">
+            <div className="linq-fade-in mt-4 rounded-md bg-danger-soft px-4 py-3 text-xs ring-1 ring-inset ring-danger/20 leading-5 text-danger">
               {error}
               {error.includes("setup") ? (
                 <Link href="/onboarding" className="ml-1 font-medium underline underline-offset-2">
@@ -220,7 +220,7 @@ export default function LoginPage() {
             </div>
           ) : null}
 
-          <p className="mt-6 text-center font-mono text-micro uppercase tracking-mono text-text-muted">
+          <p className="mt-6 text-center font-sans font-medium text-micro tracking-mono text-text-muted">
             Don&apos;t have an account?{" "}
             <Link
               href="/onboarding"
