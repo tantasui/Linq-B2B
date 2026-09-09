@@ -3,74 +3,88 @@
 @tailwind utilities;
 
 /* ============================================================================
-   Linq design tokens
+   Linq B2B — design tokens (INK)
    ----------------------------------------------------------------------------
-   ONE system for iOS + web. Light mode is the source of truth; dark mode
-   remaps the same token names onto dark values. Nothing moves, resizes or
-   reorders between modes — only colour values change.
+   One system, one mode. The marketing site and the product share a single
+   palette: ink ground, paper type, one signal purple. There is no light mode
+   and no toggle — the direction is a committed dark editorial surface, so a
+   second palette would only be a second thing to keep honest.
 
-   Layer 1 (UI shell): neutral off-white / charcoal surfaces, accent used
-   sparingly for primary actions and live state.
-   Layer 2 (illustration): the purple receipt / chain-mark / segmented bar
-   language, reserved for receipts, loading, empty states and milestones.
+   Named after the landing's own vocabulary rather than a generic scale, so a
+   value here and a value in landing.css are recognisably the same colour:
+
+     --ink      #0A0A0B   the ground
+     --ink-2    #141416   a surface lifted off it
+     --paper    #F4F1EC   type, warm not white
+     --signal   #8A4FFF   the one accent
+
+   Structure carries hierarchy, not elevation: hairline rules and mono labels,
+   square corners, no drop shadows except where something genuinely floats
+   (sheets, popovers) over content.
    ========================================================================== */
 
 @layer base {
   :root {
-    /* — surfaces — */
-    --bg: 240 5% 97%;              /* #F7F7F8 — near-white base */
-    --surface: 0 0% 100%;
-    --surface-2: 240 5% 95%;
-    --surface-3: 240 5% 92%;
+    /* — surfaces: ink, and three steps up from it — */
+    --bg: 240 5% 4%;               /* #0A0A0B — ink */
+    --surface: 240 5% 8%;          /* #141416 — ink-2 */
+    --surface-2: 240 5% 11%;
+    --surface-3: 240 5% 15%;
 
-    /* — text — */
-    --text: 240 10% 5%;
-    --text-muted: 240 4% 46%;
-    --text-subtle: 240 4% 62%;
+    /* — type: warm paper, dimmed twice — */
+    --text: 38 27% 94%;            /* #F4F1EC — paper */
+    --text-muted: 40 3% 63%;       /* #A3A19D — mono-dim (a11y floor for <14px) */
+    --text-subtle: 40 3% 54%;      /* #8C8A86 — paper-dim */
 
-    /* — lines — */
-    --border: 240 6% 91%;
-    --border-strong: 240 5% 84%;
+    /* — lines: the landing's paper-dim hairline, composited onto ink — */
+    --border: 40 3% 18%;
+    --border-strong: 40 3% 30%;
 
     /* — the one accent — */
-    --accent: 262 100% 65%;        /* #8A4FFF */
-    --accent-hover: 262 82% 58%;
-    --accent-text: 262 78% 56%;    /* AA-safe accent for text on light */
-    --accent-soft: 262 100% 96%;
-    --accent-contrast: 0 0% 100%;
+    --accent: 262 100% 65%;        /* #8A4FFF — signal */
+    --accent-hover: 262 100% 74%;
+    --accent-text: 262 100% 78%;   /* lifted for AA on ink; #8A4FFF alone is 4.3:1 */
+    --accent-soft: 260 60% 20%;    /* #281450 — signal-dark */
+    --accent-contrast: 240 5% 4%;  /* ink on purple, as the purple scene inverts */
 
-    /* — state — */
-    --success: 152 52% 36%;
-    --success-soft: 152 45% 94%;
-    --warning: 36 74% 42%;
-    --warning-soft: 36 85% 94%;
-    --danger: 0 55% 51%;           /* desaturated: professional, not alarming */
-    --danger-soft: 0 70% 96%;
+    /* — state: desaturated so nothing outshouts the signal — */
+    --success: 152 48% 58%;
+    --success-soft: 152 40% 13%;
+    --warning: 38 80% 62%;
+    --warning-soft: 36 44% 13%;
+    --danger: 0 65% 66%;
+    --danger-soft: 0 38% 14%;
 
     /* — brand illustration layer (receipts, tickets) — */
-    --ticket: 265 68% 96.5%;
-    --ticket-edge: 262 42% 84%;
+    --ticket: 260 45% 12%;
+    --ticket-edge: 260 32% 27%;
     --printer: 262 100% 65%;
 
-    /* — concentric radii: outer − inner stays proportional — */
-    --r-xs: 8px;
-    --r-sm: 10px;
-    --r-md: 14px;
-    --r-lg: 20px;
-    --r-xl: 28px;
-    --radius: var(--r-md);
+    /* — radii: none. Every corner on this surface is square (§6/§9). Circles
+         are still circles — they come from `rounded-full`, not from these. — */
+    --r-xs: 0px;
+    --r-sm: 0px;
+    --r-md: 0px;
+    --r-lg: 0px;
+    --r-xl: 0px;
+    --radius: 0px;
 
-    /* — soft, diffuse elevation (no hard borders) — */
-    --shadow-sm: 0 1px 2px hsl(260 30% 12% / 0.04), 0 1px 3px hsl(260 30% 12% / 0.03);
-    --shadow-md: 0 2px 4px hsl(260 30% 12% / 0.04), 0 8px 20px hsl(260 30% 12% / 0.06);
-    --shadow-lg: 0 4px 8px hsl(260 30% 12% / 0.05), 0 18px 44px hsl(260 30% 12% / 0.10);
-    --shadow-xl: 0 8px 16px hsl(260 30% 12% / 0.06), 0 32px 80px hsl(260 30% 12% / 0.14);
+    /* — elevation: only for things that genuinely float. Everything else
+         separates with a rule. — */
+    --shadow-sm: none;
+    --shadow-md: 0 8px 24px hsl(0 0% 0% / 0.45);
+    --shadow-lg: 0 18px 44px hsl(0 0% 0% / 0.55);
+    --shadow-xl: 0 32px 80px hsl(0 0% 0% / 0.65);
 
-    /* — motion: snappy, ease-out, never bouncy — */
-    --dur-fast: 150ms;
-    --dur: 200ms;
-    --dur-slow: 250ms;
-    --ease: cubic-bezier(0.2, 0, 0, 1);
+    /* — motion: the landing's curve, so product and site move alike — */
+    --dur-fast: 160ms;
+    --dur: 240ms;
+    --dur-slow: 280ms;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    /* — type: shared with the landing — */
+    --track-mono: 0.12em;
+    --track-display: -0.04em;
 
     /* shadcn compatibility aliases */
     --background: var(--bg);
@@ -90,45 +104,6 @@
     --destructive-foreground: 0 0% 100%;
     --input: var(--border);
     --ring: var(--accent);
-  }
-
-  .dark {
-    /* true dark charcoal — never pure black */
-    --bg: 240 6% 8%;
-    --surface: 240 6% 11%;
-    --surface-2: 240 5% 15%;
-    --surface-3: 240 5% 19%;
-
-    --text: 0 0% 98%;
-    --text-muted: 240 5% 66%;
-    --text-subtle: 240 4% 48%;
-
-    --border: 240 5% 20%;
-    --border-strong: 240 5% 28%;
-
-    /* lightened accent: ~6:1 on the dark surfaces, per the AA note */
-    --accent: 262 100% 76%;
-    --accent-hover: 262 100% 82%;
-    --accent-text: 262 100% 78%;
-    --accent-soft: 262 40% 18%;
-    --accent-contrast: 262 60% 10%;
-
-    --success: 152 48% 58%;
-    --success-soft: 152 30% 16%;
-    --warning: 38 80% 62%;
-    --warning-soft: 36 40% 16%;
-    --danger: 0 65% 66%;
-    --danger-soft: 0 35% 17%;
-
-    /* the brand's dark violet family, matching the 3D asset shading */
-    --ticket: 265 22% 13%;
-    --ticket-edge: 265 20% 24%;
-    --printer: 262 90% 72%;
-
-    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.35);
-    --shadow-md: 0 2px 4px hsl(0 0% 0% / 0.3), 0 8px 20px hsl(0 0% 0% / 0.35);
-    --shadow-lg: 0 4px 8px hsl(0 0% 0% / 0.3), 0 18px 44px hsl(0 0% 0% / 0.45);
-    --shadow-xl: 0 8px 16px hsl(0 0% 0% / 0.35), 0 32px 80px hsl(0 0% 0% / 0.55);
   }
 }
 
@@ -155,9 +130,13 @@
 
   body {
     @apply bg-bg text-text antialiased;
-    font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    /* Contextual alternates on, but numerals stay proportional in prose. */
+    /* Inter Tight, the landing's face, across the product too — so a heading in
+       the dashboard and a heading on the marketing site are the same typeface
+       at the same tracking, not two cousins. */
+    font-family: var(--font-display), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    letter-spacing: 0.01em;
     font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
   }
 
   /* Tabular figures everywhere money lives, so columns align down a list. */
@@ -168,7 +147,8 @@
   }
 
   ::selection {
-    background: hsl(var(--accent) / 0.22);
+    background: hsl(var(--accent) / 0.3);
+    color: hsl(var(--text));
   }
 
   :focus-visible {
@@ -177,11 +157,46 @@
   }
 }
 
-/* ── Dark-mode switch: cross-fade the whole interface, never a hard cut ── */
-.theme-fade,
-.theme-fade * {
-  transition: background-color 240ms var(--ease), border-color 240ms var(--ease),
-    color 240ms var(--ease), fill 240ms var(--ease), box-shadow 240ms var(--ease) !important;
+/* ============================================================================
+   Shared type utilities
+   ----------------------------------------------------------------------------
+   The landing has exactly three voices — display, body, mono — and the product
+   inherits them. `.mono` is the workhorse: every label, column head, status and
+   piece of metadata in the app is uppercase JetBrains Mono at 0.12em, which is
+   what makes a dense dashboard read as the same object as the marketing page.
+   ========================================================================== */
+
+.u-display {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 680;
+  letter-spacing: var(--track-display);
+  line-height: 0.94;
+  text-wrap: balance;
+}
+
+.u-mono {
+  font-family: var(--font-mono), ui-monospace, "SF Mono", monospace;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: var(--track-mono);
+  color: hsl(var(--text-muted));
+}
+
+/* A section marker, the product's echo of the landing's "01 — GET PAID": a
+   number, an em dash, a label. Used above every panel in the dashboard. */
+.u-marker {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: var(--track-mono);
+  color: hsl(var(--text-subtle));
+}
+
+/* The hairline. Structure on this surface comes from rules, not from cards
+   floating on shadows, so there is one canonical rule and everything uses it. */
+.u-rule {
+  border-color: hsl(var(--border));
 }
 
 /* ── Scrollbar ── */

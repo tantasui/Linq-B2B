@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Building2, ImagePlus, LogOut, Moon, ShieldCheck, Trash2, Wallet } from "lucide-react";
+import { Bell, Building2, ImagePlus, LogOut, ShieldCheck, Trash2, Wallet } from "lucide-react";
 import { MerchantAvatar, merchantLogoChangedEvent, merchantLogoStorageKey } from "@/components/MerchantAvatar";
 import { MerchantOnboarding } from "@/components/onboarding/MerchantOnboarding";
-import { useTheme } from "@/components/providers/ThemeProvider";
 import { clearActiveSession, getMerchantMe } from "@/lib/api-client";
 import { getBankLogo } from "@/lib/banks";
 import { formatWalletLabel, shortAddress } from "@/lib/wallets";
@@ -19,7 +18,6 @@ import { Switch } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddButton } from "@/components/ui/stepper";
 import { TabBar } from "@/components/ui/tab-bar";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useToast } from "@/components/ui/toast";
 
 /** The onboarding milestones a merchant moves through, in order. */
@@ -38,8 +36,8 @@ function Section({
 }) {
   return (
     <Card>
-      <div className="mb-5 flex items-center justify-between gap-4">
-        <h2 className="flex items-center gap-2 text-sm font-medium">
+      <div className="mb-5 flex items-center justify-between gap-4 border-b border-line pb-3">
+        <h2 className="flex items-center gap-2 font-mono text-label uppercase tracking-mono text-text-subtle">
           <Icon className="h-4 w-4 text-accent-text" />
           {title}
         </h2>
@@ -51,7 +49,6 @@ function Section({
 }
 
 export default function SettingsPage() {
-  const { theme } = useTheme();
   const { toast } = useToast();
   const [switches, setSwitches] = useState({ notifications: true, verification: true, biometric: false });
   const [logoVersion, setLogoVersion] = useState(0);
@@ -103,8 +100,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-5">
       <header>
-        <p className="text-micro uppercase tracking-[0.16em] text-accent-text">Settings</p>
-        <h1 className="mt-2 text-hero font-semibold">Business</h1>
+        <p className="font-mono text-label uppercase tracking-mono text-accent-text">05 — Settings</p>
+        <h1 className="u-display mt-3 text-hero">BUSINESS</h1>
       </header>
 
       {loading ? (
@@ -140,7 +137,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="mt-5 flex gap-2">
-              <label className="flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-surface text-xs font-medium text-text ring-1 ring-line transition duration-fast ease-linq hover:shadow-md active:scale-[0.98]">
+              <label className="flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 bg-transparent font-mono text-xs uppercase tracking-mono text-text ring-1 ring-inset ring-text-subtle transition duration-fast ease-linq hover:bg-text hover:text-bg active:scale-[0.98]">
                 <ImagePlus className="h-4 w-4" />
                 Upload logo
                 <input
@@ -168,10 +165,10 @@ export default function SettingsPage() {
                     alt=""
                     loading="eager"
                     decoding="async"
-                    className="h-11 w-11 rounded-md bg-white object-contain ring-1 ring-line"
+                    className="h-11 w-11 bg-white object-contain ring-1 ring-line"
                   />
                 ) : (
-                  <span className="h-11 w-11 rounded-md bg-surface-2" />
+                  <span className="h-11 w-11 bg-surface-2" />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{verifiedBank.resolvedAccountName}</p>
@@ -234,16 +231,6 @@ export default function SettingsPage() {
                 <dd className="text-right font-medium">{acceptedTokens.join(" · ")}</dd>
               </div>
             </dl>
-          </Section>
-
-          <Section
-            icon={Moon}
-            title="Appearance"
-            action={<ThemeToggle />}
-          >
-            <p className="text-sm text-text-muted">
-              Currently using {theme} mode. Receipts you share export in whichever mode you are in.
-            </p>
           </Section>
 
           <Section icon={Bell} title="Notifications & security">

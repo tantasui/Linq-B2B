@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <circle cx="120" cy="120" r="120" fill="#000000"/>
+  <!-- Built from primitives rather than hand-written beziers: a ring, a black
+       band that breaks it, then the white sweep sitting in that break. -->
+  <g transform="rotate(-22 120 120)">
+    <circle cx="120" cy="120" r="56" fill="none" stroke="#ffffff" stroke-width="15"/>
+    <rect x="10" y="103" width="220" height="34" fill="#000000"/>
+    <rect x="18" y="112" width="204" height="16" rx="8" fill="#ffffff"/>
+  </g>
+</svg>

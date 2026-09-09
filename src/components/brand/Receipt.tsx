@@ -46,11 +46,11 @@ function Printer() {
 }
 
 /** Label left, value right — labels recede so the values are what scan. */
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+function DetailRow({ label, children, suppressWarning }: { label: string; children: React.ReactNode; suppressWarning?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-6 py-2.5">
-      <span className="shrink-0 text-xs text-text-muted">{label}</span>
-      <span className="min-w-0 text-right text-xs font-medium text-text">{children}</span>
+      <span className="shrink-0 font-mono text-micro uppercase tracking-mono text-text-subtle">{label}</span>
+      <span suppressHydrationWarning={suppressWarning} className="min-w-0 text-right text-xs font-medium text-text">{children}</span>
     </div>
   );
 }
@@ -88,14 +88,14 @@ export function Receipt({
         <div className="rounded-t-md bg-ticket px-5 pt-6">
           <div className="flex items-center justify-between gap-3">
             <LinqMark size={28} className="text-accent" />
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-accent-text">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-mono text-accent-text">
               {settled ? <Check className="h-3.5 w-3.5" /> : null}
               {status}
             </span>
           </div>
 
           <div className="mt-8 pb-7 text-center">
-            <p className="tnum text-[2.125rem] font-semibold leading-none tracking-[-0.04em] text-text">
+            <p className="tnum u-display text-[2.125rem] leading-none text-text">
               {formatCurrency(order.amountNgn, "NGN")}
             </p>
             <p className="mt-3 inline-flex items-center gap-2 text-sm text-text-muted">
@@ -115,7 +115,7 @@ export function Receipt({
         {/* Foot: the details, closed by the scalloped edge. */}
         <div className="linq-ticket-foot bg-ticket px-5 pb-8 pt-2">
           <div className="divide-y divide-ticket-edge/60">
-            <DetailRow label="Date & time">
+            <DetailRow label="Date & time" suppressWarning>
               {new Date(order.createdAt).toLocaleString(undefined, {
                 dateStyle: "medium",
                 timeStyle: "short",
@@ -133,7 +133,9 @@ export function Receipt({
               <span className="tnum">{fee > 0 ? `${fee.toFixed(2)} ${order.token}` : "No fee"}</span>
             </DetailRow>
             <div className="flex items-center justify-between gap-4 py-1.5">
-              <span className="shrink-0 text-xs text-text-muted">Transaction ID</span>
+              <span className="shrink-0 font-mono text-micro uppercase tracking-mono text-text-subtle">
+                Transaction ID
+              </span>
               <span className="flex min-w-0 items-center gap-1">
                 <code className="truncate font-mono text-xs text-text">{truncateMiddle(reference)}</code>
                 <CopyButton value={reference} label="Transaction ID" size={13} className="p-1.5" />
@@ -141,7 +143,7 @@ export function Receipt({
             </div>
           </div>
 
-          <p className="mt-7 text-center text-[11px] text-text-subtle">
+          <p className="mt-7 text-center font-mono text-[10px] uppercase tracking-mono text-text-subtle">
             linq.xyz ·{" "}
             <a href="mailto:support@linq.xyz" className="underline underline-offset-2 hover:text-text-muted">
               support

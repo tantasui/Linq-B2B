@@ -20,8 +20,12 @@ export default function OnboardingPage() {
         </header>
 
         <section className="mb-6">
-          <p className="text-micro uppercase tracking-[0.16em] text-accent-text">Merchant setup</p>
-          <h1 className="mt-2 text-hero font-semibold">Start accepting payments</h1>
+          <p className="font-mono text-label uppercase tracking-mono text-accent-text">Merchant setup</p>
+          <h1 className="u-display mt-4 text-hero">
+            START ACCEPTING
+            <br />
+            PAYMENTS.
+          </h1>
           <p className="mt-3 text-sm leading-6 text-text-muted">
             Create your business profile, sign in, and verify the Naira account we should settle to.
           </p>

@@ -19,7 +19,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AddButton } from "@/components/ui/stepper";
 import { StatusPill } from "@/components/ui/status";
 import { TabBar } from "@/components/ui/tab-bar";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useToast } from "@/components/ui/toast";
 import { ENABLED_CHAINS } from "@/lib/chains";
 import type { OrderRecord } from "@/server/types";
@@ -89,16 +88,17 @@ export default function PreviewPage() {
         <header className="flex items-start justify-between gap-6 pb-10">
           <div>
             <LinqLockup size={26} className="text-accent" />
-            <h1 className="mt-6 text-hero font-semibold">Design system</h1>
+            <h1 className="u-display mt-6 text-hero">DESIGN SYSTEM</h1>
             <p className="mt-3 max-w-md text-sm leading-6 text-text-muted">
-              One visual and interaction system across iOS and web. Every screen is built from
-              these tokens and components, not reconciled after the fact.
+              One visual and interaction system across iOS and web, and the same one the marketing
+              site is built from. Every screen uses these tokens and components, not a
+              reconciliation after the fact.
             </p>
           </div>
-          <ThemeToggle />
+          <span className="u-marker">Ink · one mode</span>
         </header>
 
-        <Row title="Colour" hint="A near-white base and a true dark charcoal, with one restrained accent reserved for primary actions and live state.">
+        <Row title="Colour" hint="Ink ground, warm paper type, one signal purple. There is no second mode to reconcile — the marketing site and the product share these values.">
           <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
             <Swatch name="bg" className="bg-bg" />
             <Swatch name="surface" className="bg-surface" />
@@ -112,7 +112,7 @@ export default function PreviewPage() {
         <Row title="Type" hint="Tabular figures for every monetary amount, so numbers align down a list. Large confident balances, quiet metadata.">
           <div className="space-y-4">
             <p className="tnum text-display font-semibold">₦4,851,200</p>
-            <p className="tnum text-hero font-semibold">₦485,000</p>
+            <p className="tnum u-display text-hero">₦485,000</p>
             <p className="text-base">Body — settlement completed to GTBank ••4471</p>
             <p className="text-sm text-text-muted">Metadata — 23 Aug 2026 at 14:32 · Base · USDC</p>
             <p className="text-micro uppercase tracking-[0.14em] text-text-subtle">Label</p>

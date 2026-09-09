@@ -37,7 +37,7 @@ export function EmptyState({
           priority={false}
         />
       ) : null}
-      <h3 className="text-base font-medium text-text">{title}</h3>
+      <h3 className="font-mono text-xs uppercase tracking-mono text-text">{title}</h3>
       {body ? <p className="mt-2 max-w-xs text-sm leading-6 text-text-muted">{body}</p> : null}
       {action ? <div className="mt-6">{action}</div> : null}
     </div>

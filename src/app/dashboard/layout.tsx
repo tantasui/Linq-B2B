@@ -11,14 +11,20 @@ import type { MerchantRecord } from "@/server/types";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { LinqMark, LinqWordmark } from "@/components/brand/LinqMark";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 
+/**
+ * The sections of the product, numbered.
+ *
+ * The marketing site numbers its scenes "01 — GET PAID"; the dashboard numbers
+ * its sections the same way, so the nav is recognisably the same object on both
+ * sides of the sign-up. `num` is only ever shown, never used for routing.
+ */
 const navigation = [
-  { name: "Home", href: "/dashboard", icon: Home },
-  { name: "Receive", href: "/dashboard/receive", icon: QrCode },
-  { name: "Orders", href: "/dashboard/transactions", icon: ReceiptText },
-  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { num: "01", name: "Home", href: "/dashboard", icon: Home },
+  { num: "02", name: "Receive", href: "/dashboard/receive", icon: QrCode },
+  { num: "03", name: "Orders", href: "/dashboard/transactions", icon: ReceiptText },
+  { num: "04", name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  { num: "05", name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 /**
@@ -53,7 +59,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .catch(() => setMerchant(null));
   }, []);
 
-  const pageTitle = navigation.find((entry) => entry.href === pathname)?.name ?? "Dashboard";
+  const current = navigation.find((entry) => entry.href === pathname);
+  const pageTitle = current?.name ?? "Dashboard";
+  const pageIndex = current?.num ?? "00";
 
   return (
     <div className="min-h-screen bg-bg text-text">
@@ -67,11 +75,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <LinqWordmark size={17} />
         </Link>
 
-        <div className="mb-6 flex items-center gap-3 rounded-md bg-surface-2 p-3">
+        <div className="mb-6 flex items-center gap-3 border-y border-line py-3">
           <MerchantAvatar className="h-9 w-9 shrink-0" />
           <div className="min-w-0">
             <p className="truncate text-xs font-medium">{merchant?.businessName ?? "Set up business"}</p>
-            <p className="text-micro text-text-subtle">Merchant</p>
+            <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">Merchant</p>
           </div>
         </div>
 
@@ -84,14 +92,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium",
+                  "flex items-center gap-3 border-l-2 py-2.5 pl-3",
+                  "font-mono text-xs uppercase tracking-mono",
                   "transition-colors duration-fast ease-linq",
                   active
-                    ? "bg-accent-soft text-accent-text"
-                    : "text-text-muted hover:bg-surface-2 hover:text-text",
+                    ? "border-accent bg-accent-soft/40 text-text"
+                    : "border-transparent text-text-muted hover:border-line-strong hover:text-text",
                 )}
               >
                 <item.icon className="h-[18px] w-[18px] shrink-0" />
+                <span className={cn("shrink-0", active ? "text-accent-text" : "text-text-subtle")}>
+                  {item.num}
+                </span>
                 {item.name}
               </Link>
             );
@@ -103,14 +115,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             type="button"
             onClick={signOut}
             className={cn(
-              "flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium text-text-muted",
-              "transition-colors duration-fast ease-linq hover:bg-danger-soft hover:text-danger",
+              "flex items-center gap-3 border-l-2 border-transparent py-2.5 pl-3 text-text-muted",
+              "font-mono text-xs uppercase tracking-mono",
+              "transition-colors duration-fast ease-linq hover:border-danger hover:text-danger",
             )}
           >
             <LogOut className="h-[18px] w-[18px] shrink-0" />
             Log out
           </button>
-          <ThemeToggle />
         </div>
       </aside>
 
@@ -125,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <>
                 <MerchantAvatar className="h-10 w-10" />
                 <div className="min-w-0">
-                  <p className="text-micro text-text-muted">Welcome back</p>
+                  <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">Welcome back</p>
                   <p className="truncate text-sm font-medium">
                     {merchant?.businessName ?? "Set up business"}
                   </p>
@@ -155,19 +167,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-w-[62px] flex-col items-center gap-1 rounded-sm py-2 text-micro",
+                  "flex min-w-[62px] flex-col items-center gap-1 border-t-2 pb-1 pt-2",
+                  "font-mono text-micro uppercase tracking-mono",
                   "transition duration-fast ease-linq active:scale-[0.94]",
-                  active ? "text-accent-text" : "text-text-subtle hover:text-text-muted",
+                  active
+                    ? "border-accent text-text"
+                    : "border-transparent text-text-subtle hover:text-text-muted",
                 )}
               >
-                <span
-                  className={cn(
-                    "grid h-8 w-14 place-items-center rounded-full transition-colors duration-fast ease-linq",
-                    active && "bg-accent-soft",
-                  )}
-                >
-                  <item.icon className="h-[18px] w-[18px]" />
-                </span>
+                <item.icon className="h-[18px] w-[18px]" />
                 {item.name}
               </Link>
             );
@@ -178,7 +186,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ── Desktop content (lg+) ── */}
       <div className="hidden lg:ml-[248px] lg:block">
         <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-line bg-bg/85 px-8 backdrop-blur-xl">
-          <p className="text-sm font-medium text-text-muted">{pageTitle}</p>
+          <p className="font-mono text-label uppercase tracking-mono text-text-subtle">
+            <span className="text-text-muted">{pageIndex} — </span>
+            {pageTitle}
+          </p>
           <NotificationCenter />
         </header>
         <main

@@ -100,21 +100,24 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-micro uppercase tracking-[0.16em] text-accent-text">Analytics</p>
-          <h1 className="mt-2 text-hero font-semibold">Performance</h1>
+          <p className="font-mono text-label uppercase tracking-mono text-accent-text">04 — Analytics</p>
+          <h1 className="u-display mt-3 text-hero">PERFORMANCE</h1>
         </div>
-        <div className="flex rounded-full bg-surface-2 p-1">
+        {/* A segmented control drawn as ruled cells, so the range switcher reads
+            like the nav's section links rather than a floating pill group. */}
+        <div className="flex ring-1 ring-inset ring-line">
           {RANGES.map((entry) => (
             <button
               key={entry.id}
               type="button"
               onClick={() => setRange(entry.id)}
               className={cn(
-                "rounded-full px-4 py-2 text-xs font-medium",
-                "transition duration-fast ease-linq active:scale-[0.97]",
+                "px-4 py-2 font-mono text-micro uppercase tracking-mono",
+                "border-l border-line first:border-l-0",
+                "transition-colors duration-fast ease-linq active:scale-[0.97]",
                 range === entry.id
-                  ? "bg-surface text-text shadow-sm"
-                  : "text-text-muted hover:text-text",
+                  ? "bg-accent text-accent-contrast"
+                  : "text-text-muted hover:bg-surface hover:text-text",
               )}
             >
               {entry.id}
@@ -126,20 +129,20 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map(([label, value, hint]) => (
           <Card key={label}>
-            <p className="text-xs text-text-muted">{label}</p>
+            <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">{label}</p>
             {loading ? (
-              <Skeleton className="mt-3 h-6 w-24" />
+              <Skeleton className="mt-3 h-7 w-24" />
             ) : (
-              <p className="tnum mt-2.5 text-xl font-semibold">{value}</p>
+              <p className="tnum u-display mt-3 text-2xl">{value}</p>
             )}
-            <p className="mt-1.5 text-micro text-text-subtle">{hint}</p>
+            <p className="mt-2 text-xs text-text-subtle">{hint}</p>
           </Card>
         ))}
       </div>
 
       <Card>
-        <p className="text-sm font-medium">Settlement volume</p>
-        <p className="mt-1 text-xs text-text-muted">Naira received · {range}</p>
+        <p className="font-mono text-label uppercase tracking-mono text-text-subtle">Settlement volume</p>
+        <p className="mt-1.5 text-xs text-text-muted">Naira received · {range}</p>
         <ChartFrame className="mt-6 h-56">
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <AreaChart data={volume} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
@@ -171,7 +174,7 @@ export default function AnalyticsPage() {
 
       <div className="grid gap-3 lg:grid-cols-2">
         <Card>
-          <p className="text-sm font-medium">Network mix</p>
+          <p className="font-mono text-label uppercase tracking-mono text-text-subtle">Network mix</p>
           {routes.length ? (
             <div className="mt-2 flex items-center gap-4">
               <ChartFrame className="h-40 w-[45%]">
@@ -207,8 +210,8 @@ export default function AnalyticsPage() {
         </Card>
 
         <Card>
-          <p className="text-sm font-medium">Order value distribution</p>
-          <p className="mt-1 text-xs text-text-muted">Count by band</p>
+          <p className="font-mono text-label uppercase tracking-mono text-text-subtle">Order value distribution</p>
+          <p className="mt-1.5 text-xs text-text-muted">Count by band</p>
           <ChartFrame className="mt-6 h-40">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart
@@ -231,7 +234,7 @@ export default function AnalyticsPage() {
                   tickLine={false}
                   tick={{ fill: "hsl(var(--text-subtle))", fontSize: 10 }}
                 />
-                <Bar dataKey="value" fill="hsl(var(--accent))" radius={[6, 6, 0, 0]} maxBarSize={44} />
+                <Bar dataKey="value" fill="hsl(var(--accent))" maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
           </ChartFrame>

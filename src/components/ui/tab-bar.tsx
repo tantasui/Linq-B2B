@@ -40,7 +40,7 @@ export function TabBar({
     <div
       role="tablist"
       className={cn(
-        "flex items-center gap-1 overflow-x-auto rounded-lg bg-surface-2 p-1.5",
+        "flex items-center gap-px overflow-x-auto bg-surface-2 p-1",
         "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
@@ -51,11 +51,11 @@ export function TabBar({
           <div
             key={tab.id}
             className={cn(
-              "linq-fade-in group flex shrink-0 items-center gap-2 rounded-md pl-3 pr-1.5",
+              "linq-fade-in group flex shrink-0 items-center gap-2 border-b-2 pl-3 pr-1.5",
               "transition-all duration-slow ease-linq",
               active
-                ? "bg-surface shadow-sm"
-                : "bg-transparent hover:bg-surface/60",
+                ? "border-accent bg-surface"
+                : "border-transparent bg-transparent hover:bg-surface/60",
             )}
           >
             <button
@@ -64,7 +64,8 @@ export function TabBar({
               aria-selected={active}
               onClick={() => onSelect(tab.id)}
               className={cn(
-                "flex items-center gap-2 py-2.5 text-sm transition-colors duration-fast ease-linq",
+                "flex items-center gap-2 py-2.5 font-mono text-xs uppercase tracking-mono",
+                "transition-colors duration-fast ease-linq",
                 active ? "text-text" : "text-text-muted hover:text-text",
               )}
             >
@@ -81,7 +82,7 @@ export function TabBar({
                 aria-label={`Close ${tab.label}`}
                 onClick={() => onClose(tab.id)}
                 className={cn(
-                  "grid h-6 w-6 place-items-center rounded-xs text-text-subtle",
+                  "grid h-6 w-6 place-items-center text-text-subtle",
                   "transition duration-fast ease-linq hover:bg-surface-3 hover:text-text active:scale-[0.9]",
                 )}
               >
@@ -100,8 +101,8 @@ export function TabBar({
           aria-label={addLabel}
           onClick={onAdd}
           className={cn(
-            "grid h-9 w-9 shrink-0 place-items-center rounded-md text-text-muted",
-            "transition duration-fast ease-linq hover:bg-surface hover:text-text hover:shadow-sm active:scale-[0.94]",
+            "grid h-9 w-9 shrink-0 place-items-center text-text-muted",
+            "transition duration-fast ease-linq hover:bg-surface hover:text-text active:scale-[0.94]",
           )}
         >
           <Plus className="h-4 w-4" />

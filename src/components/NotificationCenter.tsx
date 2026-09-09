@@ -37,8 +37,8 @@ export function NotificationCenter() {
         aria-label="Notifications"
         onClick={() => setOpen(true)}
         className={cn(
-          "relative grid h-10 w-10 place-items-center rounded-md bg-surface text-text-muted ring-1 ring-line",
-          "shadow-sm transition duration-fast ease-linq hover:-translate-y-px hover:text-text hover:shadow-md active:scale-[0.97]",
+          "relative grid h-10 w-10 place-items-center bg-transparent text-text-muted ring-1 ring-inset ring-line",
+          "transition duration-fast ease-linq hover:text-text hover:ring-line-strong active:scale-[0.97]",
         )}
       >
         <Bell className="h-[18px] w-[18px]" />
@@ -49,7 +49,7 @@ export function NotificationCenter() {
         {loading ? (
           <div className="space-y-2.5">
             {Array.from({ length: 3 }, (_, index) => (
-              <Skeleton key={index} className="h-16 w-full rounded-md" />
+              <Skeleton key={index} className="h-16 w-full" />
             ))}
           </div>
         ) : orders.length === 0 ? (

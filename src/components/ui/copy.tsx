@@ -67,7 +67,7 @@ export function CopyButton({
       aria-label={`Copy ${label.toLowerCase()}`}
       onClick={() => copy(value, label)}
       className={cn(
-        "grid shrink-0 place-items-center rounded-sm p-2 text-text-muted",
+        "grid shrink-0 place-items-center p-2 text-text-muted",
         "transition duration-fast ease-linq hover:bg-surface-2 hover:text-text active:scale-[0.97]",
         className,
       )}
@@ -92,7 +92,7 @@ export function CopyField({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center gap-2 rounded-md bg-surface-2 py-1 pl-3.5 pr-1", className)}>
+    <div className={cn("flex items-center gap-2 bg-surface-2 py-1 pl-3.5 pr-1 ring-1 ring-inset ring-line", className)}>
       <code className="min-w-0 flex-1 truncate font-mono text-xs text-text-muted">{value}</code>
       <CopyButton value={value} label={label ?? "Value"} />
     </div>

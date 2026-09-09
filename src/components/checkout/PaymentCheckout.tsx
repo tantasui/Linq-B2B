@@ -339,7 +339,7 @@ export function PaymentCheckout({
 
       <section className="px-5 pb-8 pt-9">
         <div className="flex items-center gap-3.5">
-          <MerchantAvatar className="h-14 w-14 rounded-2xl" />
+          <MerchantAvatar className="h-14 w-14 rounded-none" />
           {loading ? (
             <div className="flex min-w-0 flex-1 flex-col gap-2">
               <Skeleton className="h-5 w-40" />
@@ -347,7 +347,7 @@ export function PaymentCheckout({
             </div>
           ) : (
             <div className="min-w-0">
-              <h1 className="truncate text-xl font-semibold tracking-[-0.02em]">
+              <h1 className="u-display truncate text-2xl">
                 {activeMerchant.businessName || "Merchant"}
               </h1>
               {activeMerchant.location ? (
@@ -358,9 +358,9 @@ export function PaymentCheckout({
         </div>
 
         {locked ? (
-          <div className="mt-7 rounded-lg bg-accent-soft px-5 py-6">
-            <p className="text-micro uppercase tracking-[0.16em] text-accent-text">Payment request</p>
-            <p className="tnum mt-2.5 text-3xl font-semibold">{formatNaira(value)}</p>
+          <div className="mt-7 border-l-2 border-accent bg-accent-soft px-5 py-6">
+            <p className="font-mono text-label uppercase tracking-mono text-accent-text">Payment request</p>
+            <p className="tnum u-display mt-3 text-4xl">{formatNaira(value)}</p>
             {link?.description || description ? (
               <p className="mt-2 text-sm text-text-muted">{link?.description ?? description}</p>
             ) : null}
@@ -369,32 +369,34 @@ export function PaymentCheckout({
       </section>
 
       <section className="px-5">
-        <h2 className="text-center text-sm font-medium text-text-muted">Choose how to pay</h2>
+        <h2 className="text-center font-mono text-label uppercase tracking-mono text-text-subtle">
+          Choose how to pay
+        </h2>
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={() => setStage("naira")}
-            className="flex h-32 flex-col items-center justify-center gap-3.5 rounded-lg bg-surface shadow-sm ring-1 ring-line transition duration-fast ease-linq hover:-translate-y-0.5 hover:shadow-md active:scale-[0.97] active:translate-y-0"
+            className="flex h-32 flex-col items-center justify-center gap-3.5 bg-surface ring-1 ring-inset ring-line transition duration-fast ease-linq hover:bg-surface-2 hover:ring-line-strong active:scale-[0.97]"
           >
             <Banknote className="h-9 w-9 text-success" />
-            <span className="text-sm font-medium">Pay with Naira</span>
+            <span className="font-mono text-xs uppercase tracking-mono">Pay with Naira</span>
           </button>
           <button
             type="button"
             onClick={startCrypto}
-            className="flex h-32 flex-col items-center justify-center gap-3.5 rounded-lg bg-surface shadow-sm ring-1 ring-line transition duration-fast ease-linq hover:-translate-y-0.5 hover:shadow-md active:scale-[0.97] active:translate-y-0"
+            className="flex h-32 flex-col items-center justify-center gap-3.5 bg-surface ring-1 ring-inset ring-line transition duration-fast ease-linq hover:bg-surface-2 hover:ring-line-strong active:scale-[0.97]"
           >
             <span className="flex -space-x-2.5">
               {ENABLED_CHAINS.slice(0, 4).map((chain) => (
                 <NetworkLogo key={chain.id} network={chain.id} size={30} />
               ))}
             </span>
-            <span className="text-sm font-medium">Pay with crypto</span>
+            <span className="font-mono text-xs uppercase tracking-mono">Pay with crypto</span>
           </button>
         </div>
       </section>
 
-      <footer className="mt-12 flex items-center justify-center gap-2 pb-10 text-xs text-text-subtle">
+      <footer className="mt-12 flex items-center justify-center gap-2 pb-10 font-mono text-micro uppercase tracking-mono text-text-subtle">
         Powered by
         <LinqWordmark size={13} className="text-accent" />
       </footer>
@@ -403,7 +405,7 @@ export function PaymentCheckout({
       <Sheet open={stage === "naira"} onClose={() => setStage(null)} title="Pay with Naira">
         <NairaTransferDetails merchant={activeMerchant} />
         {locked ? (
-          <p className="tnum mt-5 rounded-md bg-surface-2 px-4 py-3 text-center text-lg font-semibold">
+          <p className="tnum u-display mt-5 bg-surface-2 px-4 py-3 text-center text-xl">
             {formatNaira(value)}
           </p>
         ) : null}
@@ -444,12 +446,12 @@ export function PaymentCheckout({
       {/* ── Amount ── */}
       <Sheet open={stage === "asset"} onClose={() => setStage(null)} title="Pay with crypto">
         {locked ? (
-          <p className="tnum rounded-lg bg-surface-2 px-5 py-6 text-center text-3xl font-semibold">
+          <p className="tnum u-display bg-surface-2 px-5 py-6 text-center text-4xl">
             {formatNaira(value)}
           </p>
         ) : (
           <Field label="Amount">
-            <div className="flex items-center rounded-md bg-surface ring-1 ring-line focus-within:ring-2 focus-within:ring-accent">
+            <div className="flex items-center bg-surface ring-1 ring-inset ring-line focus-within:ring-2 focus-within:ring-accent">
               <span className="pl-4 text-2xl text-text-muted">₦</span>
               <input
                 value={amount}
@@ -457,7 +459,7 @@ export function PaymentCheckout({
                 inputMode="decimal"
                 placeholder="0"
                 aria-label="Amount in Naira"
-                className="tnum h-16 min-w-0 flex-1 bg-transparent px-3 text-3xl font-semibold outline-none"
+                className="tnum u-display h-16 min-w-0 flex-1 bg-transparent px-3 text-3xl outline-none"
               />
             </div>
           </Field>
@@ -494,7 +496,7 @@ export function PaymentCheckout({
               <NetworkLogo network={chain.id} size={32} />
               {/* Paired with its label the first time it is shown, so the payer
                   learns the badge before meeting it alone in a dense list. */}
-              <span className="mt-2 block text-xs font-medium">{chain.shortName}</span>
+              <span className="mt-2 block font-mono text-micro uppercase tracking-mono">{chain.shortName}</span>
             </ChoiceTile>
           ))}
         </div>
@@ -518,7 +520,7 @@ export function PaymentCheckout({
           {(getChain(networkId)?.tokens ?? []).map((symbol) => (
             <ChoiceTile key={symbol} selected={token === symbol} onClick={() => setToken(symbol)}>
               <TokenIcon token={symbol} size={34} />
-              <span className="mt-2 block text-sm font-medium">{symbol}</span>
+              <span className="mt-2 block font-mono text-xs uppercase tracking-mono">{symbol}</span>
             </ChoiceTile>
           ))}
         </div>
@@ -541,12 +543,12 @@ export function PaymentCheckout({
           </Button>
         }
       >
-        <p className="tnum text-center text-3xl font-semibold">{formatNaira(value)}</p>
+        <p className="tnum u-display text-center text-4xl">{formatNaira(value)}</p>
         <p className="tnum mt-2 text-center text-sm text-text-muted">
           about {cryptoDue.toFixed(2)} {token}
         </p>
 
-        <dl className="mt-7 divide-y divide-line rounded-lg bg-surface-2 px-4">
+        <dl className="mt-7 divide-y divide-line bg-surface-2 px-4">
           {[
             ["Payer", payerName],
             ["To", activeMerchant.businessName],
@@ -562,7 +564,7 @@ export function PaymentCheckout({
         </dl>
 
         {formError ? (
-          <p className="linq-fade-in mt-4 rounded-md bg-danger-soft px-4 py-3 text-xs text-danger">
+          <p className="linq-fade-in mt-4 border-l-2 border-danger bg-danger-soft px-4 py-3 text-xs text-danger">
             {formError}
           </p>
         ) : null}
@@ -585,8 +587,10 @@ export function PaymentCheckout({
             </p>
 
             {expired ? (
-              <div className="mt-5 rounded-lg bg-danger-soft p-4 text-center">
-                <p className="text-sm font-semibold text-danger">This payment window has closed</p>
+              <div className="mt-5 border-l-2 border-danger bg-danger-soft p-4 text-center">
+                <p className="font-mono text-xs uppercase tracking-mono text-danger">
+                  This payment window has closed
+                </p>
                 <p className="mt-1.5 text-xs leading-5 text-text-muted">
                   Do not send funds to this address. Start a new payment to get a fresh one.
                 </p>
@@ -594,7 +598,7 @@ export function PaymentCheckout({
             ) : secondsLeft !== null ? (
               <div
                 className={cn(
-                  "mt-5 rounded-lg px-4 py-3 text-center",
+                  "mt-5 px-4 py-3 text-center",
                   secondsLeft <= 60 ? "bg-danger-soft" : "bg-surface-2",
                 )}
               >
@@ -603,7 +607,7 @@ export function PaymentCheckout({
                 </p>
                 <p
                   className={cn(
-                    "tnum mt-1 text-2xl font-semibold",
+                    "tnum u-display mt-1 text-2xl",
                     secondsLeft <= 60 ? "text-danger" : "text-text",
                   )}
                 >
@@ -618,7 +622,7 @@ export function PaymentCheckout({
                     address, so the asset and amount arrive prefilled in the
                     wallet — scanning a bare address is how people end up
                     sending XLM instead of USDC. */}
-                <div className="mx-auto mt-6 w-fit rounded-lg bg-white p-4 ring-1 ring-line">
+                <div className="mx-auto mt-6 w-fit bg-white p-4 ring-1 ring-line">
                   <QRCodeSVG value={qrValue(order)} size={172} fgColor="#09090d" bgColor="#ffffff" />
                 </div>
                 {getChain(order.network)?.id === "stellar" ? (
@@ -626,7 +630,7 @@ export function PaymentCheckout({
                     Scan with a Stellar wallet to prefill this payment
                   </p>
                 ) : null}
-                <div className="mt-5 flex items-center gap-2 rounded-md bg-surface-2 py-1 pl-4 pr-1">
+                <div className="mt-5 flex items-center gap-2 bg-surface-2 py-1 pl-4 pr-1 ring-1 ring-inset ring-line">
                   <code className="min-w-0 flex-1 truncate font-mono text-xs text-text-muted">
                     {depositAddress}
                   </code>
@@ -634,8 +638,10 @@ export function PaymentCheckout({
                 </div>
               </>
             ) : (
-              <div className="mt-6 rounded-lg bg-danger-soft p-4 text-center">
-                <p className="text-sm font-semibold text-danger">Address could not be verified</p>
+              <div className="mt-6 border-l-2 border-danger bg-danger-soft p-4 text-center">
+                <p className="font-mono text-xs uppercase tracking-mono text-danger">
+                  Address could not be verified
+                </p>
                 <p className="mt-1.5 text-xs leading-5 text-text-muted">
                   The deposit address we received does not match the {chainDisplayName(order.network)}{" "}
                   format. Do not send funds — contact support.
@@ -682,11 +688,11 @@ export function PaymentCheckout({
                     {view.tone === "pending" ? (
                       <LinqLoader size={44} className="mx-auto" />
                     ) : (
-                      <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-warning-soft">
+                      <span className="mx-auto grid h-14 w-14 place-items-center bg-warning-soft">
                         <AlertTriangle className="h-6 w-6 text-warning" />
                       </span>
                     )}
-                    <h2 className="mt-6 text-xl font-semibold tracking-[-0.02em]">{view.title}</h2>
+                    <h2 className="u-display mt-6 text-2xl">{view.title}</h2>
                     <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-text-muted">
                       {view.body}
                     </p>
@@ -696,7 +702,7 @@ export function PaymentCheckout({
                     ) : null}
 
                     {/* Support has nothing to work from without the reference. */}
-                    <div className="mt-7 flex items-center gap-2 rounded-md bg-surface-2 py-1 pl-4 pr-1 text-left">
+                    <div className="mt-7 flex items-center gap-2 bg-surface-2 py-1 pl-4 pr-1 text-left ring-1 ring-inset ring-line">
                       <span className="min-w-0 flex-1">
                         <span className="block text-[11px] text-text-muted">Order reference</span>
                         <code className="block truncate font-mono text-xs text-text">
@@ -721,8 +727,9 @@ export function PaymentCheckout({
                   <a
                     href={`mailto:support@linq.xyz?subject=Order ${order.paycrestOrderId ?? order.id}`}
                     className={cn(
-                      "mt-5 flex h-12 w-full items-center justify-center rounded-md bg-surface text-sm font-medium text-text ring-1 ring-line",
-                      "transition duration-fast ease-linq hover:shadow-md active:scale-[0.98]",
+                      "mt-5 flex h-12 w-full items-center justify-center bg-transparent text-text ring-1 ring-inset ring-text-subtle",
+                      "font-mono text-xs uppercase tracking-mono",
+                      "transition duration-fast ease-linq hover:bg-text hover:text-bg active:scale-[0.98]",
                     )}
                   >
                     Contact support

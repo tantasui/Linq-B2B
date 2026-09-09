@@ -2,9 +2,12 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Elevation comes from a soft shadow and a hairline ring rather than a hard
- * border, and inner elements step down one radius so nested corners stay
- * concentric with the card that holds them.
+ * A panel, not a floating card.
+ *
+ * On the ink surface a drop shadow reads as fog, so structure comes from a
+ * hairline rule and a one-step lift in surface value — the same device the
+ * landing uses for the chain roster and the steps rail. Corners are square
+ * everywhere; the only circles in the product are avatars and coins.
  */
 export const Card = React.forwardRef<
   HTMLDivElement,
@@ -13,9 +16,9 @@ export const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg bg-surface p-5 shadow-sm ring-1 ring-line",
+      "bg-surface p-5 ring-1 ring-line",
       interactive &&
-        "transition duration-fast ease-linq hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.995]",
+        "transition duration-fast ease-linq hover:bg-surface-2 hover:ring-line-strong active:scale-[0.995]",
       className,
     )}
     {...props}
@@ -37,19 +40,31 @@ export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTML
 );
 CardDescription.displayName = "CardDescription";
 
-/** Section heading used above a group of cards. */
+/**
+ * Section heading used above a group of panels.
+ *
+ * This is the product's version of the landing's "01 — GET PAID" marker: mono,
+ * uppercase, tracked out, sitting on its own hairline. Passing `index` prints
+ * the number too, which is what makes a dashboard scan as chapters rather than
+ * as a pile of cards.
+ */
 export function SectionHeader({
   title,
+  index,
   action,
   className,
 }: {
   title: string;
+  index?: string;
   action?: React.ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cn("mb-3 flex items-center justify-between gap-4", className)}>
-      <h2 className="text-sm font-medium text-text">{title}</h2>
+    <div className={cn("mb-4 flex items-end justify-between gap-4 border-b border-line pb-2.5", className)}>
+      <h2 className="font-mono text-label uppercase tracking-mono text-text-subtle">
+        {index ? <span className="mr-2 text-text-muted">{index} —</span> : null}
+        {title}
+      </h2>
       {action}
     </div>
   );

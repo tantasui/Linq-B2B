@@ -2,11 +2,14 @@ import { cn } from "@/lib/utils";
 import type { OrderStatus } from "@/server/types";
 
 /**
- * Order status, shown as one pill everywhere it appears.
+ * Order status, shown as one tag everywhere it appears.
  *
  * Money states get colour; everything in flight stays neutral. A dashboard
  * where half the rows glow amber trains people to ignore colour, so "pending"
  * is deliberately quiet and only settled, failed and expired carry a tone.
+ *
+ * Set in mono and uppercase, like every other label in the system — the status
+ * of an order is metadata about it, and metadata is mono here.
  */
 
 type Tone = "neutral" | "positive" | "negative" | "progress";
@@ -27,11 +30,16 @@ const TONES: Record<OrderStatus, Tone> = {
   failed: "negative",
 };
 
+/**
+ * A left rule in the tone's colour rather than a filled pill: on ink, six
+ * filled pills down a table read as a stack of buttons. The rule marks the row
+ * without competing with the amount at the end of it.
+ */
 const STYLES: Record<Tone, string> = {
-  neutral: "bg-surface-2 text-text-muted",
-  positive: "bg-success-soft text-success",
-  negative: "bg-danger-soft text-danger",
-  progress: "bg-accent-soft text-accent-text",
+  neutral: "border-text-subtle/50 text-text-muted",
+  positive: "border-success text-success",
+  negative: "border-danger text-danger",
+  progress: "border-accent text-accent-text",
 };
 
 export function StatusPill({ status, className }: { status: OrderStatus; className?: string }) {
@@ -41,12 +49,13 @@ export function StatusPill({ status, className }: { status: OrderStatus; classNa
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium capitalize",
+        "inline-flex items-center gap-1.5 border-l-2 py-0.5 pl-2",
+        "font-mono text-[10px] uppercase tracking-mono",
         STYLES[tone],
         className,
       )}
     >
-      {live ? <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" /> : null}
+      {live ? <span className="h-1 w-1 animate-pulse rounded-full bg-current" /> : null}
       {status}
     </span>
   );

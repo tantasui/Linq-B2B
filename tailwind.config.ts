@@ -1,11 +1,10 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Every colour is a token, never a literal. Light and dark differ only in the
- * values behind these names — no component should branch on theme.
+ * Every colour is a token, never a literal. There is one mode — ink — so no
+ * component branches on theme; it just uses the name.
  */
 export default {
-  darkMode: ["class"],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -114,13 +113,29 @@ export default {
         "18": "4.5rem",
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        /* Three voices, the same three the landing has. "sans" and "display"
+           are both Inter Tight on purpose: the product sets it at 400 for prose
+           and 680 for headings, which is the landing's own split. */
+        sans: ["var(--font-display)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      letterSpacing: {
+        /* Mono tracking is a brand constant, not a per-component choice. */
+        mono: "0.12em",
+        display: "-0.04em",
+      },
+      fontWeight: {
+        display: "680",
       },
       fontSize: {
-        /* quiet metadata → confident balances */
-        micro: ["0.6875rem", { lineHeight: "1rem", letterSpacing: "0.01em" }],
-        display: ["3.25rem", { lineHeight: "1.02", letterSpacing: "-0.045em" }],
-        hero: ["2.5rem", { lineHeight: "1.06", letterSpacing: "-0.04em" }],
+        /* quiet metadata → confident balances → the landing's editorial sizes */
+        micro: ["0.6875rem", { lineHeight: "1rem", letterSpacing: "0.12em" }],
+        label: ["0.75rem", { lineHeight: "1rem", letterSpacing: "0.12em" }],
+        hero: ["2.5rem", { lineHeight: "0.95", letterSpacing: "-0.04em" }],
+        display: ["3.25rem", { lineHeight: "0.94", letterSpacing: "-0.04em" }],
+        "display-lg": ["4.25rem", { lineHeight: "0.94", letterSpacing: "-0.04em" }],
+        "display-xl": ["6.5rem", { lineHeight: "0.92", letterSpacing: "-0.045em" }],
       },
       container: {
         center: true,

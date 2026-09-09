@@ -1,49 +1,61 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter_Tight, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import ClientBody from "./ClientBody";
-import { ThemeProvider, themeBootScript } from "@/components/providers/ThemeProvider";
 import { ToastProvider } from "@/components/ui/toast";
 
 /**
- * One typeface across the product. Inter is the web counterpart to SF Pro on
- * iOS, so a screen built once from the shared spec reads the same on both.
+ * Two faces, the same two the marketing site uses, so a heading in the
+ * dashboard and a heading on the landing page are literally the same type at
+ * the same tracking. Inter Tight carries display and prose (400 for body, 680
+ * for headings); JetBrains Mono carries every label, status and column head.
  */
-const inter = Inter({
+const interTight = Inter_Tight({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-display",
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  weight: ["400", "500"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Linq — Stablecoin payments for modern businesses",
+  title: "Linq — Receive from anywhere. Settle in Naira.",
   description:
-    "Accept USDC and USDT payments across leading networks with payment links and instant settlement to Naira.",
+    "Accept USDC, USDT and USDSUI across Sui, Base, BNB, Solana, Stellar and Tron. Payment links, deposit addresses and a receipt for every payment, settled to your Nigerian business account.",
 };
 
+/**
+ * One mode, so the browser is told once. There is no boot script and no
+ * `.dark` class any more: the tokens in globals.css are the ink palette
+ * unconditionally, which also means no light-flash to suppress.
+ */
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F7F7F8" },
-    { media: "(prefers-color-scheme: dark)", color: "#141416" },
-  ],
+  themeColor: "#0A0A0B",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${interTight.variable} ${jetbrainsMono.variable}`}
+      style={{ colorScheme: "dark" }}
+    >
       <head>
-        {/* Applied before first paint: without it the page renders light and
-            then snaps to dark once React hydrates. */}
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
         <link rel="preconnect" href="https://nigerianbanklogos.xyz" />
         <link rel="dns-prefetch" href="https://nigerianbanklogos.xyz" />
       </head>
       <body suppressHydrationWarning className="antialiased">
-        <ThemeProvider>
-          <ToastProvider>
-            <ClientBody>{children}</ClientBody>
-          </ToastProvider>
-        </ThemeProvider>
+        <ToastProvider>
+          <ClientBody>{children}</ClientBody>
+        </ToastProvider>
       </body>
     </html>
   );

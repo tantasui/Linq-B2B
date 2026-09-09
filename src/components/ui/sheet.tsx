@@ -216,8 +216,7 @@ export function Sheet({
         onAnimationEnd={onAnimationEnd}
         className={cn(
           "relative z-10 flex max-h-[88vh] w-full max-w-[460px] flex-col overflow-hidden",
-          "rounded-t-xl bg-surface pt-4 shadow-xl",
-          "sm:rounded-xl",
+          "bg-surface pt-4 shadow-xl ring-1 ring-line",
           closing ? "linq-sheet-down" : "linq-sheet-up",
           className,
         )}
@@ -240,12 +239,12 @@ export function Sheet({
           {title ? (
             <header className="mb-6 flex shrink-0 items-center gap-3 px-5">
               {leading}
-              <h2 className="flex-1 text-lg font-medium tracking-[-0.02em]">{title}</h2>
+              <h2 className="u-display flex-1 text-xl">{title}</h2>
               <button
                 type="button"
                 aria-label="Close"
                 onClick={() => requestClose()}
-                className="grid h-9 w-9 place-items-center rounded-sm text-text-muted transition duration-fast ease-linq hover:bg-surface-2 hover:text-text active:scale-[0.94]"
+                className="grid h-9 w-9 place-items-center text-text-muted transition duration-fast ease-linq hover:bg-surface-2 hover:text-text active:scale-[0.94]"
               >
                 <X className="h-4.5 w-4.5" />
               </button>

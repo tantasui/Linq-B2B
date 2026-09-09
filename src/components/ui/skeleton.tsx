@@ -22,9 +22,9 @@ export function BalanceSkeleton() {
 
 export function RowSkeleton({ rows = 3 }: { rows?: number }) {
   return (
-    <div className="space-y-2.5">
+    <div className="border-t border-line">
       {Array.from({ length: rows }, (_, index) => (
-        <div key={index} className="flex items-center gap-3 rounded-lg bg-surface p-4 ring-1 ring-line">
+        <div key={index} className="flex items-center gap-3 border-b border-line px-1 py-3.5">
           <Skeleton className="h-9 w-9 rounded-full" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-3 w-28" />

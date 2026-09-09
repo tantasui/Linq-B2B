@@ -56,7 +56,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               key={entry.id}
               className={cn(
                 "linq-sheet-up pointer-events-auto flex max-w-[calc(100vw-2rem)] items-center gap-2.5",
-                "rounded-full bg-surface px-4 py-2.5 text-sm shadow-lg ring-1 ring-line",
+                "bg-surface px-4 py-3 text-sm shadow-lg ring-1 ring-line",
               )}
             >
               <Icon

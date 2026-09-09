@@ -117,10 +117,14 @@ export default function LoginPage() {
           </Link>
         </header>
 
-        <section className="mb-7">
-          <p className="text-micro uppercase tracking-[0.16em] text-accent-text">Welcome back</p>
-          <h1 className="mt-2 text-hero font-semibold">Log in to your account</h1>
-          <p className="mt-3 text-sm leading-6 text-text-muted">
+<section className="mb-8">
+          <p className="font-mono text-label uppercase tracking-mono text-accent-text">Welcome back</p>
+          <h1 className="u-display mt-4 text-hero">
+            LOG IN TO
+            <br />
+            YOUR ACCOUNT.
+          </h1>
+          <p className="mt-5 text-sm leading-6 text-text-muted">
             {step === "email"
               ? "Enter the email you set your merchant profile up with. We'll send you a sign-in code."
               : "Enter the 6-digit code we just emailed you."}
@@ -206,7 +210,7 @@ export default function LoginPage() {
           ) : null}
 
           {error ? (
-            <div className="linq-fade-in mt-4 rounded-md bg-danger-soft px-4 py-3 text-xs leading-5 text-danger">
+            <div className="linq-fade-in mt-4 border-l-2 border-danger bg-danger-soft px-4 py-3 text-xs leading-5 text-danger">
               {error}
               {error.includes("setup") ? (
                 <Link href="/onboarding" className="ml-1 font-medium underline underline-offset-2">
@@ -216,11 +220,11 @@ export default function LoginPage() {
             </div>
           ) : null}
 
-          <p className="mt-6 text-center text-xs text-text-muted">
+          <p className="mt-6 text-center font-mono text-micro uppercase tracking-mono text-text-muted">
             Don&apos;t have an account?{" "}
             <Link
               href="/onboarding"
-              className="font-medium text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
+              className="text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
             >
               Set up now <ArrowRight className="inline h-3 w-3" />
             </Link>

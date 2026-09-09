@@ -84,26 +84,26 @@ export function DateCarousel({
             aria-current={active ? "date" : undefined}
             onClick={() => onChange(date)}
             className={cn(
-              "flex shrink-0 flex-col items-center justify-center rounded-full",
+              "flex shrink-0 flex-col items-center justify-center",
               "transition-all duration-slow ease-linq",
               active
-                ? "h-14 w-14 bg-text text-bg"
+                ? "h-14 w-14 bg-accent text-accent-contrast"
                 : "h-11 w-11 text-text-muted opacity-55 hover:opacity-100",
             )}
           >
-            <span className="text-[10px] uppercase tracking-wide">
+            <span className="font-mono text-[10px] uppercase tracking-mono">
               {showMonth
                 ? date.toLocaleDateString(undefined, { month: "short" })
                 : date.toLocaleDateString(undefined, { weekday: "narrow" })}
             </span>
-            <span className={cn("tnum leading-none", active ? "text-lg font-semibold" : "text-sm")}>
+            <span className={cn("tnum leading-none", active ? "u-display text-lg" : "text-sm")}>
               {date.getDate()}
             </span>
             {count > 0 ? (
               <span
                 className={cn(
                   "mt-0.5 h-1 w-1 rounded-full",
-                  active ? "bg-bg/70" : "bg-accent",
+                  active ? "bg-accent-contrast/70" : "bg-accent",
                 )}
                 aria-hidden
               />

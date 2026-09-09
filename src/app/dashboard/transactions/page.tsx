@@ -126,19 +126,21 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Page headers read like the landing's scene markers: a numbered mono
+          label over a display-weight title. */}
       <header>
-        <p className="text-micro uppercase tracking-[0.16em] text-accent-text">Orders</p>
-        <h1 className="mt-2 text-hero font-semibold">Payments</h1>
+        <p className="font-mono text-label uppercase tracking-mono text-accent-text">03 — Orders</p>
+        <h1 className="u-display mt-3 text-hero">PAYMENTS</h1>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
         <Card>
-          <p className="text-xs text-text-muted">Settled</p>
-          <p className="tnum mt-2.5 text-xl font-semibold">{formatCurrency(settledTotal, "NGN")}</p>
+          <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">Settled</p>
+          <p className="tnum u-display mt-3 text-2xl">{formatCurrency(settledTotal, "NGN")}</p>
         </Card>
         <Card>
-          <p className="text-xs text-text-muted">In flight</p>
-          <p className="tnum mt-2.5 text-xl font-semibold text-accent-text">
+          <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">In flight</p>
+          <p className="tnum u-display mt-3 text-2xl text-accent-text">
             {formatCurrency(pendingTotal, "NGN")}
           </p>
         </Card>
@@ -147,7 +149,7 @@ export default function TransactionsPage() {
       {/* Period scrubber — the selected day animates to the centre. */}
       <Card className="px-0 py-3">
         <div className="mb-1 flex items-center justify-between px-5">
-          <p className="text-xs text-text-muted">
+          <p className="font-mono text-micro uppercase tracking-mono text-text-subtle">
             {day
               ? day.toLocaleDateString(undefined, { dateStyle: "full" })
               : "All time"}
@@ -156,7 +158,7 @@ export default function TransactionsPage() {
             <button
               type="button"
               onClick={() => setDay(null)}
-              className="text-xs text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
+              className="font-mono text-micro uppercase tracking-mono text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
             >
               Clear
             </button>
@@ -166,7 +168,7 @@ export default function TransactionsPage() {
       </Card>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <label className="flex h-12 flex-1 items-center gap-3 rounded-md bg-surface px-4 text-text-muted ring-1 ring-line focus-within:ring-2 focus-within:ring-accent">
+        <label className="flex h-12 flex-1 items-center gap-3 bg-surface px-4 text-text-muted ring-1 ring-inset ring-line focus-within:ring-2 focus-within:ring-accent">
           <Search className="h-4 w-4 shrink-0" />
           <input
             type="search"
@@ -245,31 +247,29 @@ export default function TransactionsPage() {
             />
           </Card>
         ) : (
-          <div className="space-y-2.5">
+          <div className="border-t border-line">
             {filtered.map((order) => (
               <button
                 key={order.id}
                 type="button"
                 onClick={() => setOpenOrder(order)}
-                className="block w-full text-left"
+                className="flex w-full items-center gap-3.5 border-b border-line px-1 py-3.5 text-left transition-colors duration-fast ease-linq hover:bg-surface"
               >
-                <Card interactive className="flex items-center gap-3.5 py-4">
-                  <NetworkLogo network={order.network} size={34} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{order.payerName}</p>
-                    <p className="truncate text-xs text-text-muted">
-                      {order.cryptoAmountDue.toFixed(2)} {order.token} ·{" "}
-                      {new Date(order.createdAt).toLocaleDateString(undefined, {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1.5">
-                    <p className="tnum text-sm font-medium">{formatCurrency(order.amountNgn, "NGN")}</p>
-                    <StatusPill status={order.status} />
-                  </div>
-                </Card>
+                <NetworkLogo network={order.network} size={32} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{order.payerName}</p>
+                  <p className="truncate font-mono text-micro uppercase tracking-mono text-text-subtle">
+                    {order.cryptoAmountDue.toFixed(2)} {order.token} ·{" "}
+                    {new Date(order.createdAt).toLocaleDateString(undefined, {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                  <p className="tnum text-sm font-medium">{formatCurrency(order.amountNgn, "NGN")}</p>
+                  <StatusPill status={order.status} />
+                </div>
               </button>
             ))}
           </div>
@@ -295,9 +295,11 @@ export default function TransactionsPage() {
                 href={explorerTxUrl(openOrder.network, openOrder.depositDigest)!}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-5 flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2.5 text-xs transition duration-fast ease-linq hover:bg-surface-3"
+                className="mt-5 flex items-center justify-between gap-3 bg-surface-2 px-3 py-2.5 text-xs transition duration-fast ease-linq hover:bg-surface-3"
               >
-                <span className="text-text-muted">Deposit transaction</span>
+                <span className="font-mono text-micro uppercase tracking-mono text-text-subtle">
+                  Deposit transaction
+                </span>
                 <span className="flex items-center gap-1.5 font-medium text-text">
                   <span className="font-mono">{shortenHash(openOrder.depositDigest!)}</span>
                   <ExternalLink className="h-3.5 w-3.5 shrink-0 text-text-muted" />

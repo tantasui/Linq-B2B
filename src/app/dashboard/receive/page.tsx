@@ -209,15 +209,16 @@ export default function ReceivePage() {
   return (
     <div className="space-y-7">
       <header>
-        <p className="text-micro uppercase tracking-[0.16em] text-accent-text">Receive</p>
-        <h1 className="mt-2 text-hero font-semibold">Collect payment</h1>
-        <p className="mt-2 text-sm text-text-muted">
+        <p className="font-mono text-label uppercase tracking-mono text-accent-text">02 — Receive</p>
+        <h1 className="u-display mt-3 text-hero">COLLECT PAYMENT</h1>
+        <p className="mt-3 text-sm text-text-muted">
           Share a checkout link, or charge a set amount.
         </p>
       </header>
 
-      {/* Segmented control: two modes, equal weight, active one raised. */}
-      <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface-2 p-1.5">
+      {/* Two modes, equal weight. The active one is marked by a signal rule
+          along its top edge rather than by being raised off the track. */}
+      <div className="grid grid-cols-2 ring-1 ring-inset ring-line">
         {[
           { value: "open" as const, title: "Open receive", hint: "Payer enters amount" },
           { value: "fixed" as const, title: "Payment request", hint: "Locked amount" },
@@ -229,14 +230,19 @@ export default function ReceivePage() {
               type="button"
               onClick={() => setMode(entry.value)}
               className={cn(
-                "rounded-md px-3.5 py-3 text-left transition duration-fast ease-linq active:scale-[0.99]",
-                active ? "bg-surface shadow-sm" : "hover:bg-surface/60",
+                "border-t-2 px-3.5 py-3 text-left transition duration-fast ease-linq active:scale-[0.99]",
+                active ? "border-accent bg-surface" : "border-transparent hover:bg-surface/60",
               )}
             >
-              <p className={cn("text-sm font-medium", active ? "text-text" : "text-text-muted")}>
+              <p
+                className={cn(
+                  "font-mono text-xs uppercase tracking-mono",
+                  active ? "text-text" : "text-text-muted",
+                )}
+              >
                 {entry.title}
               </p>
-              <p className="mt-0.5 text-micro text-text-subtle">{entry.hint}</p>
+              <p className="mt-1 text-xs text-text-subtle">{entry.hint}</p>
             </button>
           );
         })}
@@ -245,11 +251,11 @@ export default function ReceivePage() {
       {mode === "open" ? (
         <Card className="space-y-5">
           <div className="flex items-start gap-3.5">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-accent-soft text-accent-text">
+            <span className="grid h-11 w-11 shrink-0 place-items-center bg-accent-soft text-accent-text">
               <Link2 className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm font-medium">Open receive link</p>
+              <p className="font-mono text-xs uppercase tracking-mono">Open receive link</p>
               <p className="mt-1.5 text-xs leading-5 text-text-muted">
                 Customers enter the amount at checkout, choose a stablecoin and network, and Linq
                 settles the Naira to your verified account.
@@ -263,20 +269,20 @@ export default function ReceivePage() {
       ) : (
         <Card className="space-y-5">
           <Field label="Amount to charge">
-            <div className="flex items-center rounded-md bg-surface ring-1 ring-line focus-within:ring-2 focus-within:ring-accent">
+            <div className="flex items-center bg-surface ring-1 ring-inset ring-line focus-within:ring-2 focus-within:ring-accent">
               <span className="pl-4 text-text-muted">₦</span>
               <input
                 value={amount}
                 onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))}
                 inputMode="decimal"
                 aria-label="Amount in Naira"
-                className="tnum h-14 min-w-0 flex-1 bg-transparent px-2 text-2xl font-medium outline-none"
+                className="tnum u-display h-14 min-w-0 flex-1 bg-transparent px-2 text-2xl outline-none"
               />
               <button
                 type="button"
                 aria-label="Open calculator"
                 onClick={() => setCalculator(true)}
-                className="mr-2 grid h-10 w-10 place-items-center rounded-sm text-accent-text transition duration-fast ease-linq hover:bg-accent-soft active:scale-[0.94]"
+                className="mr-2 grid h-10 w-10 place-items-center text-accent-text transition duration-fast ease-linq hover:bg-accent-soft active:scale-[0.94]"
               >
                 <Calculator className="h-[18px] w-[18px]" />
               </button>
@@ -294,7 +300,9 @@ export default function ReceivePage() {
       )}
 
       {error ? (
-        <p className="linq-fade-in rounded-md bg-danger-soft px-4 py-3 text-xs text-danger">{error}</p>
+        <p className="linq-fade-in border-l-2 border-danger bg-danger-soft px-4 py-3 text-xs text-danger">
+          {error}
+        </p>
       ) : null}
 
       <Sheet
@@ -302,13 +310,13 @@ export default function ReceivePage() {
         onClose={() => setReady(false)}
         title={mode === "fixed" ? "Payment request ready" : "Receive link ready"}
       >
-        <div className="mx-auto w-fit rounded-lg bg-white p-4 ring-1 ring-line">
+        <div className="mx-auto w-fit bg-white p-4 ring-1 ring-line">
           <QRCodeSVG value={publicLink} size={176} fgColor="#09090d" bgColor="#ffffff" />
         </div>
 
         {mode === "fixed" ? (
           <div className="mt-5 text-center">
-            <p className="tnum text-2xl font-semibold">
+            <p className="tnum u-display text-3xl">
               {formatCurrency(Number(amount || 0), currency)}
             </p>
             {description ? <p className="mt-1.5 text-sm text-text-muted">{description}</p> : null}

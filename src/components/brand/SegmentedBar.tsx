@@ -56,7 +56,7 @@ export function SegmentedBar({
                 // Each segment fills on its own beat rather than one long sweep
                 // across the whole bar, so a completed step reads as a step.
                 "transition-opacity duration-slow ease-linq",
-                filled || indeterminate ? "opacity-100" : "opacity-[0.15] dark:bg-white",
+                filled || indeterminate ? "opacity-100" : "opacity-[0.18]",
               )}
               style={{
                 backgroundColor: filled || indeterminate ? tint : undefined,

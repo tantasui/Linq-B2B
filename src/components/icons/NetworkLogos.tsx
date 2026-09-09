@@ -109,7 +109,7 @@ export function NetworkLogo({
         // disappears against the near-black background, so it inverts to white
         // there. Every other badge here is genuinely multi-colour and stays that
         // way in both themes.
-        chain?.id === "stellar" && "dark:brightness-0 dark:invert",
+        chain?.id === "stellar" && "brightness-0 invert",
         className,
       )}
       style={{ width: size, height: size, display: "block", flexShrink: 0, borderRadius: "50%" }}
