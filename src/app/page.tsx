@@ -230,9 +230,9 @@ export default function Home() {
           <div className="l-grid scene__inner">
             <div className="receive__copy">
               <h2 id="receive-h" className="display scene__title">
-                195+ countries pay you.
+                Receive stablecoin payments
                 <br />
-                you get Naira.
+                from any country.
               </h2>
               <p className="body scene__body">
                 A customer in Lisbon checks out in USDC. A client in Toronto settles an invoice in
@@ -440,7 +440,7 @@ export default function Home() {
           <div className="l-grid scene__inner">
             <div className="socials__block">
               <h2 id="socials-h" className="display scene__title socials__title">
-                Linq is building in public.
+                Reach out to us.
               </h2>
               <div className="socials__icons">
                 {LANDING_SOCIALS.map((social) => (
