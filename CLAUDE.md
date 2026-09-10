@@ -32,6 +32,33 @@ part-paid checkout is shown what they already sent instead of what they owe.
 
 An order may come back with `underpaid: true` and a `shortfallNgn`.
 
+## Receipts must be sent from the poll, not just the webhook
+
+Emails are sent by `notifyForOrderStatus`. It is called from three places, and
+**all three are load-bearing**:
+
+- `POST /api/webhooks/linq` and `/api/webhooks/paycrest` — chains that settle
+  through Linq or Paycrest.
+- `GET /api/orders/[id]` — the status poll. **Stellar has no webhook.**
+  `linq-stellar` owns its own settlement, so this poll is the only thing that
+  ever moves a Stellar order to `settled`. Wiring receipts to the webhooks
+  alone meant no payer and no merchant was ever emailed for a Stellar
+  transaction, while the checkout told the payer "a copy has been sent to
+  <email>".
+- `expireOrderIfDue` — the deposit window closing.
+
+Adding a new settlement path means wiring receipts into it too.
+
+`createAndSendReceipt` is idempotent per (order, kind, audience, recipient), so
+an order that gets both a webhook and a poll is not emailed twice. Await the
+notify rather than firing it off — this runs on serverless, where the function
+is frozen once the response returns and detached work is lost.
+
+A deployment without `RESEND_API_KEY` records receipts as `skipped` and sends
+nothing. That is a valid local setup, so it does not throw — it logs
+`email.skipped_no_provider`, and `/api/health/ready` reports it. Check both
+before assuming the send path is broken.
+
 ## Verify
 
 ```bash

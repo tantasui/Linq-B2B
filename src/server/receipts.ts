@@ -1,4 +1,5 @@
 import { env, resendEnabled } from "./env";
+import { logger } from "./logger";
 import { createImagePdf } from "./pdf";
 import { renderReceiptJpeg } from "./receipt-image";
 import { makeSlug } from "./security";
@@ -176,6 +177,16 @@ async function sendResendEmail(input: {
   filename: string;
 }) {
   if (!resendEnabled) {
+    // Recorded and logged rather than thrown: a deployment without a key is a
+    // valid local setup. But it is silent from the recipient's side — the
+    // receipt is stored, the UI says a copy was sent, and no mail leaves — so
+    // it has to say so somewhere, or "emails never arrive" has no trail to
+    // follow. /api/health/ready reports the same thing before it matters.
+    logger.warn("email.skipped_no_provider", {
+      to: input.to,
+      subject: input.subject,
+      reason: "RESEND_API_KEY is not set",
+    });
     return { skipped: true, id: `local-${Date.now()}` };
   }
   const response = await fetch("https://api.resend.com/emails", {
