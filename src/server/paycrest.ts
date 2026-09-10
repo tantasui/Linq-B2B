@@ -2,6 +2,7 @@ import { cached } from "./cache";
 import { env, livePaycrestEnabled } from "./env";
 import { ApiError } from "./http";
 import { logger } from "./logger";
+import { ceilTo } from "@/lib/money";
 import type { BankAccountRecord, OrderRecord, StablecoinSymbol, TokenNetworkRecord } from "./types";
 
 type SupportedInstitution = {
@@ -187,7 +188,11 @@ export async function verifyBankAccount(institutionCode: string, accountIdentifi
 
 export async function createPaycrestOrder(input: PaycrestOrderInput) {
   const rate = await getRate(input.network, input.token, input.amountNgn);
-  const cryptoAmount = Number((input.amountNgn / rate.marketRate).toFixed(6));
+  // Rounded up, like every other quote in the app. toFixed rounds to nearest,
+  // which can hand a payer a figure fractionally below what the invoice needs
+  // — the same direction of error that had a Stellar payer sending 0.07 USDC
+  // against a 0.073303 quote, just three decimal places smaller.
+  const cryptoAmount = ceilTo(input.amountNgn / rate.marketRate);
   if (!livePaycrestEnabled) throw new ApiError("The payment provider is not configured for order creation.", 503);
 
   const paycrestInstitutionCode = await resolvePaycrestCode(input.bank.institutionCode, input.bank.institutionName);

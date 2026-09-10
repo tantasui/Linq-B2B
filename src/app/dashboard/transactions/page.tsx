@@ -6,6 +6,7 @@ import { apiUrl, getMerchantMe, listOrders, retryTransfer, sendOrderReceipt } fr
 import { ENABLED_CHAINS } from "@/lib/chains";
 import { explorerTxUrl, shortenHash } from "@/lib/explorer";
 import { formatCurrency } from "@/lib/payment-data";
+import { formatTokenAmount } from "@/lib/money";
 import type { MerchantRecord, OrderRecord } from "@/server/types";
 import { NetworkLogo } from "@/components/icons/NetworkLogos";
 import { Receipt } from "@/components/brand/Receipt";
@@ -259,7 +260,7 @@ export default function TransactionsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{order.payerName}</p>
                   <p className="truncate font-sans font-medium text-micro tracking-mono text-text-subtle">
-                    {order.cryptoAmountDue.toFixed(2)} {order.token} ·{" "}
+                    {formatTokenAmount(order.cryptoAmountDue)} {order.token} ·{" "}
                     {new Date(order.createdAt).toLocaleDateString(undefined, {
                       day: "numeric",
                       month: "short",

@@ -17,6 +17,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createOrder, getOrder, getPaycrestRate, getPaymentLink } from "@/lib/api-client";
 import { buildStellarUsdcPayUri } from "@/lib/sep7";
+import { ceilTo, formatTokenAmount } from "@/lib/money";
 import { chainDisplayName, ENABLED_CHAINS, getChain, isAddressValidForNetwork } from "@/lib/chains";
 import { formatCurrency, formatRate, type FiatCurrency, type PaymentMode, type StablecoinSymbol } from "@/lib/payment-data";
 import type { MerchantRecord, OrderRecord, OrderStatus, PaymentLinkRecord } from "@/server/types";
@@ -108,9 +109,10 @@ function qrValue(order: OrderRecord): string {
 
   return buildStellarUsdcPayUri({
     destination: address,
-    // Suggested, not enforced: these orders are manual-deposit, so the payout
-    // reconciles to whatever actually arrives.
-    amount: order.cryptoAmountDue,
+    // The exact quote, at the asset's real precision. A wallet that scans
+    // this prefills the amount the invoice actually needs — which is the whole
+    // reason to encode an amount rather than leave the payer to type one.
+    amount: ceilTo(order.cryptoAmountDue),
     msg: `Payment ${order.id}`,
     originDomain: typeof window === "undefined" ? undefined : window.location.hostname,
   });
@@ -202,7 +204,11 @@ export function PaymentCheckout({
   };
   const locked = (link?.mode ?? mode) === "fixed";
   const value = Number(link?.amountNgn ?? (amount || 0));
-  const cryptoDue = value > 0 ? value / rate : 0;
+  // Rounded up to the asset's precision, not down to two decimals. The
+  // review sheet, the transfer sheet and the QR all read from this, so they
+  // agree on one exact figure — and a payer who sends it has covered the
+  // invoice rather than falling 4.5% short of it.
+  const cryptoDue = value > 0 ? ceilTo(value / rate) : 0;
 
   useEffect(() => {
     const saved = window.localStorage.getItem(payerStorageKey);
@@ -545,7 +551,7 @@ export function PaymentCheckout({
       >
         <p className="tnum u-display text-center text-4xl">{formatNaira(value)}</p>
         <p className="tnum mt-2 text-center text-sm text-text-muted">
-          about {cryptoDue.toFixed(2)} {token}
+          {formatTokenAmount(cryptoDue)} {token}
         </p>
 
         <dl className="mt-7 divide-y divide-line rounded-lg bg-surface-2 px-4">
@@ -579,11 +585,11 @@ export function PaymentCheckout({
         {order ? (
           <>
             <p className="tnum text-center text-sm text-text-muted">
-              Send about {order.cryptoAmountDue.toFixed(2)} {order.token} on{" "}
+              Send exactly {formatTokenAmount(order.cryptoAmountDue)} {order.token} on{" "}
               {chainDisplayName(order.network)}
             </p>
             <p className="mt-1 text-center text-xs text-text-subtle">
-              Your payout follows whatever you actually send.
+              Send less and the payout follows what actually arrives.
             </p>
 
             {expired ? (
@@ -636,6 +642,17 @@ export function PaymentCheckout({
                   </code>
                   <CopyButton value={depositAddress} label="Address" />
                 </div>
+                {/* The amount is copyable for the same reason the address is.
+                    An exact quote runs to six decimals, and a payer retyping
+                    it into a wallet is one dropped digit away from underpaying
+                    their own invoice. The copied value carries no thousands
+                    separators, which wallets reject. */}
+                <div className="mt-2 flex items-center gap-2 rounded-full bg-surface-2 py-1 pl-4 pr-1 ring-1 ring-inset ring-line">
+                  <code className="tnum min-w-0 flex-1 truncate font-mono text-xs text-text-muted">
+                    {formatTokenAmount(order.cryptoAmountDue)} {order.token}
+                  </code>
+                  <CopyButton value={String(ceilTo(order.cryptoAmountDue))} label="Amount" />
+                </div>
               </>
             ) : (
               <div className="mt-6 rounded-lg bg-danger-soft p-4 text-center ring-1 ring-inset ring-danger/15">
@@ -660,9 +677,10 @@ export function PaymentCheckout({
             </div>
 
             <p className="mt-5 text-xs leading-5 text-text-muted">
-              Only send {order.token} on {chainDisplayName(order.network)}. Your Naira payout is
-              reconciled to the exact amount received, and this screen updates on its own once the
-              deposit lands.
+              Only send {order.token} on {chainDisplayName(order.network)}. Sending the exact
+              amount above pays {formatNaira(order.amountNgn)} to the merchant; anything
+              short is converted at the same rate. This screen updates on its own once the deposit
+              lands.
             </p>
           </>
         ) : null}

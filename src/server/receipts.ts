@@ -5,6 +5,7 @@ import { makeSlug } from "./security";
 import { addReceipt, addWalletIncoming, formatNaira, getMerchant, getOrder, listReceipts } from "./store";
 import { chainDisplayName } from "@/lib/chains";
 import { formatRate, ORDER_STATUS_LABELS } from "@/lib/payment-data";
+import { formatTokenAmount } from "@/lib/money";
 import type { MerchantRecord, OrderRecord, ReceiptKind, ReceiptRecord, StablecoinSymbol, WalletIncomingRecord } from "./types";
 
 function formatToken(value: number, token: string) {
@@ -97,7 +98,7 @@ function buildReceiptView(params: {
         { label: "To", value: merchant.businessName },
         { label: "Network", value: chainDisplayName(order.network) },
         { label: "Rate", value: formatRate(order.quotedRate, order.token) },
-        { label: "Fee", value: fee > 0 ? `${fee.toFixed(2)} ${order.token}` : "No fee" },
+        { label: "Fee", value: fee > 0 ? `${formatTokenAmount(fee)} ${order.token}` : "No fee" },
         { label: "Transaction ID", value: order.paycrestOrderId ?? order.id },
       ]
     : [

@@ -6,6 +6,7 @@ import { LinqMark } from "@/components/brand/LinqMark";
 import { CopyButton } from "@/components/ui/copy";
 import { chainDisplayName } from "@/lib/chains";
 import { formatCurrency, formatRate, ORDER_STATUS_LABELS } from "@/lib/payment-data";
+import { formatTokenAmount } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { MerchantRecord, OrderRecord } from "@/server/types";
 
@@ -99,7 +100,7 @@ export function Receipt({
             <p className="mt-3 inline-flex items-center gap-2 text-sm text-text-muted">
               <NetworkLogo network={order.network} size={18} />
               <span className="tnum">
-                {order.cryptoAmountDue.toFixed(2)} {order.token}
+                {formatTokenAmount(order.cryptoAmountDue)} {order.token}
               </span>
             </p>
           </div>
@@ -128,7 +129,7 @@ export function Receipt({
               <span className="tnum">{formatRate(order.quotedRate, order.token)}</span>
             </DetailRow>
             <DetailRow label="Fee">
-              <span className="tnum">{fee > 0 ? `${fee.toFixed(2)} ${order.token}` : "No fees"}</span>
+              <span className="tnum">{fee > 0 ? `${formatTokenAmount(fee)} ${order.token}` : "No fees"}</span>
             </DetailRow>
             <div className="flex items-center justify-between gap-4 py-1.5">
               <span className="shrink-0 font-sans font-medium text-micro tracking-mono text-text-subtle">

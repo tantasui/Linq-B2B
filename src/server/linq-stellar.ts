@@ -48,6 +48,12 @@ interface StellarOrderResponse {
   depositAddress: string;
   amountUsdc: number;
   amountNgn: number;
+  /** What the order was quoted at, never rewritten by a deposit. */
+  quotedUsdc?: number;
+  quotedNgn?: number;
+  /** Set when the deposit did not cover the quote. */
+  underpaid?: boolean;
+  shortfallNgn?: number;
   rate: number;
   currency: string;
   depositTxHash?: string;
@@ -91,6 +97,8 @@ export async function createStellarOrder(input: {
     id: response.id,
     depositAddress: response.depositAddress,
     amountUsdc: response.amountUsdc,
+    amountNgn: response.amountNgn,
+    rate,
   });
 
   // Same fund-safety gate createLinqOrder applies to every other chain: never
@@ -113,7 +121,10 @@ export async function createStellarOrder(input: {
     providerReceiveAddress: response.depositAddress,
     coinType: "",
     quotedRate: response.rate,
-    cryptoAmountDue: response.amountUsdc,
+    // The quote, not the running amount. They agree at creation; after a
+    // deposit lands amountUsdc becomes what actually arrived, and a payer who
+    // reopens the checkout must still be shown what they were asked for.
+    cryptoAmountDue: response.quotedUsdc ?? response.amountUsdc,
     amountNgn: response.amountNgn,
     status: normalizeStellarStatus(response.status),
     // This service's own deposit window (30m by default), not Linq's native
@@ -133,6 +144,10 @@ export async function getStellarOrderStatus(id: string) {
     status: normalizeStellarStatus(response.status),
     amountStableCoin: response.amountUsdc,
     amountNgn: response.amountNgn,
+    // Carried through rather than dropped: a payout below the invoice is
+    // something the merchant has to be able to see a reason for.
+    underpaid: response.underpaid ?? false,
+    shortfallNgn: response.shortfallNgn ?? 0,
     depositDigest: response.depositTxHash,
     raw: response,
   };
