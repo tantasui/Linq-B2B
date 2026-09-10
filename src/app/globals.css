@@ -37,8 +37,8 @@
          product sets most metadata below 14px and the old palette's floor
          does not survive the inversion. — */
     --text: 240 8% 10%;            /* #17171B — ink */
-    --text-muted: 240 4% 40%;      /* #62626B — 6.4:1 on paper */
-    --text-subtle: 240 4% 46%;     /* #71717B — 5.1:1 on paper */
+    --text-muted: 240 4% 40%;      /* #62626A — 5.7:1 on paper */
+    --text-subtle: 240 4% 46%;     /* #71717A — 4.6:1 on paper, the AA floor */
 
     /* — lines: a warm hairline, kept soft. On paper a dark rule reads as a
          cut, so the border is barely there and the shadow does the lifting. — */
@@ -46,11 +46,14 @@
     --border-strong: 38 12% 78%;
 
     /* — the one accent —
-         #8A4FFF is kept exactly: white on it is 4.52:1, which clears AA, so the
-         brand purple does not have to be re-mixed for the light ground. */
-    --accent: 262 100% 65%;        /* #8A4FFF — signal */
+         Untouched by the flip: white on it is 4.5:1, which clears AA, so the
+         brand purple does not have to be re-mixed for the light ground.
+         Note this renders #8E4DFF, a hair off the brand's literal #8A4FFF that
+         landing.css carries — the drift predates the retheme and is invisible
+         side by side, but they are not the same value. Worth reconciling. */
+    --accent: 262 100% 65%;        /* #8E4DFF — signal */
     --accent-hover: 262 80% 57%;   /* deepens on hover; on ink it lightened */
-    --accent-text: 262 72% 52%;    /* #6B29E0 — 6.3:1, for purple *type* on paper */
+    --accent-text: 262 72% 52%;    /* #6D2CDD — 6.5:1, for purple *type* on paper */
     --accent-soft: 262 100% 96%;   /* #EDE5FF — signal-tint */
     --accent-contrast: 0 0% 100%;  /* paper on purple */
 

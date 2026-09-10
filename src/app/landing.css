@@ -31,12 +31,12 @@
   --paper:        #FAF8F5;  /* the ground, warm not white */
   --paper-2:      #FFFFFF;  /* a surface lifted off it */
   --ink:          #17171B;  /* type */
-  --ink-dim:      #62626B;  /* dimmed type — 6.4:1 on paper */
+  --ink-dim:      #62626B;  /* dimmed type — 5.7:1 on paper */
   --signal:       #8A4FFF;
   --signal-deep:  #532F99;
   --signal-tint:  #EDE5FF;
   --signal-dark:  #281450;
-  --mono-dim:     #71717B; /* §8 a11y bump for small (<14px) mono/technical text */
+  --mono-dim:     #71717B; /* §8 a11y bump for small (<14px) text — 4.6:1 on paper */
   /* The purple climax does not invert with the page, so what sits on it is
      pinned here rather than borrowing whichever of ink/paper is the ground. */
   --on-signal:    #17171B;
@@ -271,7 +271,7 @@ html { -webkit-text-size-adjust: 100%; }
 .linq-landing .site-header.is-inverted .btn--nav { border-color: var(--on-signal); color: var(--on-signal); }
 .linq-landing .site-header.is-inverted .btn--nav::before { background: var(--on-signal); }
 /* --signal on the dark wipe is 3.96:1 — the same shortfall as dark-on-purple,
-   just mirrored. The tint keeps the purple cast at 14.5:1 instead. */
+   just mirrored. The tint keeps the purple cast at 14.7:1 instead. */
 .linq-landing .site-header.is-inverted .btn--nav:hover,
 .linq-landing .site-header.is-inverted .btn--nav:focus-visible { color: var(--signal-tint); }
 .linq-landing .site-header.is-inverted .nav__progress { background: var(--on-signal); }
