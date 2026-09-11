@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CopyField } from "@/components/ui/copy";
+import { StellarCounterQr } from "@/components/receive/StellarCounterQr";
 import { Field, Input } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
@@ -328,6 +329,18 @@ export default function ReceivePage() {
         )}
 
         <CopyField value={publicLink} label="Link" className="mt-6" />
+
+        {/* Only for fixed amounts: a Stellar request has to name what is owed,
+            and an open link has no figure to put in it. The QR above still
+            works for those — it opens the checkout, where the payer enters an
+            amount and gets a Stellar QR of their own. */}
+        {mode === "fixed" && requestId && Number(amount || 0) > 0 ? (
+          <StellarCounterQr
+            paymentLinkId={requestId}
+            amountNgn={Number(amount)}
+            merchantName={merchant?.merchantName ?? merchant?.businessName ?? "Linq"}
+          />
+        ) : null}
 
         <div className="mt-3 grid grid-cols-2 gap-2">
           <Button variant="secondary" onClick={share}>
