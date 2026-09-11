@@ -33,6 +33,18 @@ export function verifyLinqWebhookSignature(rawBody: string, signature: string | 
   return verifyHmac(rawBody, signature, env.LINQ_OFFRAMP_WEBHOOK_SECRET);
 }
 
+/**
+ * Verifies a status webhook from the standalone Stellar settlement service.
+ *
+ * Same HMAC-SHA256-over-the-raw-body scheme as the others, keyed separately:
+ * the Stellar service is a different deployment with a different blast radius,
+ * and sharing one secret would mean rotating it in two places at once.
+ */
+export function verifyStellarWebhookSignature(rawBody: string, signature: string | null) {
+  if (!env.STELLAR_WEBHOOK_SECRET) return process.env.NODE_ENV !== "production";
+  return verifyHmac(rawBody, signature, env.STELLAR_WEBHOOK_SECRET);
+}
+
 function verifyHmac(rawBody: string, signature: string | null, secret: string) {
   if (!signature) return false;
   const digest = crypto

@@ -143,6 +143,7 @@ function mapOrder(row: Row, transferAttempts: TransferAttemptRecord[] = []): Ord
     transactionFee: toNumber(row.transaction_fee),
     paycrestOrderId: row.paycrest_order_id ?? undefined,
     providerReceiveAddress: row.provider_receive_address ?? undefined,
+    paymentUri: row.payment_uri ?? undefined,
     depositDigest: row.deposit_digest ?? undefined,
     validUntil: row.valid_until ? toIso(row.valid_until) : undefined,
     status: row.status,
@@ -404,8 +405,8 @@ export async function createOrder(input: Omit<OrderRecord, "id" | "createdAt" | 
       `insert into orders (
         business_id, payment_link_id, bank_account_id, payer_name, payer_email, amount_ngn, token, network,
         quoted_rate, crypto_amount_due, sender_fee, transaction_fee, paycrest_order_id, provider_receive_address,
-        valid_until, status, paycrest_payload
-       ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb)
+        valid_until, status, paycrest_payload, payment_uri
+       ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb,$18)
        returning *`,
       [
         input.businessId,
@@ -425,6 +426,7 @@ export async function createOrder(input: Omit<OrderRecord, "id" | "createdAt" | 
         input.validUntil ?? null,
         input.status ?? "initiated",
         JSON.stringify(input.paycrestPayload ?? null),
+        input.paymentUri ?? null,
       ],
     );
     const created = mapOrder(result!.rows[0]);
@@ -486,6 +488,11 @@ export async function updateOrder(id: string, patch: Partial<OrderRecord>) {
         status = $14,
         paycrest_payload = $15::jsonb,
         deposit_digest = $16,
+        -- First write wins. On the right-hand side payment_uri is still the
+        -- stored value, so once a signed URI is recorded no later update can
+        -- replace it -- including a status refresh carrying a URI the provider
+        -- rebuilt from a post-deposit amount.
+        payment_uri = coalesce(payment_uri, $17),
         updated_at = now()
        where id = $1
        returning *`,
@@ -506,6 +513,7 @@ export async function updateOrder(id: string, patch: Partial<OrderRecord>) {
         merged.status,
         JSON.stringify(merged.paycrestPayload ?? null),
         merged.depositDigest ?? null,
+        merged.paymentUri ?? null,
       ],
     );
     return mapOrder(result!.rows[0], current.transferAttempts);
@@ -513,7 +521,15 @@ export async function updateOrder(id: string, patch: Partial<OrderRecord>) {
   const current = state();
   const index = current.orders.findIndex((order) => order.id === id || order.paycrestOrderId === id);
   if (index === -1) return undefined;
-  current.orders[index] = { ...current.orders[index], ...patch, updatedAt: now() };
+  const existing = current.orders[index];
+  current.orders[index] = {
+    ...existing,
+    ...patch,
+    // Mirrors the coalesce in the SQL path, so the in-memory store cannot
+    // develop a behaviour the database does not have.
+    paymentUri: existing.paymentUri ?? patch.paymentUri,
+    updatedAt: now(),
+  };
   return current.orders[index];
 }
 

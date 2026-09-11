@@ -28,6 +28,11 @@ const rawEnv = z.object({
   // GET /orders/{id} — the only two routes it gates. Must match ORDERS_API_KEY
   // on that service.
   STELLAR_SERVICE_API_KEY: optionalString,
+  // Signs the status webhooks linq-stellar pushes to /api/webhooks/stellar.
+  // Must match MERCHANT_WEBHOOK_SECRET on that service. Without this the
+  // service settles fine but nobody downstream is told, which is how merchants
+  // ended up never hearing that a payout failed.
+  STELLAR_WEBHOOK_SECRET: optionalString,
   NEXT_PUBLIC_DYNAMIC_ENV_ID: optionalString,
   DYNAMIC_API_TOKEN: optionalString,
   DYNAMIC_WEBHOOK_SECRET: optionalString,
@@ -53,6 +58,7 @@ export const env = rawEnv.parse({
   LINQ_OFFRAMP_WEBHOOK_SECRET: process.env.LINQ_OFFRAMP_WEBHOOK_SECRET,
   STELLAR_SERVICE_URL: process.env.STELLAR_SERVICE_URL,
   STELLAR_SERVICE_API_KEY: process.env.STELLAR_SERVICE_API_KEY,
+  STELLAR_WEBHOOK_SECRET: process.env.STELLAR_WEBHOOK_SECRET,
   NEXT_PUBLIC_DYNAMIC_ENV_ID: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID,
   DYNAMIC_API_TOKEN: process.env.DYNAMIC_API_TOKEN,
   DYNAMIC_WEBHOOK_SECRET: process.env.DYNAMIC_WEBHOOK_SECRET,

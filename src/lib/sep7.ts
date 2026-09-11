@@ -8,10 +8,14 @@
  * amount already filled in, instead of scanning a bare address and typing the
  * rest — which is where wrong-asset and wrong-amount mistakes come from.
  *
- * These URIs are unsigned. A signed URI additionally proves the request came
- * from a known domain, but that requires publishing URI_REQUEST_SIGNING_KEY in
- * a stellar.toml at the origin domain; some wallets show an "unverified request"
- * notice without it. Everything below still parses and prefills correctly.
+ * These URIs are unsigned, which makes this a fallback rather than the first
+ * choice. A signed URI additionally proves the request came from a known
+ * domain, but signing requires the key published as URI_REQUEST_SIGNING_KEY in
+ * a stellar.toml at the origin domain — held by the Stellar service, never by
+ * the browser. The checkout therefore prefers the signed URI that service
+ * returns (`OrderRecord.paymentUri`) and only falls back to this for orders
+ * that have none. Some wallets show an "unverified request" notice for what is
+ * built here; everything below still parses and prefills correctly.
  */
 
 /** Circle's USDC issuer on Stellar pubnet. */

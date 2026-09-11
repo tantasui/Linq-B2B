@@ -96,17 +96,51 @@ function confirmationView(status: OrderStatus | undefined, merchantName: string)
 }
 
 /**
+ * Accepts the provider's signed URI only if it pays the address we are showing.
+ *
+ * The signature is the point of preferring it, but we cannot check the
+ * signature here — that needs the signing key from the origin domain's
+ * stellar.toml, which is the scanning wallet's job. What we can check is that
+ * the URI has not drifted from the rest of the screen: the QR and the address
+ * printed under it must name the same account, or the payer is reading two
+ * different instructions.
+ */
+function signedUriFor(order: OrderRecord, address: string): string | null {
+  const uri = order.paymentUri;
+  if (!uri || !uri.startsWith("web+stellar:pay?")) return null;
+  try {
+    const destination = new URLSearchParams(uri.slice("web+stellar:pay?".length)).get("destination");
+    return destination === address ? uri : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * What the payment QR encodes.
  *
  * Stellar gets a SEP-7 `web+stellar:pay` URI so a scanning wallet knows the
  * destination, that the asset is USDC rather than XLM, and how much to send.
  * Other chains get the bare address, which is the convention their wallets
  * expect. The address shown and copied below the QR is always the raw address.
+ *
+ * The provider's own URI wins when there is one, because it carries a SEP-7
+ * signature and this one cannot: signing requires the key published as
+ * URI_REQUEST_SIGNING_KEY at the origin domain, which lives in the Stellar
+ * service and never in the browser. A wallet that verifies requests shows an
+ * unsigned URI as unverified, which is exactly the warning a swapped-QR attack
+ * would otherwise not trigger.
  */
 function qrValue(order: OrderRecord): string {
   const address = order.providerReceiveAddress ?? "";
   if (!address || getChain(order.network)?.id !== "stellar") return address;
 
+  const signed = signedUriFor(order, address);
+  if (signed) return signed;
+
+  // No signed URI: an order created before this was captured, or a provider
+  // deployment with no signing key configured. An unsigned URI still prefills
+  // correctly, which is better for the payer than a bare address.
   return buildStellarUsdcPayUri({
     destination: address,
     // The exact quote, at the asset's real precision. A wallet that scans
@@ -114,7 +148,10 @@ function qrValue(order: OrderRecord): string {
     // reason to encode an amount rather than leave the payer to type one.
     amount: ceilTo(order.cryptoAmountDue),
     msg: `Payment ${order.id}`,
-    originDomain: typeof window === "undefined" ? undefined : window.location.hostname,
+    // Deliberately omitted: origin_domain tells a wallet where to fetch the
+    // stellar.toml holding the key to verify against, and this host publishes
+    // no such file. Naming it would promise a verification that cannot
+    // succeed; without it a wallet treats the request as plainly unsigned.
   });
 }
 

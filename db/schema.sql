@@ -82,6 +82,12 @@ create table if not exists orders (
   transaction_fee numeric(18, 8),
   paycrest_order_id text unique,
   provider_receive_address text,
+  -- The SEP-7 payment URI exactly as the provider signed it, captured once at
+  -- creation. Write-once; see the coalesce in updateOrder. A provider rebuilds
+  -- this URI on every status read from its running amount, which after a
+  -- deposit lands is what arrived rather than what was quoted -- so a later
+  -- copy would ask a topping-up payer for the wrong figure.
+  payment_uri text,
   valid_until timestamptz,
   status text not null default 'initiated',
   paycrest_payload jsonb,
@@ -93,6 +99,7 @@ create table if not exists orders (
 -- Added after the table shipped. The create above is "if not exists", so an
 -- existing database keeps its original columns and needs this explicitly.
 alter table orders add column if not exists deposit_digest text;
+alter table orders add column if not exists payment_uri text;
 
 create index if not exists orders_business_id_idx on orders(business_id);
 

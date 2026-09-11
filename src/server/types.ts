@@ -87,6 +87,15 @@ export interface OrderRecord {
   transactionFee?: number;
   paycrestOrderId?: string;
   providerReceiveAddress?: string;
+  /**
+   * The provider's own SEP-7 payment URI, signed by it and captured at
+   * creation. Preferred over a locally built one for the checkout QR, because
+   * only the provider holds the key a scanning wallet verifies against.
+   *
+   * Set once and never rewritten — the value is only trustworthy while it
+   * still describes the quote.
+   */
+  paymentUri?: string;
   /** Digest of the on-chain payment that funded the deposit address. */
   depositDigest?: string;
   validUntil?: string;
