@@ -76,6 +76,26 @@ const REGISTRY: Migration[] = [
     id: "2026_09_11_orders_payment_uri",
     statements: ["ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_uri text"],
   },
+  {
+    // What an order's status actually means, beyond its name.
+    //
+    // The settlement services send a reason with every state they report, and
+    // until now it was dropped on the floor: a merchant whose payout was
+    // rejected for an account-name mismatch got "Payout failed" and nothing
+    // else, and a payer whose money was being returned had no way to see where
+    // it was going. All four are read straight into the notification copy and
+    // the refund screen.
+    //
+    // Nullable columns with no default: catalogue-only in Postgres, so no table
+    // rewrite and no long-held lock on a live orders table.
+    id: "2026_09_11_orders_status_detail",
+    statements: [
+      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS status_reason text",
+      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS payout_reference text",
+      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_tx_hash text",
+      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_destination text",
+    ],
+  },
 ];
 
 // Safe to call on every boot: already-applied migrations are skipped, and

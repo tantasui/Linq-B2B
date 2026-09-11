@@ -92,13 +92,24 @@ export const retryTransferSchema = z.object({
   reason: z.string().trim().max(180).optional(),
 });
 
+// Kept in step with ReceiptKind in types.ts by hand: this is the boundary a
+// query string crosses, so it lists what a caller may ask for rather than
+// deriving it. A kind missing here is a 400 on a receipt someone can see in
+// their dashboard.
 export const receiptKindSchema = z.enum([
+  "payer_payment_received",
   "payer_transaction_success",
+  "payer_payment_failed",
+  "payer_refund_started",
+  "payer_refund_completed",
+  "payer_order_expired",
+  "merchant_payment_incoming",
   "merchant_fiat_received",
   "merchant_payout_failed",
+  "merchant_refund_completed",
+  "merchant_order_expired",
   "merchant_linq_refund",
   "merchant_wallet_incoming",
-  "payer_order_expired",
 ]);
 
 export const sendReceiptSchema = z.object({

@@ -92,6 +92,16 @@ create table if not exists orders (
   status text not null default 'initiated',
   paycrest_payload jsonb,
   deposit_digest text,
+  -- Why an order is where it is, in the provider's own words: the bank's
+  -- rejection, the reason a refund was started. Carried into the notification
+  -- so a merchant reads what went wrong instead of filing a ticket to ask.
+  status_reason text,
+  -- The two references a finished order is asked about. payout_reference
+  -- answers "did the naira arrive?"; refund_tx_hash and refund_destination
+  -- answer "where did my crypto go?", which is the whole of the refund screen.
+  payout_reference text,
+  refund_tx_hash text,
+  refund_destination text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -100,6 +110,10 @@ create table if not exists orders (
 -- existing database keeps its original columns and needs this explicitly.
 alter table orders add column if not exists deposit_digest text;
 alter table orders add column if not exists payment_uri text;
+alter table orders add column if not exists status_reason text;
+alter table orders add column if not exists payout_reference text;
+alter table orders add column if not exists refund_tx_hash text;
+alter table orders add column if not exists refund_destination text;
 
 create index if not exists orders_business_id_idx on orders(business_id);
 

@@ -58,6 +58,14 @@ interface StellarOrderResponse {
   currency: string;
   depositTxHash?: string;
   sweepTxHash?: string;
+  /** Present once the payout has been accepted by the disbursing provider. */
+  payoutReference?: string;
+  /** Present once a failed payout has been returned on-chain. */
+  refundTxHash?: string;
+  /** Where a refund goes: the payer's own account unless they named another. */
+  refundDestination?: string;
+  /** Why the order is where it is, taken from the move that put it there. */
+  statusReason?: string;
   paymentUri?: string;
   depositDeadline: string;
 }
@@ -155,6 +163,14 @@ export async function getStellarOrderStatus(id: string) {
     underpaid: response.underpaid ?? false,
     shortfallNgn: response.shortfallNgn ?? 0,
     depositDigest: response.depositTxHash,
+    // The detail the notices and the refund screen are written from. Without
+    // it a poll could tell a payer their order was refunded and nothing else —
+    // not where the money went, not why it happened.
+    payoutReference: response.payoutReference,
+    refundTxHash: response.refundTxHash,
+    refundDestination: response.refundDestination,
+    statusReason: response.statusReason,
+    quotedNgn: response.quotedNgn,
     raw: response,
   };
 }

@@ -145,6 +145,10 @@ function mapOrder(row: Row, transferAttempts: TransferAttemptRecord[] = []): Ord
     providerReceiveAddress: row.provider_receive_address ?? undefined,
     paymentUri: row.payment_uri ?? undefined,
     depositDigest: row.deposit_digest ?? undefined,
+    statusReason: row.status_reason ?? undefined,
+    payoutReference: row.payout_reference ?? undefined,
+    refundTxHash: row.refund_tx_hash ?? undefined,
+    refundDestination: row.refund_destination ?? undefined,
     validUntil: row.valid_until ? toIso(row.valid_until) : undefined,
     status: row.status,
     paycrestPayload: row.paycrest_payload ?? undefined,
@@ -493,6 +497,10 @@ export async function updateOrder(id: string, patch: Partial<OrderRecord>) {
         -- replace it -- including a status refresh carrying a URI the provider
         -- rebuilt from a post-deposit amount.
         payment_uri = coalesce(payment_uri, $17),
+        status_reason = $18,
+        payout_reference = $19,
+        refund_tx_hash = $20,
+        refund_destination = $21,
         updated_at = now()
        where id = $1
        returning *`,
@@ -514,6 +522,10 @@ export async function updateOrder(id: string, patch: Partial<OrderRecord>) {
         JSON.stringify(merged.paycrestPayload ?? null),
         merged.depositDigest ?? null,
         merged.paymentUri ?? null,
+        merged.statusReason ?? null,
+        merged.payoutReference ?? null,
+        merged.refundTxHash ?? null,
+        merged.refundDestination ?? null,
       ],
     );
     return mapOrder(result!.rows[0], current.transferAttempts);

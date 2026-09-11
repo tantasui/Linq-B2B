@@ -32,6 +32,33 @@ part-paid checkout is shown what they already sent instead of what they owe.
 
 An order may come back with `underpaid: true` and a `shortfallNgn`.
 
+## One notice per event, and the kind is what dedupes
+
+`ORDER_NOTICES` in `src/server/receipts.ts` maps an order status to the notices
+it owes, to both sides. `noticeCopy` writes each one.
+
+Receipts are idempotent per **(order, kind, audience, recipient)**, so two
+events sharing a `ReceiptKind` means the second sends nothing. `deposited` and
+`settled` both used to send `merchant_fiat_received`: the merchant was told
+their money had arrived the moment the payer's crypto landed — before a payout
+had been attempted — and then never heard that it actually settled. A kind names
+the **event**, never the outcome. Adding a status means adding its own kinds, to
+`ReceiptKind` in `types.ts` and to `receiptKindSchema` in `validation.ts`.
+
+- `deposited` says "payout in progress" to both sides. It must never read as
+  money having arrived anywhere.
+- A failed payout reaches the merchant as a **failure**, and the payer as a
+  **refund** — not, as it once did, both of them as a refund notice that never
+  mentioned the payout.
+- `expired` is not a failure. Nothing moved; say so.
+- `statusReason` carries the provider's own words into the copy. A notice that
+  says only "Payout failed" is a support ticket waiting to happen.
+
+`renderReceipt` builds the image once and makes both the email and the PDF from
+it. Satori through sharp is the most expensive thing between a payment landing
+and someone being told about it; asking for the HTML and the PDF separately did
+all of it twice per receipt, four times per pair.
+
 ## Receipts must be sent from the poll, not just the webhook
 
 Emails are sent by `notifyForOrderStatus`. It is called from three places, and
@@ -58,6 +85,22 @@ A deployment without `RESEND_API_KEY` records receipts as `skipped` and sends
 nothing. That is a valid local setup, so it does not throw — it logs
 `email.skipped_no_provider`, and `/api/health/ready` reports it. Check both
 before assuming the send path is broken.
+
+## The checkout follows the order, not the payer
+
+`PaymentCheckout` polls `GET /api/orders/[id]` every two seconds, once
+immediately on entry, and again whenever the tab is looked at — paying means
+leaving for a wallet app and coming back, and coming back is when someone wants
+an answer.
+
+`pending` means **still waiting**, not "arrived". It is what both status
+normalisers return for a state they do not recognise, and taking a payer off the
+address they are mid-way through paying is wrong in the one direction that costs
+money.
+
+A refund is its own outcome, with its own screen — destination, hash, explorer
+link — not a variety of failure. Telling a payer their payment failed and
+offering them support is asking them to chase money already on its way back.
 
 ## Verify
 

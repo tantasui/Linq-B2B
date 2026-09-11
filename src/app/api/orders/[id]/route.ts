@@ -6,6 +6,7 @@ import { logger } from "@/server/logger";
 import { expireOrderIfDue } from "@/server/order-expiry";
 import { notifyForOrderStatus } from "@/server/receipts";
 import { addOrderEvent, getOrder, updateOrder } from "@/server/store";
+import type { OrderRecord } from "@/server/types";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -34,11 +35,20 @@ export async function GET(_request: Request, { params }: Params) {
         // does not always coincide with a status change — so it is saved on
         // its own rather than only riding along with one.
         const digestArrived = Boolean(remote.depositDigest) && remote.depositDigest !== order.depositDigest;
+        // The same for the rest of the detail: a refund hash and a payout
+        // reference land on their own, and the notices and the refund screen
+        // are written from them.
+        const current = order;
+        const detail = detailFrom(remote);
+        const detailArrived = Object.entries(detail).some(
+          ([key, value]) => value !== current[key as keyof OrderRecord],
+        );
 
-        if (statusChanged || digestArrived) {
+        if (statusChanged || digestArrived || detailArrived) {
           order = await updateOrder(order.id, {
             ...(statusChanged ? { status: remote.status } : {}),
             ...(digestArrived ? { depositDigest: remote.depositDigest } : {}),
+            ...detail,
             paycrestPayload: remote.raw,
           }) ?? order;
         }
@@ -73,6 +83,7 @@ export async function GET(_request: Request, { params }: Params) {
         }
       } catch (error) {
         logger.warn("order_refresh_failed", {
+          component: isStellar ? "poll.stellar" : "poll.linq",
           orderId: order.id,
           provider: isStellar ? "linq-stellar" : "linq",
           providerOrderId: order.paycrestOrderId,
@@ -88,4 +99,23 @@ export async function GET(_request: Request, { params }: Params) {
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+/**
+ * The fields a status read carries beyond the status itself.
+ *
+ * Only the Stellar service reports these today — the native offramp's status
+ * shape has no equivalent — so they come back undefined for every other chain
+ * and are dropped rather than written as nulls over something already stored.
+ */
+function detailFrom(remote: unknown): Partial<OrderRecord> {
+  const source = remote as Partial<Record<keyof OrderRecord, unknown>>;
+  const carried = ["payoutReference", "refundTxHash", "refundDestination", "statusReason"] as const;
+
+  const detail: Partial<OrderRecord> = {};
+  for (const field of carried) {
+    const value = source[field];
+    if (typeof value === "string" && value !== "") detail[field] = value;
+  }
+  return detail;
 }

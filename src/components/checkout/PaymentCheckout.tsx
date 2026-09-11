@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowLeft, Banknote, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Banknote, Undo2, Wallet } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { MerchantAvatar } from "@/components/MerchantAvatar";
 import { NairaTransferDetails } from "@/components/checkout/NairaTransferDetails";
@@ -17,10 +17,18 @@ import { Sheet } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createOrder, getOrder, getPaycrestRate, getPaymentLink } from "@/lib/api-client";
 import { buildStellarUsdcPayUri } from "@/lib/sep7";
+import { explorerName, explorerTxUrl, shortenHash } from "@/lib/explorer";
 import { ceilTo, formatTokenAmount } from "@/lib/money";
 import { chainDisplayName, ENABLED_CHAINS, getChain, isAddressValidForNetwork } from "@/lib/chains";
-import { formatCurrency, formatRate, type FiatCurrency, type PaymentMode, type StablecoinSymbol } from "@/lib/payment-data";
-import type { MerchantRecord, OrderRecord, OrderStatus, PaymentLinkRecord } from "@/server/types";
+import {
+  formatCurrency,
+  formatRate,
+  ORDER_STATUS_LABELS,
+  type FiatCurrency,
+  type PaymentMode,
+  type StablecoinSymbol,
+} from "@/lib/payment-data";
+import type { MerchantRecord, OrderRecord, PaymentLinkRecord } from "@/server/types";
 import { cn } from "@/lib/utils";
 
 type Stage = null | "naira" | "customer" | "asset" | "network" | "token" | "review" | "transfer" | "status";
@@ -37,6 +45,24 @@ const payerStorageKey = "linq:payer";
 
 /** Order states where no further deposit is expected. */
 const EXPIRED_OR_DONE = ["settled", "refunded", "expired", "failed", "cancelled"];
+
+/**
+ * Order states that mean nothing has arrived yet.
+ *
+ * `pending` is here because it is what both status normalisers return for
+ * anything they do not recognise, and "we do not know" must read as "still
+ * waiting" rather than as "your transfer is in".
+ */
+const STILL_WAITING = ["initiated", "pending"];
+
+/**
+ * How often the checkout asks the server where the order has got to.
+ *
+ * Two seconds, against a settlement path that now measures its own latency in
+ * single digits. Five felt like the screen was lagging behind the payment,
+ * because for most of that interval it was.
+ */
+const POLL_INTERVAL_MS = 2000;
 
 function formatNaira(value: number) {
   return formatCurrency(value, "NGN");
@@ -55,8 +81,9 @@ function formatCountdown(seconds: number) {
  * looks successful. The screen reflects whatever the poll last returned, and
  * only prints the receipt on a settled order.
  */
-function confirmationView(status: OrderStatus | undefined, merchantName: string) {
-  switch (status) {
+function confirmationView(order: OrderRecord, merchantName: string) {
+  const reason = order.statusReason?.trim();
+  switch (order.status) {
     // Only `settled` means the Naira actually landed. `fulfilled` sits three
     // steps earlier in the lifecycle, so treating it as success would print a
     // receipt for a payout that has not been disbursed.
@@ -77,14 +104,27 @@ function confirmationView(status: OrderStatus | undefined, merchantName: string)
       return {
         tone: "failed" as const,
         title: "Payment could not be completed",
-        body: "Your funds are safe. If they left your wallet, contact support with the order reference below and we will trace it.",
+        body: reason
+          ? `Your funds are safe. ${reason} If they left your wallet, contact support with the order reference below and we will trace it.`
+          : "Your funds are safe. If they left your wallet, contact support with the order reference below and we will trace it.",
       };
+    // A refund is its own outcome, not a variety of failure. The payer has not
+    // lost anything and has nothing to do — a screen that tells them their
+    // payment failed and offers them support is asking them to chase money
+    // that is already on its way back.
     case "refunding":
+      return {
+        tone: "refund" as const,
+        title: "Refund on the way",
+        body: reason
+          ? `The payout to ${merchantName} could not be completed, so your ${order.token} is being returned. ${reason}`
+          : `The payout to ${merchantName} could not be completed, so your ${order.token} is being returned to you.`,
+      };
     case "refunded":
       return {
-        tone: "failed" as const,
-        title: "Payment refunded",
-        body: "The payout could not be completed, so your transfer is being returned to you.",
+        tone: "refund" as const,
+        title: "Refunded",
+        body: `Your ${order.token} has been returned. You have not been charged, and nothing further is needed from you.`,
       };
     default:
       return {
@@ -292,18 +332,44 @@ export function PaymentCheckout({
       .catch(() => setRate(1500));
   }, [networkId, token, value]);
 
+  // The order's own state, watched until it stops moving.
+  //
+  // Three things changed here, all of them about the same complaint: the screen
+  // was slow to catch up with money that had already moved. It polls at two
+  // seconds rather than five, it polls once immediately instead of waiting out
+  // the first interval — which is what made the jump from the transfer sheet to
+  // the confirmation feel like it had stalled — and it polls the moment the tab
+  // is looked at again. That last one matters most: paying means leaving for a
+  // wallet app and coming back, and coming back is exactly when someone wants
+  // an answer.
   useEffect(() => {
-    if (!order?.id || EXPIRED_OR_DONE.includes(order.status)) return;
-    const interval = window.setInterval(async () => {
+    const id = order?.id;
+    if (!id || EXPIRED_OR_DONE.includes(order.status)) return;
+
+    let cancelled = false;
+    const refresh = async () => {
       try {
-        const { order: fresh } = await getOrder(order.id);
-        setOrder(fresh);
-        if (EXPIRED_OR_DONE.includes(fresh.status)) window.clearInterval(interval);
+        const { order: fresh } = await getOrder(id);
+        if (!cancelled) setOrder(fresh);
       } catch {
         // A dropped poll is not worth surfacing; the next tick retries.
       }
-    }, 5000);
-    return () => window.clearInterval(interval);
+    };
+
+    void refresh();
+    const interval = window.setInterval(refresh, POLL_INTERVAL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
   }, [order?.id, order?.status]);
 
   // Linq only watches the deposit wallet for 10 minutes, so the payer must be
@@ -330,11 +396,17 @@ export function PaymentCheckout({
   }, [secondsLeft, order?.id, order?.status]);
 
   // The confirmation is driven by the order itself, never by the payer telling
-  // us they paid. While the order is still `initiated` nothing has arrived, so
-  // the transfer sheet stays up; any other status means there is something to
+  // us they paid. While the order is still waiting nothing has arrived, so the
+  // transfer sheet stays up; any other status means there is something to
   // report, and the status screen says exactly what.
+  //
+  // `pending` counts as waiting. It is what both status normalisers return for
+  // a state they do not recognise — a provider hiccup, a shape that changed —
+  // and taking the payer off the address they are mid-way through paying, to
+  // tell them their transfer has been received, would be wrong in the one
+  // direction that costs money.
   useEffect(() => {
-    if (order && order.status !== "initiated") setStage("status");
+    if (order && !STILL_WAITING.includes(order.status)) setStage("status");
   }, [order]);
 
   const startCrypto = () => setStage(payerName && payerEmail ? "asset" : "customer");
@@ -744,9 +816,9 @@ export function PaymentCheckout({
             <div className="mt-6">
               <SegmentedBar
                 label={
-                  order.status === "initiated"
+                  STILL_WAITING.includes(order.status)
                     ? "Waiting for your deposit"
-                    : `Status: ${order.status}`
+                    : ORDER_STATUS_LABELS[order.status] ?? `Status: ${order.status}`
                 }
               />
             </div>
@@ -770,7 +842,9 @@ export function PaymentCheckout({
       >
         {order ? (
           (() => {
-            const view = confirmationView(order.status, activeMerchant.businessName || "the merchant");
+            const view = confirmationView(order, activeMerchant.businessName || "the merchant");
+            const refundHash = order.refundTxHash ?? "";
+            const refundUrl = explorerTxUrl(order.network, refundHash);
 
             return (
               <>
@@ -780,6 +854,13 @@ export function PaymentCheckout({
                   <div className="px-2 pb-2 pt-4 text-center">
                     {view.tone === "pending" ? (
                       <LinqLoader size={44} className="mx-auto" />
+                    ) : view.tone === "refund" ? (
+                      // A refund in flight is still work in progress, and a
+                      // warning triangle over it reads as "something is wrong
+                      // and it is yours to fix". It is neither.
+                      <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-surface-2 ring-1 ring-inset ring-line">
+                        <Undo2 className="h-6 w-6 text-text-muted" />
+                      </span>
                     ) : (
                       <span className="mx-auto grid h-14 w-14 place-items-center bg-warning-soft">
                         <AlertTriangle className="h-6 w-6 text-warning" />
@@ -792,6 +873,56 @@ export function PaymentCheckout({
 
                     {view.tone === "pending" ? (
                       <SegmentedBar className="mt-7" label={`Status: ${order.status}`} />
+                    ) : null}
+
+                    {view.tone === "refund" ? (
+                      <div className="mt-7 space-y-2 text-left">
+                        <div className="rounded-lg bg-surface-2 px-4 py-3 ring-1 ring-inset ring-line">
+                          <span className="block text-[11px] text-text-muted">Refund amount</span>
+                          <span className="tnum block font-mono text-sm text-text">
+                            {formatTokenAmount(order.cryptoAmountDue)} {order.token}
+                          </span>
+                        </div>
+                        {order.refundDestination ? (
+                          <div className="flex items-center gap-2 rounded-lg bg-surface-2 py-1 pl-4 pr-1 ring-1 ring-inset ring-line">
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[11px] text-text-muted">Returning to</span>
+                              <code className="block truncate font-mono text-xs text-text">
+                                {order.refundDestination}
+                              </code>
+                            </span>
+                            <CopyButton value={order.refundDestination} label="Refund address" />
+                          </div>
+                        ) : null}
+                        {refundUrl ? (
+                          <a
+                            href={refundUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center justify-between rounded-lg bg-surface-2 px-4 py-3 ring-1 ring-inset ring-line transition duration-fast ease-linq hover:bg-surface-3"
+                          >
+                            <span>
+                              <span className="block text-[11px] text-text-muted">Refund transaction</span>
+                              <code className="block font-mono text-xs text-text">
+                                {shortenHash(refundHash)}
+                              </code>
+                            </span>
+                            <span className="font-sans text-[11px] tracking-mono text-text-muted">
+                              {explorerName(order.network)} ↗
+                            </span>
+                          </a>
+                        ) : (
+                          // Said plainly rather than left blank: between the
+                          // payout failing and the return landing on-chain
+                          // there is a real gap, and a screen with nothing in
+                          // it invites a support ticket asking what happened.
+                          <p className="px-1 text-[11px] leading-5 text-text-muted">
+                            The transaction hash will appear here once the
+                            return has been sent — usually within a minute.
+                            This screen updates on its own.
+                          </p>
+                        )}
+                      </div>
                     ) : null}
 
                     {/* Support has nothing to work from without the reference. */}
