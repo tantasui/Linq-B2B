@@ -63,6 +63,19 @@ const REGISTRY: Migration[] = [
          ON login_codes (email, created_at DESC) WHERE consumed_at IS NULL`,
     ],
   },
+  {
+    // Stores the SEP-7 payment URI the Stellar service signed, so the checkout
+    // QR can carry a verifiable request instead of an unsigned one it builds
+    // itself. Also in db/schema.sql for fresh databases; this is what brings
+    // existing ones up.
+    //
+    // Adding a nullable column with no default is a catalogue-only change in
+    // Postgres — no table rewrite and no long-held lock, so it is safe on a
+    // live orders table. Existing orders keep a null and go on using the
+    // locally built URI.
+    id: "2026_09_11_orders_payment_uri",
+    statements: ["ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_uri text"],
+  },
 ];
 
 // Safe to call on every boot: already-applied migrations are skipped, and

@@ -119,6 +119,12 @@ export async function createStellarOrder(input: {
   return {
     linqOrderId: response.id,
     providerReceiveAddress: response.depositAddress,
+    // linq-stellar signs this URI with the key it publishes as
+    // URI_REQUEST_SIGNING_KEY in its stellar.toml, which is the only way a
+    // scanning wallet can tell a genuine request from an intercepted QR. We
+    // cannot produce that signature here, so the URI is carried through rather
+    // than rebuilt. Taken at creation, while amountUsdc is still the quote.
+    paymentUri: response.paymentUri,
     coinType: "",
     quotedRate: response.rate,
     // The quote, not the running amount. They agree at creation; after a

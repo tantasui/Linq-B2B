@@ -80,6 +80,10 @@ export async function POST(request: Request) {
             ? result.depositDeadline
             : new Date(Date.now() + DEPOSIT_WINDOW_MS).toISOString(),
         status: result.status,
+        // Only linq-stellar returns a signed payment URI; the native flow has
+        // no equivalent, and those orders keep falling back to a locally built
+        // one at the checkout.
+        ...("paymentUri" in result && result.paymentUri ? { paymentUri: result.paymentUri } : {}),
         paycrestPayload: result.raw,
       }) ?? order;
       await addOrderEvent(order.id, "app", `order.created.${result.status}`, result.raw);
