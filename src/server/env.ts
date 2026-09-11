@@ -78,6 +78,18 @@ export const liveLinqEnabled = Boolean(env.LINQ_OFFRAMP_API_KEY);
 // X-API-Key, so this is only true once both the URL and the key are set.
 export const stellarServiceEnabled = Boolean(env.STELLAR_SERVICE_URL && env.STELLAR_SERVICE_API_KEY);
 export const liveDynamicEnabled = Boolean(env.NEXT_PUBLIC_DYNAMIC_ENV_ID);
+/**
+ * Lets a preview checkout deliberately send a payout to an invalid account, to
+ * demonstrate the failure-and-refund path on demand.
+ *
+ * Off unless explicitly switched on, and read on the server as well as in the
+ * browser: the toggle only hides the control, while this is what stops anyone
+ * POSTing the flag by hand against a real checkout. Never enable it on a
+ * deployment taking real customer payments.
+ */
+export const failureDemoEnabled = process.env.NEXT_PUBLIC_ENABLE_FAILURE_DEMO === "true";
+/** Well-formed but not a real account, so the payout fails at the bank leg. */
+export const FAILURE_DEMO_ACCOUNT = "0000000000";
 export const databaseEnabled = Boolean(env.DATABASE_URL);
 export const redisEnabled = Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN);
 export const resendEnabled = Boolean(env.RESEND_API_KEY);

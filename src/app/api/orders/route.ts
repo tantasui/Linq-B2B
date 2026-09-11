@@ -3,6 +3,8 @@ import { fail, handleApiError, ok } from "@/server/http";
 import { createLinqOrder } from "@/server/linq-offramp";
 import { createStellarOrder } from "@/server/linq-stellar";
 import { DEPOSIT_WINDOW_MS, expireOrderIfDue } from "@/server/order-expiry";
+import { FAILURE_DEMO_ACCOUNT, failureDemoEnabled } from "@/server/env";
+import { logger } from "@/server/logger";
 import { getRequestMerchant } from "@/server/request-merchant";
 import { getClientKey, rateLimit } from "@/server/security";
 import { addOrderEvent, createOrder, getMerchant, getPaymentLink, listOrders, updateOrder } from "@/server/store";
@@ -33,8 +35,33 @@ export async function POST(request: Request) {
     if (!amountNgn) return fail("Amount is required for this payment link.", 422);
     const merchant = await getMerchant(link.businessId);
     if (!merchant) return fail("Merchant for this payment link was not found.", 404);
-    const bank = merchant.bankAccounts.find((entry) => entry.verificationStatus === "verified");
-    if (!bank) return fail("Merchant payout bank is not verified.", 409);
+    const verifiedBank = merchant.bankAccounts.find((entry) => entry.verificationStatus === "verified");
+    if (!verifiedBank) return fail("Merchant payout bank is not verified.", 409);
+
+    // Failure demo: swap the destination for an account that does not exist, so
+    // the payout is rejected at the bank leg and the order takes the retry and
+    // refund path for real. Only the trigger is manufactured — everything after
+    // it is ordinary system behaviour.
+    //
+    // The server checks the flag itself rather than trusting that the control
+    // was hidden: hiding a button does not stop anyone posting the field.
+    const simulateFailure = Boolean(input.simulateFailure) && failureDemoEnabled;
+    if (input.simulateFailure && !failureDemoEnabled) {
+      logger.warn("order.failure_demo_rejected", {
+        paymentLinkId: link.id,
+        reason: "NEXT_PUBLIC_ENABLE_FAILURE_DEMO is off",
+      });
+    }
+    const bank = simulateFailure
+      ? { ...verifiedBank, accountIdentifier: FAILURE_DEMO_ACCOUNT }
+      : verifiedBank;
+    if (simulateFailure) {
+      logger.warn("order.failure_demo_enabled", {
+        paymentLinkId: link.id,
+        account: FAILURE_DEMO_ACCOUNT,
+        note: "INDUCED FAILURE: payout deliberately addressed to a non-existent account",
+      });
+    }
 
     const token = input.token ?? "USDSUI";
     const network = input.network ?? "sui";

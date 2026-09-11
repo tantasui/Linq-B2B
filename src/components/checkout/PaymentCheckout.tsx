@@ -96,6 +96,15 @@ function confirmationView(status: OrderStatus | undefined, merchantName: string)
 }
 
 /**
+ * Whether this build carries the deliberate-failure demo control.
+ *
+ * Read from the inlined public env rather than passed down, so a build without
+ * the flag contains no path to the control at all. The server checks the same
+ * flag independently — hiding a checkbox is not a permission check.
+ */
+const FAILURE_DEMO_ENABLED = process.env.NEXT_PUBLIC_ENABLE_FAILURE_DEMO === "true";
+
+/**
  * Accepts the provider's signed URI only if it pays the address we are showing.
  *
  * The signature is the point of preferring it, but we cannot check the
@@ -217,6 +226,8 @@ export function PaymentCheckout({
   description,
 }: PaymentCheckoutProps) {
   const [stage, setStage] = useState<Stage>(null);
+  // Demo control, only ever rendered when the build has the demo switched on.
+  const [simulateFailure, setSimulateFailure] = useState(false);
   const [link, setLink] = useState<PaymentLinkRecord | null>(null);
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -356,6 +367,7 @@ export function PaymentCheckout({
         amountNgn: locked ? undefined : value,
         token,
         network: networkId,
+        ...(FAILURE_DEMO_ENABLED && simulateFailure ? { simulateFailure: true } : {}),
       });
       setOrder(response.order);
       setStage("transfer");
@@ -612,8 +624,34 @@ export function PaymentCheckout({
           </p>
         ) : null}
 
+        {/* Failure demo. Present only in a build with
+            NEXT_PUBLIC_ENABLE_FAILURE_DEMO=true, which must never be a build
+            taking real customer payments. Styled as a warning rather than a
+            neutral setting because leaving it on by accident sends a real
+            payout to an account that cannot receive it. */}
+        {FAILURE_DEMO_ENABLED ? (
+          <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-md bg-danger-soft px-4 py-3 ring-1 ring-inset ring-danger/20">
+            <input
+              type="checkbox"
+              checked={simulateFailure}
+              onChange={(event) => setSimulateFailure(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-danger"
+            />
+            <span className="text-xs text-danger">
+              <span className="font-semibold">Demo: make this payout fail</span>
+              <span className="mt-1 block font-normal opacity-90">
+                Sends the NGN payout to an account that does not exist, so it fails, retries, and
+                is refunded. The crypto payment is real and is returned to your refund address.
+                Only the reason for the failure is staged — everything after it is normal
+                behaviour.
+              </span>
+            </span>
+          </label>
+        ) : null}
+
         <Button size="lg" className="mt-6 w-full" loading={busy} onClick={createPaymentOrder}>
-          <Wallet className="h-4 w-4" /> Get payment address
+          <Wallet className="h-4 w-4" />{" "}
+          {FAILURE_DEMO_ENABLED && simulateFailure ? "Get address (failure demo)" : "Get payment address"}
         </Button>
       </Sheet>
 

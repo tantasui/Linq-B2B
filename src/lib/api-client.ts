@@ -127,6 +127,8 @@ export function createOrder(input: {
   amountNgn?: number;
   token: StablecoinSymbol;
   network: string;
+  /** Demo only: route the payout to an invalid account so it fails on purpose. */
+  simulateFailure?: boolean;
 }) {
   return api<{ order: OrderRecord }>("/api/orders", {
     method: "POST",

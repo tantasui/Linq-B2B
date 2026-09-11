@@ -82,6 +82,10 @@ export const orderCreateSchema = z.object({
   amountNgn: amountNgnSchema.optional(),
   token: tokenSchema,
   network: networkSchema,
+  // Demo only. Honoured solely when NEXT_PUBLIC_ENABLE_FAILURE_DEMO is on;
+  // accepted-and-ignored otherwise, so a stray flag cannot misdirect a real
+  // payout.
+  simulateFailure: z.boolean().optional(),
 });
 
 export const retryTransferSchema = z.object({
