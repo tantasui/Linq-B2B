@@ -98,6 +98,19 @@ export interface OrderRecord {
   paymentUri?: string;
   /** Digest of the on-chain payment that funded the deposit address. */
   depositDigest?: string;
+  /**
+   * Why the order is in the state it is, in the provider's own words — the
+   * bank's rejection, the reason a refund was started. Shown to whoever the
+   * status concerns rather than kept in a log: "Payout failed" on its own is
+   * a support ticket waiting to happen.
+   */
+  statusReason?: string;
+  /** The payout provider's reference for the naira transfer, once it is sent. */
+  payoutReference?: string;
+  /** The on-chain refund, when a payout failed and the deposit went back. */
+  refundTxHash?: string;
+  /** Where that refund was sent — the payer's own address unless they named another. */
+  refundDestination?: string;
   validUntil?: string;
   status: OrderStatus;
   paycrestPayload?: unknown;
@@ -126,13 +139,36 @@ export interface TransferAttemptRecord {
   createdAt: string;
 }
 
+/**
+ * One kind of notice, for one audience, about one thing that happened.
+ *
+ * Kinds are per event rather than per outcome, and that is the point. Receipts
+ * are deduplicated on (order, kind, audience, recipient), so two events sharing
+ * a kind means the second one sends nothing: while "deposit detected" and
+ * "payout settled" were both `merchant_fiat_received`, the merchant was told
+ * their money had arrived the moment the payer's crypto landed — before any
+ * payout had been attempted — and then never heard that it actually settled.
+ *
+ * A kind names what happened, so the copy can say it plainly and each stage of
+ * an order reaches both sides exactly once.
+ */
 export type ReceiptKind =
+  // Payer, in lifecycle order.
+  | "payer_payment_received"
   | "payer_transaction_success"
+  | "payer_payment_failed"
+  | "payer_refund_started"
+  | "payer_refund_completed"
+  | "payer_order_expired"
+  // Merchant, in lifecycle order.
+  | "merchant_payment_incoming"
   | "merchant_fiat_received"
   | "merchant_payout_failed"
+  | "merchant_refund_completed"
+  | "merchant_order_expired"
+  // Merchant wallet activity, which is not part of an order's lifecycle.
   | "merchant_linq_refund"
-  | "merchant_wallet_incoming"
-  | "payer_order_expired";
+  | "merchant_wallet_incoming";
 
 export type ReceiptAudience = "payer" | "merchant";
 

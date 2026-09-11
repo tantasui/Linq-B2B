@@ -17,8 +17,9 @@ import { Receipt } from "@/components/brand/Receipt";
 import { apiUrl, getMerchantMe, listOrders, retryTransfer, sendOrderReceipt } from "@/lib/api-client";
 import { chainDisplayName } from "@/lib/chains";
 import { explorerTxUrl, shortenHash } from "@/lib/explorer";
+import { merchantReceiptKind, OrderOutcome } from "@/components/OrderOutcome";
 import { formatCurrency } from "@/lib/payment-data";
-import type { MerchantRecord, OrderRecord } from "@/server/types";
+import type { MerchantRecord, OrderRecord, ReceiptKind } from "@/server/types";
 
 const IN_FLIGHT = ["initiated", "deposited", "pending", "fulfilling", "validated", "settling"];
 /** States where the Naira leg can be attempted again. */
@@ -58,15 +59,12 @@ export default function DashboardPage() {
     }
   };
 
-  const emailReceipt = async (
-    order: OrderRecord,
-    kind: "payer_transaction_success" | "merchant_fiat_received" | "merchant_payout_failed",
-  ) => {
+  const emailReceipt = async (order: OrderRecord, kind: ReceiptKind) => {
     setBusy(true);
     try {
       await sendOrderReceipt(order.id, {
         kind,
-        audience: kind === "payer_transaction_success" ? "payer" : "merchant",
+        audience: kind.startsWith("payer_") ? "payer" : "merchant",
       });
       toast("Receipt queued for delivery");
     } catch (caught) {
@@ -265,6 +263,8 @@ export default function DashboardPage() {
               </a>
             ) : null}
 
+            <OrderOutcome order={openOrder} />
+
             <div className="mt-7 grid grid-cols-2 gap-2">
               <a
                 href={apiUrl(`/api/orders/${openOrder.id}/receipt.pdf?kind=payer_transaction_success`)}
@@ -287,12 +287,7 @@ export default function DashboardPage() {
                 size="sm"
                 disabled={busy}
                 className="col-span-2"
-                onClick={() =>
-                  emailReceipt(
-                    openOrder,
-                    openOrder.status === "settled" ? "merchant_fiat_received" : "merchant_payout_failed",
-                  )
-                }
+                onClick={() => emailReceipt(openOrder, merchantReceiptKind(openOrder))}
               >
                 <Mail className="h-3.5 w-3.5" /> Email myself the invoice
               </Button>
