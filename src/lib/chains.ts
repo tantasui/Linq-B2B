@@ -112,7 +112,11 @@ export const CHAINS: ChainConfig[] = [
     name: "Solana",
     shortName: "SOL",
     family: "solana",
-    tokens: ["USDC", "USDT"],
+    // USDC only. Linq's Solana watcher is bound to the USDC mint, so USDT sent
+    // to a Solana deposit wallet is never detected — offering it here let
+    // payers pick it, and the backend refused the order. Add USDT back only
+    // once the watcher tracks its mint.
+    tokens: ["USDC"],
     linqNetwork: "solana",
     hasWalletConnector: true,
     addressPattern: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
