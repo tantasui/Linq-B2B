@@ -973,7 +973,7 @@ Email delivery uses Resend's REST API when `RESEND_API_KEY` is configured.
 Required variables:
 
 - `RESEND_API_KEY`
-- `EMAIL_FROM` (`Linq <noreply@uselinq.site>` in production)
+- `EMAIL_FROM` (`Linq <noreply@uselinq.xyz>` in production)
 
 If Resend is not configured, receipt delivery is recorded as `skipped` with local metadata. This keeps development safe while proving the document generation path.
 
