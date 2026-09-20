@@ -11,9 +11,19 @@ export const USDSUI_COIN_TYPE =
 export const USDC_SUI_COIN_TYPE =
   "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
 
+/**
+ * The Sui move-type for a token. Sui only — the caller must already know the
+ * order is on Sui.
+ *
+ * USDT returns empty rather than falling through to USDSUI. It is not a Sui
+ * coin here, and a wrong move-type would label an order as holding a coin it
+ * does not; empty is what the one call site already sends for every non-Sui
+ * chain.
+ */
 export function coinTypeForToken(token: StablecoinSymbol): string {
-  // Sui move-types only; USDT is not a Sui-native coin here.
-  return token === "USDC" ? USDC_SUI_COIN_TYPE : USDSUI_COIN_TYPE;
+  if (token === "USDC") return USDC_SUI_COIN_TYPE;
+  if (token === "USDSUI") return USDSUI_COIN_TYPE;
+  return "";
 }
 
 function linqCoinId(token: StablecoinSymbol): string {
