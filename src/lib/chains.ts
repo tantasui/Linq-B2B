@@ -99,7 +99,10 @@ export const CHAINS: ChainConfig[] = [
     name: "BNB Smart Chain",
     shortName: "BNB",
     family: "evm",
-    tokens: ["USDC"],
+    // Both settle: the BSC watcher reads the contract for the order's own coin
+    // (BSC_USDC_ADDRESS or BSC_USDT_ADDRESS), and the sweep and refund move
+    // that same contract.
+    tokens: ["USDC", "USDT"],
     // Linq's backend calls BNB Smart Chain "bsc" (see CoinType.Bsc); wire value must match.
     linqNetwork: "bsc",
     hasWalletConnector: true,
@@ -112,11 +115,11 @@ export const CHAINS: ChainConfig[] = [
     name: "Solana",
     shortName: "SOL",
     family: "solana",
-    // USDC only. Linq's Solana watcher is bound to the USDC mint, so USDT sent
-    // to a Solana deposit wallet is never detected — offering it here let
-    // payers pick it, and the backend refused the order. Add USDT back only
-    // once the watcher tracks its mint.
-    tokens: ["USDC"],
+    // Both settle. USDT was previously offered here while Linq's Solana watcher
+    // was bound to the USDC mint, so a USDT deposit was never detected and the
+    // backend refused the order outright. The watcher now resolves the mint
+    // from the order's own coin, and the sweep and refund move that same mint.
+    tokens: ["USDC", "USDT"],
     linqNetwork: "solana",
     hasWalletConnector: true,
     addressPattern: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
