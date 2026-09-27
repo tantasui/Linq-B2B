@@ -4,7 +4,7 @@ const emptyToUndefined = (value: unknown) => value === "" ? undefined : value;
 const optionalString = z.preprocess(emptyToUndefined, z.string().optional());
 const optionalUrl = z.preprocess(emptyToUndefined, z.string().url().optional());
 const defaultedUrl = (fallback: string) => z.preprocess(emptyToUndefined, z.string().url().default(fallback));
-const defaultedEmailFrom = z.preprocess(emptyToUndefined, z.string().default("Linq <noreply@uselinq.xyz>"));
+const defaultedEmailFrom = z.preprocess(emptyToUndefined, z.string().default("Linq <noreply@uselinq.site>"));
 const databaseSsl = z.preprocess(emptyToUndefined, z.enum(["true", "false"]).default("true"));
 const poolMax = z.preprocess(emptyToUndefined, z.string().regex(/^\d+$/).default("5"));
 
