@@ -1,522 +1,470 @@
-import Link from "next/link";
 import { AuthRedirect } from "@/components/AuthRedirect";
-import { Receipt } from "@/components/brand/Receipt";
-import { LANDING_SOCIALS, LandingCoin, LandingLockup, LandingPlane } from "@/components/landing/LandingArt";
-import { LandingMotion } from "@/components/landing/LandingMotion";
-import { ENABLED_CHAINS } from "@/lib/chains";
-import type { OrderRecord } from "@/server/types";
+import { BizCard, type Tilt } from "@/components/landing/BizCard";
+import { ChainRail } from "@/components/landing/ChainRail";
+import { DottedGlobe } from "@/components/landing/DottedGlobe";
+import { mozillaHeadline, roboto, robotoItalic, spaceGrotesk } from "@/components/landing/fonts";
+import { LazyVideo } from "@/components/landing/LazyVideo";
+import { LottiePlayer } from "@/components/landing/LottiePlayer";
+import { PillButton } from "@/components/landing/PillButton";
+import { HeroReveal, Reveal, RevealSection } from "@/components/landing/Reveal";
+import { type MenuLink, SiteMenu } from "@/components/landing/SiteMenu";
+import { type Step, StepsAccordion } from "@/components/landing/StepsAccordion";
+import { WhyTicker } from "@/components/landing/WhyTicker";
+import { WordRotator } from "@/components/landing/WordRotator";
 import "./landing.css";
 
 /**
- * The marketing page.
+ * The marketing page: a rebuild of the designer's Framer site
+ * (linqswitch.framer.website). Layout, type, colour and motion were measured
+ * off the running page; see landing.css for the frame/zoom model and the
+ * components in /components/landing for each effect's source values.
  *
- * Composition, type scale and motion are the Telegram site's, scene for scene —
- * see landing.css and /landing/main.js. What differs is everything the two
- * products do not share, and those differences are marked `B2B` below:
- *
- *   · There is no bot. Scene 03 is "payment links", and it shows the product's
- *     own <Receipt /> rather than a screenshot of a chat confirmation.
- *   · There are accounts, so the nav carries a log-in and every call to action
- *     points at /onboarding instead of t.me.
- *   · The chain roster is smaller and specific. The Telegram page lists eleven
- *     chains including Bitcoin and Ethereum; this platform settles six, and the
- *     scene is generated from ENABLED_CHAINS so the page cannot claim a chain
- *     the backend cannot issue an address on.
- *
- * The page is a server component: only the motion boot, the receipt and the
- * signed-in nudge are client-side. With JavaScript off every scene is still
- * typeset and readable — the motion is an enhancement, not the content.
+ * Where this differs from the Framer page, on purpose:
+ *   · Laptops (1024–1439) get the desktop frame scaled down, where Framer
+ *     falls back to the phone column.
+ *   · Menu links point at real destinations; "Terms of use" is left out until
+ *     a terms page exists.
+ *   · The two background videos are re-encoded (42MB → 7MB) and only load
+ *     near the viewport.
  */
 
-/** Where every primary call to action goes. The bot's t.me link has no analogue here. */
+const LOGIN_HREF = "/login";
 const START_HREF = "/onboarding";
 
-/** B2B — a representative settled order, so Scene 03 shows the real surface. */
-const sceneReceipt: OrderRecord = {
-  id: "ord_8fd21c4a",
-  businessId: "biz_1",
-  payerName: "Adaeze Okonkwo",
-  payerEmail: "adaeze@example.com",
-  amountNgn: 485_000,
-  token: "USDC",
-  network: "stellar",
-  quotedRate: 1612,
-  cryptoAmountDue: 300.87,
-  // No fee: the receipt on the marketing page should show what the product
-  // actually charges the payer, and <Receipt> prints "No fees" when this is 0.
-  transactionFee: 0,
-  paycrestOrderId: "3f8a1c7d92b45e60a1d83c4f7e29b0d6c58a3719fe402bd6183c9a75e4b02d18",
-  status: "settled",
-  createdAt: "2026-01-14T10:24:00.000Z",
-  updatedAt: "2026-01-14T10:24:00.000Z",
+const LINKS = {
+  x: "https://x.com/uselinq",
+  telegram: "https://t.me/uselinq/1",
+  support: "https://t.me/uselinq/2",
+  personal: "https://uselinq.xyz",
 };
 
-/**
- * B2B — the roster is the platform's, not the bot's.
- *
- * Both numbers in Scene 04's headline and every row under it come from
- * ENABLED_CHAINS, so adding or removing a chain in one place updates the
- * marketing claim with it.
- */
-const CHAIN_COUNT = ENABLED_CHAINS.length;
-const TOKEN_COUNT = new Set(ENABLED_CHAINS.flatMap((chain) => chain.tokens)).size;
+const MENU: MenuLink[] = [
+  { label: "HOME", href: "#hero" },
+  { label: "FEATURES", href: "#features" },
+  { label: "WHO IS IT FOR?", href: "#business" },
+  { label: "LINQ PERSONAL", href: LINKS.personal, external: true },
+  { label: "CONTACT US", href: LINKS.support, external: true },
+];
+
+/** The hero ticker's words, trailing spaces and all, as the designer typed them. */
+const COUNTRIES = ["UK ", "GERMANY ", "USA ", "GHANA ", "KENYA ", "BELGIUM "] as const;
+
+const STEPS: Step[] = [
+  {
+    title: "Payment link creation",
+    body: "Create a payment link in seconds and share it with your customers anywhere.",
+    art: "/landing/lottie/step-1-link.json",
+  },
+  {
+    title: "Pay with crypto",
+    body: "Customers input the link or scan the code with their phone to start payment",
+    art: "/landing/lottie/step-2-pay.json",
+  },
+  {
+    title: "Send crypto",
+    body: "Customers enter the amount, choose their network and stablecoin, and complete the payment in their wallet",
+    art: "/landing/lottie/step-3-send.json",
+  },
+  {
+    title: "Payment received",
+    body: "You receive the equivalent naira in your bank account in seconds",
+    art: "/landing/lottie/step-4-received.json",
+  },
+];
+
+const WHY = [
+  {
+    key: "global",
+    title: "Global Settlements",
+    body: "Your customers pay in their preferred stablecoin. You receive Naira. We handle the routing, real-time conversion, and bank payout behind the scenes.",
+    down: false,
+  },
+  {
+    key: "security",
+    title: "Secure Payments",
+    body: "Zero fraud, zero chargebacks. Every payment is fully verified and finalized before settlement.",
+    down: true,
+  },
+  {
+    key: "support",
+    title: "Dedicated supports",
+    body: "Our dedicated support team is on standby to resolve issues fast and keep your payments flowing.",
+    down: false,
+  },
+  {
+    key: "integration",
+    title: "Simple integration",
+    body: "Plug Linq into your business, Generate instant payment links, use our checkout options and Start accepting payments in minutes.",
+    down: true,
+  },
+  {
+    key: "rate",
+    title: "Transparent rates",
+    body: "No hidden fees, no surprise exchange rate markups. Always know exactly how much Naira will land in your account before a payment is made.",
+    down: false,
+  },
+  {
+    key: "qr",
+    title: "QR integration",
+    body: "Generate a unique QR code for your business so your customers can scan, confirm, and pay instantly. Also suitable for in-store payments",
+    down: true,
+  },
+] as const;
+
+const FLAGS = [
+  { key: "fr", src: "/landing/flags/fr.png" },
+  { key: "us", src: "/landing/flags/us.png" },
+  { key: "eng", src: "/landing/flags/gb-eng.png" },
+  { key: "gh", src: "/landing/flags/gh.png" },
+  { key: "es", src: "/landing/flags/es.png" },
+] as const;
+
+const SETUP = [
+  ["01", "Create account", "With just your business and email. No paperwork upload needed."],
+  ["02", "Verify payout", "Link the bank account we settle into. About a minute, once."],
+  ["03", "Share payment link", "Share it once. Your customer picks the chain and the coin whenever they pay."],
+  ["04", "Get Paid", "We convert and settle, with a receipt. Usually before the tab closes."],
+] as const;
+
+/** Each card's hover tilt is the designer's, card by card. */
+const BUSINESSES: { title: string; body: string; tilt: Tilt }[] = [
+  {
+    title: "Physical stores",
+    body: "Generate dynamic QR codes at the counter and let customers pay with their preferred crypto wallet and get settled in Naira instantly",
+    tilt: { rotateY: 10 },
+  },
+  {
+    title: "Restaurants",
+    body: "Bring modern payments to your restaurants. Guests can pay their tab in stablecoins from their phone, and you receive the exact Naira value directly in your account.",
+    tilt: { rotateX: -10 },
+  },
+  {
+    title: "Online stores",
+    body: "Keep customers on your site from cart to confirmation. Our native checkout integration ensures a frictionless payment flow that actually converts your international traffic.",
+    tilt: { rotateY: -10 },
+  },
+  {
+    title: "Hotels",
+    body: "Attract international guests by letting them pay for their stay in stablecoins. You receive the exact room rate in Naira instantly, with zero foreign exchange friction or card declines.",
+    tilt: { rotateY: -10 },
+  },
+  {
+    title: "Freelancers",
+    body: "Work with anyone, anywhere. Bypass expensive freelance platform fees and let your global clients pay you in USDC, USDT, or USDSUI instantly.",
+    tilt: { rotateX: 10 },
+  },
+  {
+    title: "Transporters",
+    body: "Get paid instantly, right from the driver’s seat. Passengers and clients can scan a dynamic QR code to pay in stablecoins, while your fare settles securely in Naira before the trip even ends.",
+    tilt: { rotateY: 10 },
+  },
+];
+
+const RAIL_COINS = [
+  { src: "/landing/art/rail-coin-0.svg", label: "Sui" },
+  { src: "/landing/art/rail-coin-1.svg", label: "BNB Chain" },
+  { src: "/landing/art/rail-coin-2.svg", label: "Solana" },
+  { src: "/landing/art/rail-coin-3.svg", label: "Base" },
+  { src: "/landing/art/rail-coin-4.svg", label: "Stellar" },
+  { src: "/landing/art/rail-coin-5.svg", label: "Tron" },
+];
 
 /**
- * Each row fills with its chain's own brand colour on hover, which means the
- * text on top has to flip between ink and paper per chain. Relative luminance
- * decides it rather than a hand-kept list, so a new chain's colour is handled
- * the moment it is added.
+ * Sets --ls-zoom before first paint: 1 at ≥1440 (the design's own size), the
+ * 1440 frame scaled to fit at 1024–1439, 1 again for the phone frame, and the
+ * 390 frame scaled to fit below 390.
  */
-function readableOn(hex: string) {
-  const value = hex.replace("#", "");
-  const channel = (offset: number) => {
-    const srgb = Number.parseInt(value.slice(offset, offset + 2), 16) / 255;
-    return srgb <= 0.03928 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
-  };
-  const luminance = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
-  return luminance > 0.4 ? "var(--ink)" : "var(--paper)";
+const ZOOM_SCRIPT = `(function(){var s=document.currentScript,r=s&&s.parentElement;if(!r)return;function f(){var w=document.documentElement.clientWidth,z=w>=1440?1:w>=1024?w/1440:w>=390?1:w/390;r.style.setProperty("--ls-zoom",String(z))}f();addEventListener("resize",f)})();`;
+
+/** Decorative art. Anything below the hero loads lazily, as it does on Framer. */
+function Art({ src, className, eager = false }: { src: string; className: string; eager?: boolean }) {
+  // biome-ignore lint/a11y/useAltText: decorative illustration
+  return <img className={className} src={src} alt="" draggable={false} loading={eager ? "eager" : "lazy"} decoding="async" />;
 }
 
-/**
- * The rates climax, as ONE list.
- *
- * main.js runs the headline's wheel and the rail off the same number — "card i
- * is dead centre exactly when the wheel is showing word i" — so the word and
- * the coin under it have to be written down together or they drift, which is
- * what put SOL. over a Stellar card. Pairing them here makes that structural:
- * RATE_WORDS is derived from this, so the two lists cannot disagree again.
- *
- * The first four words name coins rather than chains, so each rides the chain
- * it is most at home on (USDSUI only exists on Sui). The rest name their own.
- *
- * Every card names a chain the platform actually settles. rail-cards.svg also
- * ships an Arbitrum and a Bitcoin card; both are left out for the same reason
- * the Telegram page's Bitcoin and Ethereum cards were, which is that the
- * backend cannot issue an address on either and the card would be a promise
- * this product does not make. Adding a chain means adding a row here.
- */
-const RAIL_CARDS = [
-  { word: "Crypto.", coin: "stellar", sent: "Sent 750 USDC", got: "Ilé Interiors received ₦1,209,000", short: "Received ₦1,209,000" },
-  { word: "USDC.", coin: "base", sent: "Sent 300 USDC", got: "Ravel Studio received ₦483,600", short: "Received ₦483,600" },
-  { word: "USDT.", coin: "tron", sent: "Sent 410 USDT", got: "Benin Craft Co received ₦661,120", short: "Received ₦661,120" },
-  { word: "USDSUI.", coin: "sui", sent: "Sent 1,200 USDSUI", got: "Sable & Co received ₦1,934,400", short: "Received ₦1,934,400" },
-  { word: "STELLAR.", coin: "stellar", sent: "Sent 1,050 USDT", got: "Zuri Textiles received ₦1,692,600", short: "Received ₦1,692,600" },
-  { word: "SUI.", coin: "sui", sent: "Sent 623 USDC", got: "Verde Farms received ₦1,004,276", short: "Received ₦1,004,276" },
-  { word: "BASE.", coin: "base", sent: "Sent 500 USDC", got: "Lagos Print Co received ₦806,000", short: "Received ₦806,000" },
-  { word: "BNB.", coin: "bnb", sent: "Sent 590 USDC", got: "Mama Tolu Foods received ₦951,080", short: "Received ₦951,080" },
-  { word: "SOL.", coin: "solana", sent: "Sent 850 USDC", got: "Nnamdi Ltd received ₦1,370,200", short: "Received ₦1,370,200" },
-  { word: "TRX.", coin: "tron", sent: "Sent 135 USDT", got: "Kọ́lá Logistics received ₦217,620", short: "Received ₦217,620" },
-];
-
-/** The words the rates headline rolls through — one per card, in card order. */
-const RATE_WORDS = RAIL_CARDS.map((card) => card.word);
-
-/** One card face per chain, sliced out of rail-cards.svg with its coin baked in. */
-function railCardArt(coin: string) {
-  return `url("/landing/assets/rails/card-${coin}.svg")`;
+function whyArt(key: (typeof WHY)[number]["key"]) {
+  if (key === "global") {
+    return (
+      <>
+        <Art src="/landing/art/why-globe.svg" className="ls-why__art ls-why__art--globe" />
+        {FLAGS.map((flag) => (
+          <span key={flag.key} className={`ls-flag ls-flag--${flag.key}`}>
+            <Art src={flag.src} className="" />
+          </span>
+        ))}
+      </>
+    );
+  }
+  return <Art src={`/landing/art/why-${key}.svg`} className={`ls-why__art ls-why__art--${key}`} />;
 }
-
-/** B2B — set up once, get paid forever. Written against the dashboard, not a chat. */
-const STEPS = [
-  ["01", "Create your account", "Business name and email. No paperwork to upload."],
-  ["02", "Verify your payout", "Link the bank account we settle into. About a minute, once."],
-  ["03", "Share a payment link", "Price it once. Your customer picks the chain and the coin."],
-  ["04", "Get Naira", "We convert and settle, with a receipt. Usually before the tab closes."],
-];
-
-/** The 19 stamps, in the passport grid's own order. `null` is a deliberate gap. */
-const FLAGS: Array<[string, string, number] | null> = [
-  ["US.svg", "United States", -3],
-  ["UK.svg", "United Kingdom", 4],
-  ["ARG 1.svg", "Argentina", -6],
-  null,
-  ["AUT 1.svg", "Austria", 5],
-  ["BEL 1.svg", "Belgium", -2],
-  ["CIV 1.svg", "Côte d’Ivoire", 7],
-  ["COD 1.svg", "DR Congo", -5],
-  ["COL 1.svg", "Colombia", 3],
-  ["CPV 1.svg", "Cape Verde", -4],
-  ["CRO 1.svg", "Croatia", 6],
-  null,
-  ["ESP 1.svg", "Spain", -7],
-  ["FRA 1.svg", "France", 2],
-  ["GHA 1.svg", "Ghana", -3],
-  ["MAR 1.svg", "Morocco", 5],
-  ["NED 1.svg", "Netherlands", -6],
-  null,
-  ["NOR 1.svg", "Norway", 4],
-  ["POR 1.svg", "Portugal", -2],
-  ["SEN 1.svg", "Senegal", 6],
-  ["SWE 1.svg", "Sweden", -4],
-];
 
 export default function Home() {
   return (
-    <div className="linq-landing">
-      <a className="skip-link" href="#content">
+    <div className={`ls ${roboto.variable} ${robotoItalic.variable} ${spaceGrotesk.variable} ${mozillaHeadline.variable}`} suppressHydrationWarning>
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static, sets the frame zoom before paint */}
+      <script dangerouslySetInnerHTML={{ __html: ZOOM_SCRIPT }} />
+      <a className="ls-skip" href="#steps">
         Skip to content
       </a>
 
+      <SiteMenu links={MENU} />
       {/* Client-side, and only for a merchant who already has a session. */}
       <AuthRedirect />
 
-      {/* ===================== NAV ===================== */}
-      <header className="site-header">
-        <nav className="nav" aria-label="Primary">
-          <Link className="nav__brand" href="#hero" aria-label="Linq — home">
-            <LandingLockup />
-          </Link>
-
-          <ul className="nav__links">
-            <li>
-              <a href="#receive">
-                <span className="nav__num">01</span> Accept
-              </a>
-            </li>
-            <li>
-              <a href="#payment-links">
-                <span className="nav__num">02</span> Payment links
-              </a>
-            </li>
-            <li>
-              <a href="#chains">
-                <span className="nav__num">03</span> Chains
-              </a>
-            </li>
-            <li>
-              <a href="#rates">
-                <span className="nav__num">04</span> Rates
-              </a>
-            </li>
-          </ul>
-
-          {/* B2B — the bot has no account to return to; a dashboard does. */}
-          <Link className="nav__login" href="/login">
-            Log in
-          </Link>
-          <Link className="btn btn--nav" href={START_HREF}>
-            Start accepting <span aria-hidden="true">↗</span>
-          </Link>
-        </nav>
-        <span className="nav__progress" aria-hidden="true" />
-      </header>
-
-      <main id="content">
-        {/* ===================== SCENE 01 — HERO ===================== */}
-        <section id="hero" className="scene scene--hero" aria-labelledby="hero-h">
-          <span className="hero__stars" aria-hidden="true" />
-          <div className="globe" aria-hidden="true" />
-          <div className="l-grid scene__inner">
-            <h1 id="hero-h" className="display hero__title">
-              Receive
-              <br />
-              from anywhere.
-              <br />
-              Settle in
-              <br />
-              Naira.
-            </h1>
-            {/* B2B — the bot's promise was "inside Telegram, no app". This one's
-                is the dashboard the merchant runs their business from. */}
-            <p className="mono hero__sub">Crypto &rarr; Naira. Payment links, receipts, one dashboard.</p>
-          </div>
-        </section>
-
-        {/* ===================== SCENE 02 — ACCEPT / FLAG STAMPS ===================== */}
-        <section id="receive" className="scene scene--receive" aria-labelledby="receive-h">
-          <span className="marker mono" aria-hidden="true">
-            01 — Accept
-          </span>
-          <div className="l-grid scene__inner">
-            <div className="receive__copy">
-              <h2 id="receive-h" className="display scene__title">
-                Receive stablecoin payments
-                <br />
-                from any country.
-              </h2>
-              <p className="body scene__body">
-                A customer in Lisbon checks out in USDC. A client in Toronto settles an invoice in
-                USDT. It lands in your Nigerian business account in Naira, in under a minute, at a
-                rate you&rsquo;d actually accept.
-              </p>
+      <main className="ls-main">
+        {/* ============================ HERO ============================ */}
+        <section id="hero" className="ls-hero" aria-labelledby="hero-h">
+          <a className="ls-hero__logo" href="#hero" aria-label="Linq — home">
+            <Art src="/landing/art/logo.svg" className="" eager />
+          </a>
+          <div className="ls-hero__body">
+            <div className="ls-hero__top">
+              <div className="ls-hero__copy">
+                <HeroReveal delay={0.4}>
+                  <h1 id="hero-h" className="ls-hero__heading">
+                    <span>Receive from anywhere.</span>
+                    <span>Settle in Naira.</span>
+                  </h1>
+                </HeroReveal>
+                <HeroReveal delay={0.8}>
+                  <p className="ls-hero__sub">
+                    Accept stablecoin payments from anywhere in the world and settle directly to your nigerian bank account
+                  </p>
+                </HeroReveal>
+              </div>
+              <HeroReveal delay={1.2}>
+                <div className="ls-pills">
+                  <PillButton href={LOGIN_HREF} variant="dark">
+                    Login
+                  </PillButton>
+                  <PillButton href={START_HREF} variant="primary">
+                    Get started
+                  </PillButton>
+                </div>
+              </HeroReveal>
             </div>
 
-            <div className="stamps" role="list" aria-label="Countries your customers can pay from">
-              {FLAGS.map((flag, index) =>
-                flag === null ? (
-                  <span key={`gap-${index}`} className="stamp stamp--empty" aria-hidden="true" />
-                ) : (
-                  <span
-                    key={flag[0]}
-                    className="stamp"
-                    style={{ "--r": `${flag[2]}deg` } as React.CSSProperties}
-                    role="listitem"
-                  >
-                    {/* Deliberately not next/image: these are rendered at or below
-                        native size and the stamp grid is measured by main.js. */}
-                    <img
-                      src={`/landing/assets/source/flags/${encodeURIComponent(flag[0])}`}
-                      width={104}
-                      height={69}
-                      alt={flag[1]}
-                    />
-                  </span>
-                ),
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* ===================== SCENE 03 — PAYMENT LINKS ===================== */}
-        {/* B2B — the Telegram site's "THE BOT". Same beat in the composition, a
-            different object: a payment link and the receipt it prints. */}
-        <section id="payment-links" className="scene scene--links" aria-labelledby="links-h">
-          <span className="marker mono" aria-hidden="true">
-            02 — Payment links
-          </span>
-          <div className="l-grid scene__inner">
-            <div className="links__copy">
-              <h2 id="links-h" className="display scene__title">
-                One link.
-                <br />
-                Any chain.
-                <br />
-                Paid in
-                <br />
-                Naira.
-              </h2>
-              <p className="body scene__body">
-                Send a customer one payment link. They pick the chain and the stablecoin they
-                already hold. You get Naira in your business account, and every payment lands in
-                your dashboard with a receipt attached. No exchange account, no P2P merchant, no
-                waiting on a &ldquo;vendor&rdquo; to come online.
-              </p>
-              <p className="mono scene__handle">A receipt for every payment</p>
-            </div>
-
-            {/* The receipt is the product's signature surface — show it, don't
-                describe it. This is the same component the dashboard and the
-                PDF export render. */}
-            <div className="links__screen" aria-hidden="true">
-              <Receipt order={sceneReceipt} merchant={{ businessName: "Mama Tolu Foods" }} printing />
-            </div>
-          </div>
-        </section>
-
-        {/* ===================== SCENE 04 — CHAINS ===================== */}
-        <section id="chains" className="scene scene--chains" aria-labelledby="chains-h">
-          <span className="marker mono" aria-hidden="true">
-            03 — Chains
-          </span>
-          <div className="l-grid scene__inner">
-            <div className="chains__copy">
-              <h2 id="chains-h" className="display scene__title">
-                {TOKEN_COUNT} stablecoins.
-                <br />
-                {CHAIN_COUNT} chains.
-              </h2>
-              <ul className="chain-list">
-                {ENABLED_CHAINS.map((chain) => (
-                  <li
-                    key={chain.id}
-                    style={
-                      {
-                        "--chain-bg": chain.color,
-                        "--chain-fg": readableOn(chain.color),
-                      } as React.CSSProperties
-                    }
-                  >
-                    <span className="chain-list__name display">{chain.name.toUpperCase()}</span>
-                    <span className="chain-list__ticker mono">{chain.tokens.join(" / ")}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="chains__coins" aria-hidden="true">
-              <span className="cc cc--main">
-                <LandingCoin />
-              </span>
-              <span className="cc cc--2">
-                <img src="/landing/assets/source/coins/Group.svg" alt="" />
-              </span>
-              <span className="cc cc--3">
-                <img src="/landing/assets/source/coins/Group%20427319602.svg" alt="" />
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* ===================== SCENE 05 — RATES / PURPLE CLIMAX ===================== */}
-        <section id="rates" className="scene scene--rates" aria-labelledby="rates-h">
-          <span className="marker mono" aria-hidden="true">
-            04 — RATES
-          </span>
-          <div className="l-grid scene__inner">
-            <div className="rates__copy">
-              {/* The last word rides a picker wheel that clicks over as you
-                  scroll. The wheel is hidden from assistive tech and the real
-                  word is carried by .sr-only, so the heading still reads as one
-                  sentence. */}
-              <h2 id="rates-h" className="display scene__title rates__title">
-                <span className="rates__lead">
-                  You get more
-                  <br />
-                  for your
-                </span>
-                <span className="picker" aria-hidden="true">
-                  <span className="picker__list">
-                    {RATE_WORDS.map((word) => (
-                      <span key={word} className="picker__item">
-                        {word}
-                      </span>
-                    ))}
-                  </span>
-                </span>
-                <span className="sr-only">Crypto.</span>
-              </h2>
-            </div>
-          </div>
-
-          {/* The rail. Cards ride a wire across the scene, carried by the
-              scrollbar rather than a clock, so scrolling back runs them the
-              other way. main.js writes the pills as cards hit either end. */}
-          <div className="rail" aria-hidden="true">
-            <span className="rail__wire" />
-            <ul className="rail__track">
-              {RAIL_CARDS.map((card) => (
-                <li
-                  key={card.got}
-                  className="rail__card"
-                  style={{ "--card-art": railCardArt(card.coin) } as React.CSSProperties}
-                  data-sent={card.sent}
-                  data-got={card.got}
-                  data-short={card.short}
-                >
-                  {/* The card's own piece of the wire, painted over the face and
-                      through its punched hole. The coin is part of the artwork
-                      now, so nothing else is layered on top. */}
-                  <span className="rail__thread" aria-hidden="true" />
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Outside .rail: the rail is masked so cards vanish behind the copy,
-              and a pill caught in that mask would fade out mid-pop. */}
-          <span className="rail__pills rail__pills--left" aria-hidden="true" />
-          <span className="rail__pills rail__pills--right" aria-hidden="true" />
-        </section>
-
-        {/* ===================== SCENE 06 — SET UP ===================== */}
-        <section id="how-it-works" className="scene scene--steps" aria-labelledby="steps-h">
-          <span className="marker mono" aria-hidden="true">
-            05 — Set up
-          </span>
-          <div className="l-grid scene__inner">
-            <h2 id="steps-h" className="display scene__title steps__title">
-              Set up once.
-              <br />
-              Get paid forever.
-            </h2>
-            <ol className="steps">
-              {STEPS.map(([num, name, desc]) => (
-                <li key={num} className="step">
-                  <span className="step__node" aria-hidden="true" />
-                  <span className="step__num mono">{num}</span>
-                  <span className="step__name display">{name}</span>
-                  <span className="step__desc body">{desc}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        {/* ===================== SCENE 07 — SOCIALS ===================== */}
-        <section id="socials" className="scene scene--socials" aria-labelledby="socials-h">
-          <span className="marker mono" aria-hidden="true">
-            06 — Socials
-          </span>
-          <div className="l-grid scene__inner">
-            <div className="socials__block">
-              <h2 id="socials-h" className="display scene__title socials__title">
-                Reach out to us.
-              </h2>
-              <div className="socials__icons">
-                {LANDING_SOCIALS.map((social) => (
-                  <a
-                    key={social.key}
-                    className="social"
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener"
-                    aria-label={social.label}
-                  >
-                    {social.glyph}
-                  </a>
-                ))}
+            <div className="ls-hero__card">
+              <p className="ls-hero__to">NIGERIA</p>
+              <DottedGlobe className="ls-hero__globe" size={{ desktop: 903, phone: 271 }} density={{ desktop: 42, phone: 27 }} />
+              <LottiePlayer src="/landing/lottie/hero-flow.json" className="ls-hero__flow" />
+              <div className="ls-hero__from">
+                <Art src="/landing/art/hero-arrow.svg" className="ls-hero__from-arrow" eager />
+                <WordRotator words={COUNTRIES} holdSeconds={4} />
               </div>
             </div>
           </div>
         </section>
 
-        {/* ===================== SCENE 08 — FOOTER / CTA ===================== */}
-        <section id="footer" className="scene scene--footer" aria-labelledby="footer-h">
-          <div className="l-grid scene__inner">
-            <Link className="footer__brand" href="#hero" aria-label="Linq — home">
-              <LandingLockup />
-            </Link>
-
-            <div className="footer__cta-block">
-              <h2 id="footer-h" className="display footer__title">
-                Start accepting
-                <br />
-                crypto.
+        <div className="ls-body">
+          {/* ============================ STEPS ============================ */}
+          <RevealSection id="steps" className="ls-section ls-section--wide" aria-labelledby="steps-h">
+            <Reveal from="left">
+              <h2 id="steps-h" className="ls-h2 ls-steps__heading">
+                Accept payments from anywhere and get your money in Naira, effortlessly.
               </h2>
-              {/* B2B — this opens an account, it does not open a chat. */}
-              <Link className="btn btn--cta" href={START_HREF}>
-                Create your account <span aria-hidden="true">↗</span>
-              </Link>
-              <p className="mono footer__tech">
-                Already set up?{" "}
-                <Link href="/login" className="underline underline-offset-4">
-                  Log in
-                </Link>
-              </p>
+            </Reveal>
+            <Reveal from="up" delay={0.7}>
+              <StepsAccordion steps={STEPS} />
+            </Reveal>
+          </RevealSection>
+
+          {/* =========================== FEATURES =========================== */}
+          <RevealSection id="features" className="ls-section ls-section--wide" aria-labelledby="features-h">
+            <Reveal from="left">
+              <h2 id="features-h" className="ls-h2 ls-features__heading">
+                Unlock global customers with a payment gateway designed for modern business growth.
+              </h2>
+            </Reveal>
+            <div className="ls-features__grid">
+              <Reveal from="left" delay={0.4} duration={0.4} className="ls-feature ls-feature--plane">
+                <h3 className="ls-feature__title">Instant settlement</h3>
+                <Art src="/landing/art/feature-plane.svg" className="ls-feature__art ls-feature__art--d" />
+                <Art src="/landing/art/feature-plane-m.svg" className="ls-feature__art ls-feature__art--m" />
+                <div className="ls-feature__box">
+                  <p className="ls-feature__text">
+                    <span className="ls-only-desktop">
+                      Turn stablecoin payments into Naira quickly and seamlessly, giving you faster access to the money your
+                      business has earned while eliminating the delays and complexity of manual conversion and settlement
+                    </span>
+                    <span className="ls-only-phone">
+                      Turn stablecoin payments into Naira seamlessly, giving you faster access to the money your business has
+                      earned while eliminating the delays and complexity of manual conversion and settlement
+                    </span>
+                  </p>
+                </div>
+              </Reveal>
+              <Reveal from="right" delay={0.6} duration={0.4} className="ls-feature ls-feature--chains">
+                <h3 className="ls-feature__title">Multiple chain support</h3>
+                <Art src="/landing/art/feature-chains.svg" className="ls-feature__art ls-feature__art--d" />
+                <Art src="/landing/art/feature-chains-m.svg" className="ls-feature__art ls-feature__art--m" />
+                <div className="ls-feature__box">
+                  <p className="ls-feature__text">
+                    Never lose a sale because a customer prefers a different network. Let customers pay across six chains
+                    while you settle in Naira
+                  </p>
+                </div>
+              </Reveal>
+              <Reveal from="left" delay={0.8} duration={0.4} className="ls-feature ls-feature--api">
+                <h3 className="ls-feature__title">Checkout(API integration) </h3>
+                <Art src="/landing/art/feature-api.svg" className="ls-feature__art ls-feature__art--d" />
+                <Art src="/landing/art/feature-api-m.svg" className="ls-feature__art ls-feature__art--m" />
+                <div className="ls-feature__box">
+                  <p className="ls-feature__text">
+                    Keep customers on your site. Use our API to build a native checkout that processes stablecoins and
+                    settles in Naira automatically
+                  </p>
+                </div>
+              </Reveal>
+              <Reveal from="right" delay={1} duration={0.4} className="ls-feature ls-feature--sales">
+                <h3 className="ls-feature__title">Sales analysis</h3>
+                <Art src="/landing/art/sales-folders.svg" className="ls-feature__folders" />
+                <div className="ls-feature__box">
+                  <p className="ls-feature__text">
+                    Track payments across six different networks in one simple interface. We consolidate all your
+                    stablecoin volume into clear, actionable Naira metrics
+                  </p>
+                </div>
+              </Reveal>
             </div>
+          </RevealSection>
 
-            <p className="mono footer__copyright">Rinku Technology Limited — 2026</p>
-          </div>
-
-          <div className="footer__plane" aria-hidden="true">
-            <img
-              src="/landing/assets/source/Group%20427319588%20(1).svg"
-              alt=""
-              width={755}
-              height={716}
+          {/* ============================ WHY US ============================ */}
+          <section id="why" className="ls-section ls-why" aria-labelledby="why-h">
+            <h2 id="why-h" className="ls-h2 ls-why__heading">
+              Accept payments from anywhere, get settled in Naira: The Linq advantage for growing companies.
+            </h2>
+            <WhyTicker
+              items={WHY.map((item) => ({
+                key: item.key,
+                down: item.down,
+                node: (
+                  <>
+                    {whyArt(item.key)}
+                    <div className="ls-why__copy">
+                      <h3 className={`ls-why__title${item.key === "qr" ? " ls-why__title--qr" : ""}`}>{item.title}</h3>
+                      <p className={`ls-why__desc${item.key === "qr" ? " ls-why__desc--qr" : ""}`}>{item.body}</p>
+                    </div>
+                  </>
+                ),
+              }))}
             />
-          </div>
-        </section>
-      </main>
+          </section>
 
-      {/* The plane: one fixed layer above the content, below the nav. On a
-          pointer device it becomes the cursor; on touch it parks per scene. */}
-      <div className="plane-layer" aria-hidden="true">
-        <div className="plane-pos">
-          <div className="plane-depth">
-            <div className="plane-idle">
-              <LandingPlane />
+          {/* ========================= VIDEO CTA 1 ========================= */}
+          <section className="ls-cta ls-cta--customers" aria-labelledby="cta1-h">
+            <LazyVideo src="/landing/video/customers.mp4" className="ls-cta__video" />
+            <div className="ls-cta__overlay">
+              <h2 id="cta1-h" className="ls-cta__text">
+                Your customers should not have to think about how you get paid
+              </h2>
+              <div className="ls-pills">
+                <PillButton href={LOGIN_HREF} variant="dark">
+                  Login
+                </PillButton>
+                <PillButton href={START_HREF} variant="primary">
+                  Get started
+                </PillButton>
+              </div>
             </div>
-            {/* Inside the plane's transform stack, so it rides along with no
-                motion of its own and cannot desync. */}
-            <span className="plane-coin" aria-hidden="true">
-              <img src="/landing/assets/source/coins/Group%20427319602.svg" alt="" />
-            </span>
-          </div>
-        </div>
-      </div>
+          </section>
 
-      <LandingMotion />
+          {/* ============================ SET UP ============================ */}
+          <section id="setup" className="ls-section ls-section--wide" aria-labelledby="setup-h">
+            <h2 id="setup-h" className="ls-h2 ls-setup__heading">
+              Set up your account in minutes and start accepting payments
+            </h2>
+            <ol className="ls-setup__row">
+              {SETUP.map(([num, title, body]) => (
+                <li key={num} className="ls-setup__panel">
+                  {/* "01 " in an inline span inside a pre-wrap block, the live page's own
+                      structure: the trailing space hangs and the digits sit flush right. */}
+                  <p className="ls-setup__num" aria-hidden="true">
+                    <span>{`${num} `}</span>
+                  </p>
+                  <div className="ls-setup__copy">
+                    <h3 className="ls-setup__title">{title}</h3>
+                    <p className="ls-setup__desc">{body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          {/* ========================== BUSINESSES ========================== */}
+          <RevealSection id="business" className="ls-section" aria-labelledby="biz-h">
+            <Reveal from="left">
+              <h2 id="biz-h" className="ls-h2 ls-biz__heading">
+                Built for businesses ready to go global and get paid from anywhere
+              </h2>
+            </Reveal>
+            <div className="ls-biz__grid">
+              {BUSINESSES.map((biz, i) => (
+                <BizCard key={biz.title} tilt={biz.tilt}>
+                  <div className="ls-biz__content">
+                    <div className="ls-biz__head">
+                      <Art src={`/landing/art/biz-${i}.svg`} className="ls-biz__icon" />
+                      <h3 className="ls-biz__title">{biz.title}</h3>
+                    </div>
+                    <p className="ls-biz__desc">{biz.body}</p>
+                  </div>
+                </BizCard>
+              ))}
+            </div>
+          </RevealSection>
+
+          {/* ========================= VIDEO CTA 2 ========================= */}
+          <section className="ls-cta ls-cta--naira" aria-labelledby="cta2-h">
+            <LazyVideo src="/landing/video/naira.mp4" className="ls-cta__video" />
+            <div className="ls-cta__overlay">
+              <h2 id="cta2-h" className="ls-cta__text">
+                Ready to turn global payments into instant Naira?
+              </h2>
+              <div className="ls-pills">
+                <PillButton href={LOGIN_HREF} variant="dark">
+                  Login
+                </PillButton>
+                <PillButton href={START_HREF} variant="primary">
+                  Get started
+                </PillButton>
+              </div>
+            </div>
+          </section>
+
+          {/* ============================= RAIL ============================= */}
+          <ChainRail coins={RAIL_COINS} />
+        </div>
+
+        {/* ============================ FOOTER ============================ */}
+        <footer className="ls-footer">
+          <div className="ls-footer__community">
+            <div className="ls-footer__intro">
+              <h2 className="ls-footer__title">Join our communities to stay ahead</h2>
+              <p className="ls-footer__sub">Get instant support, request new features, and catch exclusive community updates.</p>
+            </div>
+            <div className="ls-footer__links">
+              <a className="ls-footer__link" href={LINKS.x} target="_blank" rel="noreferrer">
+                <Art src="/landing/art/footer-x.svg" className="" />
+                Twitter
+              </a>
+              <a className="ls-footer__link ls-footer__link--telegram" href={LINKS.telegram} target="_blank" rel="noreferrer">
+                <Art src="/landing/art/footer-telegram.svg" className="" />
+                Telegram
+              </a>
+            </div>
+          </div>
+          <div className="ls-footer__base">
+            <a href="#hero" aria-label="Linq — back to top">
+              <Art src="/landing/art/footer-logo.svg" className="ls-footer__logo" />
+            </a>
+            <p className="ls-footer__copy">© 2026 copyright all rights reserved.</p>
+          </div>
+          {/* The trailing space is the designer's; it shifts the centred wordmark. */}
+          <p className="ls-footer__wordmark" aria-hidden="true">
+            {"USELINQ "}
+          </p>
+        </footer>
+      </main>
     </div>
   );
 }

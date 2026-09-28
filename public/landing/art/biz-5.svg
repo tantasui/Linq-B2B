@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="50" height="50" viewBox="0 0 50 50" fill="none"><defs><svg width="50" height="50" viewBox="0 0 50 50" fill="none" id="svg181934165_2144">
+<rect width="50" height="50" rx="25" fill="#8A4FFF"></rect>
+<path d="M13.125 25L15.625 26.25" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M36.875 25.625L34.375 26.25" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M20 31.875L20.3071 31.1072C20.7638 29.9656 20.9921 29.3948 21.4683 29.0724C21.9444 28.75 22.5593 28.75 23.7889 28.75H26.2111C27.4407 28.75 28.0556 28.75 28.5318 29.0724C29.0079 29.3948 29.2363 29.9656 29.6929 31.1072L30 31.875" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M12.5 31.25V34.8525C12.5 35.3259 12.8009 35.7587 13.2774 35.9705C13.5865 36.1079 13.8817 36.25 14.2382 36.25H16.3868C16.7433 36.25 17.0385 36.1079 17.3476 35.9705C17.8241 35.7587 18.125 35.3259 18.125 34.8525V32.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M31.875 32.5V34.8525C31.875 35.3259 32.176 35.7587 32.6524 35.9705C32.9615 36.1079 33.2568 36.25 33.6133 36.25H35.7617C36.1182 36.25 36.4135 36.1079 36.7226 35.9705C37.199 35.7587 37.5 35.3259 37.5 34.8525V31.25" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M35 20.625L36.25 20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M15 20.625L13.75 20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M15.625 21.25L16.9854 17.1689C17.5354 15.5188 17.8104 14.6938 18.4651 14.2219C19.1198 13.75 19.9895 13.75 21.7288 13.75H28.2712C30.0105 13.75 30.8801 13.75 31.5349 14.2219C32.1896 14.6938 32.4646 15.5188 33.0146 17.1689L34.375 21.25" stroke="white" stroke-width="2" stroke-linejoin="round"></path>
+<path d="M15.625 21.25H34.375C35.5715 22.5169 37.5 24.2811 37.5 26.2495V30.5877C37.5 31.3009 37.0256 31.901 36.396 31.9844L32.5 32.5H17.5L13.604 31.9844C12.9744 31.901 12.5 31.3009 12.5 30.5877V26.2495C12.5 24.2811 14.4285 22.5169 15.625 21.25Z" stroke="white" stroke-width="2" stroke-linejoin="round"></path>
+</svg></defs><g transform="matrix(1 0 0 1 0 0)"><clipPath id="c0"><rect x="0" y="0" width="50" height="50"/></clipPath><g clip-path="url(#c0)"><use href="#svg181934165_2144"></use></g></g></svg>
