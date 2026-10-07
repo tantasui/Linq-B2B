@@ -137,7 +137,10 @@ export const CHAINS: ChainConfig[] = [
     hasWalletConnector: false,
     addressPattern: /^T[1-9A-HJ-NP-Za-km-z]{33}$/,
     color: "#EF0027",
-    enabled: true,
+    // Off: Tron's gas is too expensive to sponsor on every order, and Linq's
+    // dedicated offramp does not settle it. Kept so existing Tron orders still
+    // render with the right name, logo and explorer.
+    enabled: false,
   },
 ];
 

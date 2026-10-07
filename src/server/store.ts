@@ -150,6 +150,12 @@ function mapOrder(row: Row, transferAttempts: TransferAttemptRecord[] = []): Ord
     refundTxHash: row.refund_tx_hash ?? undefined,
     refundDestination: row.refund_destination ?? undefined,
     validUntil: row.valid_until ? toIso(row.valid_until) : undefined,
+    feeUsdc: toNumber(row.fee_usdc),
+    amountReceived: toNumber(row.amount_received),
+    amountRemaining: toNumber(row.amount_remaining),
+    amountRefunded: toNumber(row.amount_refunded),
+    graceUntil: row.grace_until ? toIso(row.grace_until) : undefined,
+    requoteCount: toNumber(row.requote_count),
     status: row.status,
     paycrestPayload: row.paycrest_payload ?? undefined,
     createdAt: toIso(row.created_at),
@@ -501,6 +507,12 @@ export async function updateOrder(id: string, patch: Partial<OrderRecord>) {
         payout_reference = $19,
         refund_tx_hash = $20,
         refund_destination = $21,
+        fee_usdc = $22,
+        amount_received = $23,
+        amount_remaining = $24,
+        amount_refunded = $25,
+        grace_until = $26,
+        requote_count = $27,
         updated_at = now()
        where id = $1
        returning *`,
@@ -526,6 +538,12 @@ export async function updateOrder(id: string, patch: Partial<OrderRecord>) {
         merged.payoutReference ?? null,
         merged.refundTxHash ?? null,
         merged.refundDestination ?? null,
+        merged.feeUsdc ?? null,
+        merged.amountReceived ?? null,
+        merged.amountRemaining ?? null,
+        merged.amountRefunded ?? null,
+        merged.graceUntil ?? null,
+        merged.requoteCount ?? null,
       ],
     );
     return mapOrder(result!.rows[0], current.transferAttempts);

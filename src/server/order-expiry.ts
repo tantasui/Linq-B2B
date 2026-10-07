@@ -1,11 +1,13 @@
+import { isDedicatedOrder } from "./linq-offramp";
 import { logger } from "./logger";
 import { notifyForOrderStatus } from "./receipts";
 import { addOrderEvent, updateOrder } from "./store";
 import type { OrderRecord } from "./types";
 
 /**
- * How long a payer has to send the deposit. Linq stops watching the deposit
- * wallet after 10 minutes, so our window must not outlast theirs.
+ * How long a payer has to send the deposit on the shared /b2b/offramp, which
+ * stops watching the deposit wallet after 10 minutes. The dedicated offramp
+ * returns its own deadline (an hour) and owns its own expiry.
  */
 export const DEPOSIT_WINDOW_MS = 10 * 60 * 1000;
 
@@ -33,6 +35,9 @@ const DEPOSIT_RECEIVED: OrderRecord["status"][] = [
 
 export function isExpirable(order: OrderRecord) {
   if (!order.validUntil) return false;
+  // Linq decides when a dedicated-offramp order expires — a part-paid one
+  // moves to awaiting_completion, not expired — and tells us by webhook.
+  if (isDedicatedOrder(order)) return false;
   if (TERMINAL.includes(order.status)) return false;
   if (DEPOSIT_RECEIVED.includes(order.status)) return false;
   return new Date(order.validUntil).getTime() <= Date.now();

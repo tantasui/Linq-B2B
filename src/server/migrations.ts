@@ -96,6 +96,17 @@ const REGISTRY: Migration[] = [
       "ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_destination text",
     ],
   },
+  {
+    id: "2026_10_08_orders_dedicated_offramp_amounts",
+    statements: [
+      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS fee_usdc numeric(18, 8)",
+      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS amount_received numeric(18, 8)",
+      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS amount_remaining numeric(18, 8)",
+      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS amount_refunded numeric(18, 8)",
+      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS grace_until timestamptz",
+      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS requote_count integer",
+    ],
+  },
 ];
 
 // Safe to call on every boot: already-applied migrations are skipped, and

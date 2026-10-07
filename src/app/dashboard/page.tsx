@@ -21,7 +21,7 @@ import { merchantReceiptKind, OrderOutcome } from "@/components/OrderOutcome";
 import { formatCurrency } from "@/lib/payment-data";
 import type { MerchantRecord, OrderRecord, ReceiptKind } from "@/server/types";
 
-const IN_FLIGHT = ["initiated", "deposited", "pending", "fulfilling", "validated", "settling"];
+const IN_FLIGHT = ["initiated", "partially_paid", "awaiting_completion", "deposited", "pending", "fulfilling", "validated", "settling"];
 /** States where the Naira leg can be attempted again. */
 const RETRYABLE = new Set(["failed", "refunded", "expired", "cancelled"]);
 

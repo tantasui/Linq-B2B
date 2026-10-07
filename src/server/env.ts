@@ -74,6 +74,29 @@ export const env = rawEnv.parse({
 
 export const livePaycrestEnabled = Boolean(env.PAYCREST_API_KEY);
 export const liveLinqEnabled = Boolean(env.LINQ_OFFRAMP_API_KEY);
+/**
+ * Routes new non-Stellar orders to Linq's dedicated Linq-B2B offramp
+ * (/linq-b2b/offramp) instead of the shared /b2b/offramp: exact-naira payouts,
+ * a fee-inclusive quote, top-ups for short payments, and refunds only when an
+ * order is abandoned. Unset it to roll back; orders already created keep
+ * following the API they were created on.
+ */
+export const dedicatedOfframpEnabled = process.env.LINQ_DEDICATED_OFFRAMP === "true";
+/**
+ * Merchants routed to the dedicated offramp while LINQ_DEDICATED_OFFRAMP is
+ * off — comma-separated merchant ids. For testing in production with a test
+ * merchant before switching everyone over.
+ */
+const dedicatedOfframpMerchants = new Set(
+  (process.env.LINQ_DEDICATED_OFFRAMP_MERCHANTS ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean),
+);
+
+export function dedicatedOfframpFor(merchantId?: string) {
+  return dedicatedOfframpEnabled || (merchantId !== undefined && dedicatedOfframpMerchants.has(merchantId));
+}
 // POST /orders and GET /orders/{id} on the Stellar service now require
 // X-API-Key, so this is only true once both the URL and the key are set.
 export const stellarServiceEnabled = Boolean(env.STELLAR_SERVICE_URL && env.STELLAR_SERVICE_API_KEY);

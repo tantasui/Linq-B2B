@@ -99,9 +99,13 @@ export function merchantReceiptKind(order: OrderRecord): ReceiptKind {
     case "validated":
       return "merchant_fiat_received";
     case "refunded":
-      return "merchant_refund_completed";
+      // An unfinished order's refund is not a failed payout's.
+      return order.graceUntil && (order.amountRemaining ?? 0) > 0 ? "merchant_unpaid_refunded" : "merchant_refund_completed";
     case "expired":
       return "merchant_order_expired";
+    case "partially_paid":
+    case "awaiting_completion":
+      return "merchant_payment_incomplete";
     case "refunding":
     case "failed":
     case "cancelled":

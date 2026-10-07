@@ -102,6 +102,13 @@ create table if not exists orders (
   payout_reference text,
   refund_tx_hash text,
   refund_destination text,
+  -- Running amounts from Linq's dedicated offramp; crypto_amount_due stays the quote.
+  fee_usdc numeric(18, 8),
+  amount_received numeric(18, 8),
+  amount_remaining numeric(18, 8),
+  amount_refunded numeric(18, 8),
+  grace_until timestamptz,
+  requote_count integer,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -114,6 +121,12 @@ alter table orders add column if not exists status_reason text;
 alter table orders add column if not exists payout_reference text;
 alter table orders add column if not exists refund_tx_hash text;
 alter table orders add column if not exists refund_destination text;
+alter table orders add column if not exists fee_usdc numeric(18, 8);
+alter table orders add column if not exists amount_received numeric(18, 8);
+alter table orders add column if not exists amount_remaining numeric(18, 8);
+alter table orders add column if not exists amount_refunded numeric(18, 8);
+alter table orders add column if not exists grace_until timestamptz;
+alter table orders add column if not exists requote_count integer;
 
 create index if not exists orders_business_id_idx on orders(business_id);
 

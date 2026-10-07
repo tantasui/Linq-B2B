@@ -13,6 +13,8 @@ export const ORDER_STATUS_LABELS: Partial<Record<OrderStatus, string>> = {
   pending: "Awaiting Deposit",
   deposited: "Deposit Detected",
   initiated: "Awaiting Deposit",
+  partially_paid: "Partly Paid",
+  awaiting_completion: "Awaiting Completion",
   expired: "Payment Window Closed",
   failed: "Payout Failed",
   refunded: "Refunded",

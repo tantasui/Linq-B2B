@@ -27,7 +27,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Linq — Receive from anywhere. Settle in Naira.",
   description:
-    "Accept USDC, USDT and USDSUI across Sui, Base, BNB, Solana, Stellar and Tron. Payment links, deposit addresses and a receipt for every payment, settled to your Nigerian business account.",
+    "Accept USDC, USDT and USDSUI across Sui, Base, BNB, Solana and Stellar. Payment links, deposit addresses and a receipt for every payment, settled to your Nigerian business account.",
 };
 
 /**
