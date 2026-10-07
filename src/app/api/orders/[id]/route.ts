@@ -1,6 +1,6 @@
 import { fail, handleApiError, ok } from "@/server/http";
 import { liveLinqEnabled, stellarServiceEnabled } from "@/server/env";
-import { getLinqOrderStatus } from "@/server/linq-offramp";
+import { getLinqOrderStatus, isDedicatedOrder } from "@/server/linq-offramp";
 import { getStellarOrderStatus } from "@/server/linq-stellar";
 import { logger } from "@/server/logger";
 import { expireOrderIfDue } from "@/server/order-expiry";
@@ -25,11 +25,16 @@ export async function GET(_request: Request, { params }: Params) {
     const isStellar = order.network === "stellar";
     const providerEnabled = isStellar ? stellarServiceEnabled : liveLinqEnabled;
 
-    if (order.paycrestOrderId && providerEnabled && !TERMINAL.has(order.status)) {
+    // A dedicated-offramp order that expired unpaid is still watched by Linq
+    // for a week, and a late deposit reopens it — so it is not final here.
+    const dedicated = isDedicatedOrder(order);
+    const finished = TERMINAL.has(order.status) && !(dedicated && order.status === "expired");
+
+    if (order.paycrestOrderId && providerEnabled && !finished) {
       try {
         const remote = isStellar
           ? await getStellarOrderStatus(order.paycrestOrderId)
-          : await getLinqOrderStatus(order.paycrestOrderId);
+          : await getLinqOrderStatus(order.paycrestOrderId, { dedicated });
         const statusChanged = remote.status !== order.status;
         // The deposit digest appears once the payment is seen on-chain, which
         // does not always coincide with a status change — so it is saved on
@@ -39,7 +44,7 @@ export async function GET(_request: Request, { params }: Params) {
         // reference land on their own, and the notices and the refund screen
         // are written from them.
         const current = order;
-        const detail = detailFrom(remote);
+        const detail = { ...detailFrom(remote), ...("detail" in remote ? remote.detail : {}) };
         const detailArrived = Object.entries(detail).some(
           ([key, value]) => value !== current[key as keyof OrderRecord],
         );

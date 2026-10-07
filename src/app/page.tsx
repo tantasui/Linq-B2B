@@ -166,7 +166,6 @@ const RAIL_COINS = [
   { src: "/landing/art/rail-coin-2.svg", label: "Solana" },
   { src: "/landing/art/rail-coin-3.svg", label: "Base" },
   { src: "/landing/art/rail-coin-4.svg", label: "Stellar" },
-  { src: "/landing/art/rail-coin-5.svg", label: "Tron" },
 ];
 
 /**

@@ -15,7 +15,7 @@ import { CopyButton } from "@/components/ui/copy";
 import { Field, Input } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createOrder, getOrder, getPaycrestRate, getPaymentLink } from "@/lib/api-client";
+import { createOrder, getOrder, getPaycrestRate, getPaymentLink, requoteOrder } from "@/lib/api-client";
 import { buildStellarUsdcPayUri } from "@/lib/sep7";
 import { explorerName, explorerTxUrl, shortenHash } from "@/lib/explorer";
 import { ceilTo, formatTokenAmount } from "@/lib/money";
@@ -39,6 +39,8 @@ interface PaymentCheckoutProps {
   initialAmount?: number;
   currency: FiatCurrency;
   description?: string;
+  /** Reopens an existing order — the link in a reminder or "complete your payment" email. */
+  initialOrderId?: string;
 }
 
 const payerStorageKey = "linq:payer";
@@ -53,7 +55,36 @@ const EXPIRED_OR_DONE = ["settled", "refunded", "expired", "failed", "cancelled"
  * anything they do not recognise, and "we do not know" must read as "still
  * waiting" rather than as "your transfer is in".
  */
-const STILL_WAITING = ["initiated", "pending"];
+const STILL_WAITING = ["initiated", "pending", "partially_paid"];
+
+/**
+ * Orders on Linq's dedicated offramp carry their fee, and follow its rules:
+ * exact payouts, top-ups for short payments, refunds only when abandoned.
+ */
+function isDedicated(order: OrderRecord) {
+  return order.feeUsdc !== undefined && order.feeUsdc !== null;
+}
+
+/** A part-paid order the payer walked away from: what comes back is theirs, not a failed payout. */
+function isAbandonedPartial(order: OrderRecord) {
+  return Boolean(order.graceUntil) && (order.amountRemaining ?? 0) > 0;
+}
+
+function formatDeadline(iso?: string) {
+  return iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "";
+}
+
+/** What the payer should send now: the rest, once part has arrived. */
+function amountToSend(order: OrderRecord) {
+  return order.status === "partially_paid" && order.amountRemaining !== undefined
+    ? order.amountRemaining
+    : order.cryptoAmountDue;
+}
+
+/** What is coming back: what was refunded or received, not the quote, which may not have been paid. */
+function refundAmount(order: OrderRecord) {
+  return order.amountRefunded || order.amountReceived || order.cryptoAmountDue;
+}
 
 /**
  * How often the checkout asks the server where the order has got to.
@@ -93,6 +124,12 @@ function confirmationView(order: OrderRecord, merchantName: string) {
         title: "Payment successful",
         body: `Your transfer is confirmed and the payout to ${merchantName} has settled.`,
       };
+    case "awaiting_completion":
+      return {
+        tone: "complete" as const,
+        title: "Your payment is not finished",
+        body: `We received ${formatTokenAmount(order.amountReceived ?? 0)} of ${formatTokenAmount(order.cryptoAmountDue)} ${order.token}. Your funds are safe. Complete the payment${order.graceUntil ? ` by ${formatDeadline(order.graceUntil)}` : ""} — the rest is priced at today's rate — or it is refunded to the wallet it came from.`,
+      };
     case "expired":
       return {
         tone: "failed" as const,
@@ -113,6 +150,13 @@ function confirmationView(order: OrderRecord, merchantName: string) {
     // payment failed and offers them support is asking them to chase money
     // that is already on its way back.
     case "refunding":
+      if (isAbandonedPartial(order)) {
+        return {
+          tone: "refund" as const,
+          title: "Refund on the way",
+          body: `Your payment to ${merchantName} was not completed, so what you sent is being returned to the wallet it came from.`,
+        };
+      }
       return {
         tone: "refund" as const,
         title: "Refund on the way",
@@ -264,6 +308,7 @@ export function PaymentCheckout({
   mode,
   initialAmount = 0,
   description,
+  initialOrderId,
 }: PaymentCheckoutProps) {
   const [stage, setStage] = useState<Stage>(null);
   // Demo control, only ever rendered when the build has the demo switched on.
@@ -318,6 +363,17 @@ export function PaymentCheckout({
       .catch(() => undefined)
       .finally(() => setLoading(false));
   }, [linkId]);
+
+  // Opened from an email: pick the order back up where it is.
+  useEffect(() => {
+    if (!initialOrderId) return;
+    getOrder(initialOrderId)
+      .then(({ order: existing }) => {
+        setOrder(existing);
+        setStage(STILL_WAITING.includes(existing.status) ? "transfer" : "status");
+      })
+      .catch(() => undefined);
+  }, [initialOrderId]);
 
   // Keep the selected token valid for the selected network (USDSUI is Sui-only).
   useEffect(() => {
@@ -445,6 +501,23 @@ export function PaymentCheckout({
       setStage("transfer");
     } catch (caught) {
       setFormError(caught instanceof Error ? caught.message : "Could not create the order.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // "Complete payment" on a part-paid order whose window closed: the rest is
+  // priced at today's rate and the transfer sheet comes back with a new window.
+  const completePayment = async () => {
+    if (!order) return;
+    setBusy(true);
+    setFormError("");
+    try {
+      const { order: requoted } = await requoteOrder(order.id);
+      setOrder(requoted);
+      setStage(STILL_WAITING.includes(requoted.status) ? "transfer" : "status");
+    } catch (caught) {
+      setFormError(caught instanceof Error ? caught.message : "Could not reopen this payment.");
     } finally {
       setBusy(false);
     }
@@ -672,7 +745,12 @@ export function PaymentCheckout({
       >
         <p className="tnum u-display text-center text-4xl">{formatNaira(value)}</p>
         <p className="tnum mt-2 text-center text-sm text-text-muted">
-          {formatTokenAmount(cryptoDue)} {token}
+          ≈ {formatTokenAmount(cryptoDue)} {token}
+        </p>
+        {/* An estimate at the market rate. The quote on the next step is the
+            figure to send, with any fee shown in it. */}
+        <p className="mt-1 text-center text-xs text-text-subtle">
+          The exact amount, including any fee, is shown on the next step.
         </p>
 
         <dl className="mt-7 divide-y divide-line rounded-lg bg-surface-2 px-4">
@@ -731,13 +809,50 @@ export function PaymentCheckout({
       <Sheet open={stage === "transfer" && Boolean(order)} onClose={() => setStage(null)} title="Send payment">
         {order ? (
           <>
-            <p className="tnum text-center text-sm text-text-muted">
-              Send exactly {formatTokenAmount(order.cryptoAmountDue)} {order.token} on{" "}
-              {chainDisplayName(order.network)}
-            </p>
-            <p className="mt-1 text-center text-xs text-text-subtle">
-              Send less and the payout follows what actually arrives.
-            </p>
+            {order.status === "partially_paid" ? (
+              <>
+                <p className="tnum text-center text-sm text-text-muted">
+                  Send the remaining {formatTokenAmount(order.amountRemaining ?? 0)} {order.token} on{" "}
+                  {chainDisplayName(order.network)}
+                </p>
+                <p className="mt-1 text-center text-xs text-text-subtle">
+                  We received {formatTokenAmount(order.amountReceived ?? 0)} of{" "}
+                  {formatTokenAmount(order.cryptoAmountDue)} {order.token}. Send the rest to the same
+                  address — no new address is needed.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="tnum text-center text-sm text-text-muted">
+                  Send exactly {formatTokenAmount(order.cryptoAmountDue)} {order.token} on{" "}
+                  {chainDisplayName(order.network)}
+                </p>
+                {isDedicated(order) ? null : (
+                  <p className="mt-1 text-center text-xs text-text-subtle">
+                    Send less and the payout follows what actually arrives.
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* The fee, printed. The quote is one figure to send, but the payer
+                is shown what in it is the payment and what is ours. */}
+            {isDedicated(order) && (order.feeUsdc ?? 0) > 0 ? (
+              <dl className="mt-4 divide-y divide-line rounded-lg bg-surface-2 px-4 text-xs">
+                {[
+                  ["Payment", order.cryptoAmountDue - (order.feeUsdc ?? 0)],
+                  ["Fee", order.feeUsdc ?? 0],
+                  ["Total", order.cryptoAmountDue],
+                ].map(([label, figure]) => (
+                  <div key={label} className="flex justify-between gap-4 py-2.5">
+                    <dt className="text-text-muted">{label}</dt>
+                    <dd className="tnum font-medium">
+                      {formatTokenAmount(Number(figure))} {order.token}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
 
             {expired ? (
               <div className="mt-5 rounded-lg bg-danger-soft p-4 text-center ring-1 ring-inset ring-danger/15">
@@ -796,9 +911,9 @@ export function PaymentCheckout({
                     separators, which wallets reject. */}
                 <div className="mt-2 flex items-center gap-2 rounded-full bg-surface-2 py-1 pl-4 pr-1 ring-1 ring-inset ring-line">
                   <code className="tnum min-w-0 flex-1 truncate font-mono text-xs text-text-muted">
-                    {formatTokenAmount(order.cryptoAmountDue)} {order.token}
+                    {formatTokenAmount(amountToSend(order))} {order.token}
                   </code>
-                  <CopyButton value={String(ceilTo(order.cryptoAmountDue))} label="Amount" />
+                  <CopyButton value={String(ceilTo(amountToSend(order)))} label="Amount" />
                 </div>
               </>
             ) : (
@@ -816,19 +931,30 @@ export function PaymentCheckout({
             <div className="mt-6">
               <SegmentedBar
                 label={
-                  STILL_WAITING.includes(order.status)
+                  order.status === "partially_paid"
+                    ? "Waiting for the remaining amount"
+                    : STILL_WAITING.includes(order.status)
                     ? "Waiting for your deposit"
                     : ORDER_STATUS_LABELS[order.status] ?? `Status: ${order.status}`
                 }
               />
             </div>
 
-            <p className="mt-5 text-xs leading-5 text-text-muted">
-              Only send {order.token} on {chainDisplayName(order.network)}. Sending the exact
-              amount above pays {formatNaira(order.amountNgn)} to the merchant; anything
-              short is converted at the same rate. This screen updates on its own once the deposit
-              lands.
-            </p>
+            {isDedicated(order) ? (
+              <p className="mt-5 text-xs leading-5 text-text-muted">
+                Only send {order.token} on {chainDisplayName(order.network)}. The full amount pays{" "}
+                {formatNaira(order.amountNgn)} to the merchant. If less arrives, this page asks for
+                the rest; anything over $0.50 extra is sent back to you. This screen updates on its
+                own once the deposit lands.
+              </p>
+            ) : (
+              <p className="mt-5 text-xs leading-5 text-text-muted">
+                Only send {order.token} on {chainDisplayName(order.network)}. Sending the exact
+                amount above pays {formatNaira(order.amountNgn)} to the merchant; anything
+                short is converted at the same rate. This screen updates on its own once the deposit
+                lands.
+              </p>
+            )}
           </>
         ) : null}
       </Sheet>
@@ -854,6 +980,10 @@ export function PaymentCheckout({
                   <div className="px-2 pb-2 pt-4 text-center">
                     {view.tone === "pending" ? (
                       <LinqLoader size={44} className="mx-auto" />
+                    ) : view.tone === "complete" ? (
+                      <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-surface-2 ring-1 ring-inset ring-line">
+                        <Wallet className="h-6 w-6 text-text-muted" />
+                      </span>
                     ) : view.tone === "refund" ? (
                       // A refund in flight is still work in progress, and a
                       // warning triangle over it reads as "something is wrong
@@ -880,7 +1010,7 @@ export function PaymentCheckout({
                         <div className="rounded-lg bg-surface-2 px-4 py-3 ring-1 ring-inset ring-line">
                           <span className="block text-[11px] text-text-muted">Refund amount</span>
                           <span className="tnum block font-mono text-sm text-text">
-                            {formatTokenAmount(order.cryptoAmountDue)} {order.token}
+                            {formatTokenAmount(refundAmount(order))} {order.token}
                           </span>
                         </div>
                         {order.refundDestination ? (
@@ -947,7 +1077,18 @@ export function PaymentCheckout({
                   </p>
                 ) : null}
 
-                {view.tone === "failed" ? (
+                {view.tone === "complete" ? (
+                  <>
+                    {formError ? (
+                      <p className="linq-fade-in mt-4 rounded-md bg-danger-soft px-4 py-3 text-xs ring-1 ring-inset ring-danger/20 text-danger">
+                        {formError}
+                      </p>
+                    ) : null}
+                    <Button size="lg" className="mt-5 w-full" loading={busy} onClick={completePayment}>
+                      Complete payment
+                    </Button>
+                  </>
+                ) : view.tone === "failed" ? (
                   <a
                     href={`mailto:support@linq.xyz?subject=Order ${order.paycrestOrderId ?? order.id}`}
                     className={cn(

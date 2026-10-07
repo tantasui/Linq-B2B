@@ -3,6 +3,8 @@ export type LinkMode = "open" | "fixed" | "static";
 export type LinkStatus = "active" | "paused" | "archived";
 export type OrderStatus =
   | "initiated"
+  | "partially_paid"
+  | "awaiting_completion"
   | "deposited"
   | "pending"
   | "fulfilling"
@@ -112,6 +114,18 @@ export interface OrderRecord {
   /** Where that refund was sent — the payer's own address unless they named another. */
   refundDestination?: string;
   validUntil?: string;
+  /**
+   * Running amounts from Linq's dedicated offramp. cryptoAmountDue stays the
+   * quote (what the payer was asked for); these say what has arrived, what is
+   * still owed, and what went back.
+   */
+  feeUsdc?: number;
+  amountReceived?: number;
+  amountRemaining?: number;
+  amountRefunded?: number;
+  /** End of the window to complete a part-paid order before it is refunded. */
+  graceUntil?: string;
+  requoteCount?: number;
   status: OrderStatus;
   paycrestPayload?: unknown;
   createdAt: string;
@@ -160,12 +174,24 @@ export type ReceiptKind =
   | "payer_refund_started"
   | "payer_refund_completed"
   | "payer_order_expired"
+  // Payer, dedicated offramp: a short payment, the reminders to top it up,
+  // the link to complete it after the window closes, and the refund if they
+  // never do.
+  | "payer_partial_received"
+  | "payer_topup_reminder_1"
+  | "payer_topup_reminder_2"
+  | "payer_complete_payment"
+  | "payer_complete_payment_reminder"
+  | "payer_unpaid_refund_started"
+  | "payer_unpaid_refund_completed"
   // Merchant, in lifecycle order.
   | "merchant_payment_incoming"
   | "merchant_fiat_received"
   | "merchant_payout_failed"
   | "merchant_refund_completed"
   | "merchant_order_expired"
+  | "merchant_payment_incomplete"
+  | "merchant_unpaid_refunded"
   // Merchant wallet activity, which is not part of an order's lifecycle.
   | "merchant_linq_refund"
   | "merchant_wallet_incoming";

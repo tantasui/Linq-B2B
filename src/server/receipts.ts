@@ -52,6 +52,8 @@ interface NoticeCopy {
   statusLabel: string;
   /** Whether the ticket gets its checkmark. Only for money that has landed. */
   settled: boolean;
+  /** A button under the summary, for notices that ask the payer to do something. */
+  action?: { label: string; url: string };
 }
 
 /** The merchant's payout account for this order, described without exposing it. */
@@ -84,10 +86,30 @@ function because(ctx: NoticeContext) {
  * `merchant_fiat_received` did — told merchants their money had arrived while
  * the payout had not yet been attempted, and sometimes went on to fail.
  */
+/** Where a payer goes back to pay: the order's own checkout, which survives a closed tab. */
+function checkoutUrl(order: OrderRecord | undefined) {
+  const base = env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  return base && order ? `${base}/pay/order/${order.id}` : undefined;
+}
+
+function checkoutAction(order: OrderRecord | undefined, label: string) {
+  const url = checkoutUrl(order);
+  return url ? { action: { label, url } } : {};
+}
+
+/** A payment window's closing time, as a payer reads it. */
+function closesAt(iso: string | undefined) {
+  if (!iso) return "soon";
+  return new Date(iso).toLocaleString("en-NG", { timeStyle: "short", dateStyle: "medium", timeZone: "Africa/Lagos" });
+}
+
 function noticeCopy(kind: ReceiptKind, ctx: NoticeContext): NoticeCopy {
   const order = ctx.order;
   const amount = order ? formatNaira(order.amountNgn) : "";
   const crypto = order ? `${formatTokenAmount(order.cryptoAmountDue)} ${order.token}` : "";
+  const received = order ? `${formatTokenAmount(order.amountReceived ?? 0)} ${order.token}` : "";
+  const remaining = order ? `${formatTokenAmount(order.amountRemaining ?? 0)} ${order.token}` : "";
+  const refunded = order ? `${formatTokenAmount(order.amountRefunded ?? order.amountReceived ?? 0)} ${order.token}` : "";
   const merchantName = ctx.merchant.businessName || "the merchant";
 
   switch (kind) {
@@ -146,6 +168,57 @@ function noticeCopy(kind: ReceiptKind, ctx: NoticeContext): NoticeCopy {
         summary: `The window to send ${crypto} closed before a deposit arrived, and nothing was charged. If you have already sent funds, do not send again — late deposits are held safely and reconciled by hand. Reply to this email with the reference below.`,
       };
 
+    case "payer_partial_received":
+      return {
+        subject: `Part of your payment arrived — ${remaining} still to send`,
+        title: "Payment incomplete",
+        headline: `Send the remaining ${remaining}`,
+        statusLabel: "Partly paid",
+        settled: false,
+        summary: `We received ${received} of the ${crypto} needed for your ${amount} payment to ${merchantName}. Send the remaining ${remaining} to the same address, on the same network, before ${closesAt(order?.validUntil)}. Nothing is paid out until the full amount arrives.`,
+        ...checkoutAction(order, "Finish paying"),
+      };
+    case "payer_topup_reminder_1":
+    case "payer_topup_reminder_2":
+      return {
+        subject: `Reminder: ${remaining} still to send to ${merchantName}`,
+        title: "Payment incomplete",
+        headline: `${remaining} still to send`,
+        statusLabel: "Partly paid",
+        settled: false,
+        summary: `Your ${amount} payment to ${merchantName} is still ${remaining} short. Send it to the same address before ${closesAt(order?.validUntil)} and the payment completes — you do not need a new address.`,
+        ...checkoutAction(order, "Finish paying"),
+      };
+    case "payer_complete_payment":
+    case "payer_complete_payment_reminder":
+      return {
+        subject: `Complete your payment to ${merchantName}`,
+        title: "Payment incomplete",
+        headline: "Your payment is not finished",
+        statusLabel: "Awaiting completion",
+        settled: false,
+        summary: `The payment window closed with ${received} of the ${crypto} received. Your funds are safe. Complete the payment by ${closesAt(order?.graceUntil)} — we will price the rest at today's rate — or it will be refunded to the wallet it came from.`,
+        ...checkoutAction(order, "Complete payment"),
+      };
+    case "payer_unpaid_refund_started":
+      return {
+        subject: `Your ${received} is being refunded`,
+        title: "Refund started",
+        headline: "Your refund is on its way",
+        statusLabel: "Refund in progress",
+        settled: false,
+        summary: `Your ${amount} payment to ${merchantName} was not completed, so the ${received} you sent is going back to the wallet it came from. Nothing further is needed from you.`,
+      };
+    case "payer_unpaid_refund_completed":
+      return {
+        subject: `Refunded — ${refunded} is back in your wallet`,
+        title: "Refund receipt",
+        headline: "Your refund has been sent",
+        statusLabel: "Refunded",
+        settled: true,
+        summary: `${refunded} has been returned${order?.refundDestination ? ` to ${shortAddress(order.refundDestination)}` : ""} because the payment to ${merchantName} was not completed. Amounts under $0.50 cost more to send than they are worth and are not returned.`,
+      };
+
     case "merchant_payment_incoming":
       return {
         subject: `Payment received — ${amount} payout in progress`,
@@ -192,6 +265,25 @@ function noticeCopy(kind: ReceiptKind, ctx: NoticeContext): NoticeCopy {
         summary: `The window for a ${amount} order closed before any deposit arrived, so no money moved in either direction. Nothing is owed to you and nothing was charged to the customer.`,
       };
 
+    case "merchant_payment_incomplete":
+      return {
+        subject: `A ${amount} payment is incomplete`,
+        title: "Payment incomplete",
+        headline: "A customer paid only part of an order",
+        statusLabel: "Awaiting completion",
+        settled: false,
+        summary: `${order?.payerName || "A customer"} sent ${received} of the ${crypto} for a ${amount} order before the window closed. We have asked them to complete it by ${closesAt(order?.graceUntil)}. Nothing is paid out until it is complete; if it is not, their funds are returned.`,
+      };
+    case "merchant_unpaid_refunded":
+      return {
+        subject: `Incomplete ${amount} order refunded`,
+        title: "Order refunded",
+        headline: "An incomplete payment was returned",
+        statusLabel: "Refunded to customer",
+        settled: false,
+        summary: `The customer did not complete a ${amount} order, so what they sent has been returned to them. Nothing is owed to you and nothing further will arrive for this order.`,
+      };
+
     case "merchant_linq_refund":
       return {
         subject: "A LinqSwitch refund reached your wallet",
@@ -227,6 +319,12 @@ function noticeCopy(kind: ReceiptKind, ctx: NoticeContext): NoticeCopy {
  * that matter.
  */
 const ORDER_NOTICES: Partial<Record<OrderStatus, { kind: ReceiptKind; audience: ReceiptAudience }[]>> = {
+  // Short. Only the payer can fix it; the merchant hears if the window closes.
+  partially_paid: [{ kind: "payer_partial_received", audience: "payer" }],
+  awaiting_completion: [
+    { kind: "payer_complete_payment", audience: "payer" },
+    { kind: "merchant_payment_incomplete", audience: "merchant" },
+  ],
   // The payer's money has landed. Nobody has been paid yet, and neither notice
   // may imply otherwise.
   deposited: [
@@ -271,6 +369,49 @@ const ORDER_NOTICES: Partial<Record<OrderStatus, { kind: ReceiptKind; audience: 
     { kind: "merchant_order_expired", audience: "merchant" },
   ],
 };
+
+/**
+ * A refund of an order the payer never finished is not a failed payout, and
+ * must not be described as one: no payout was attempted. Those orders carry a
+ * grace deadline and still owe part of the quote.
+ */
+function isAbandonedPartial(order: OrderRecord) {
+  return Boolean(order.graceUntil) && (order.amountRemaining ?? 0) > 0;
+}
+
+function noticesFor(order: OrderRecord) {
+  if (isAbandonedPartial(order)) {
+    if (order.status === "refunding") {
+      return [{ kind: "payer_unpaid_refund_started", audience: "payer" }] as const;
+    }
+    if (order.status === "refunded") {
+      return [
+        { kind: "payer_unpaid_refund_completed", audience: "payer" },
+        { kind: "merchant_unpaid_refunded", audience: "merchant" },
+      ] as const;
+    }
+  }
+  return ORDER_NOTICES[order.status] ?? [];
+}
+
+/** The reminder each dedicated-offramp `order.reminder` webhook asks for. */
+const REMINDER_KINDS: Record<number, ReceiptKind> = {
+  1: "payer_topup_reminder_1",
+  2: "payer_topup_reminder_2",
+  4: "payer_complete_payment_reminder",
+};
+
+/**
+ * Sends a payment reminder. Reminders are timed by Linq — this app has no
+ * scheduler — and arrive as `order.reminder` webhooks naming which one.
+ */
+export async function notifyReminder(order: OrderRecord, reminder: number) {
+  const kind = REMINDER_KINDS[reminder];
+  if (!kind || !order.payerEmail) return undefined;
+  const merchant = await getMerchant(order.businessId);
+  if (!merchant) throw new Error("Merchant not found for reminder.");
+  return createAndSendReceipt({ kind, audience: "payer", order, merchant, recipientEmail: order.payerEmail });
+}
 
 function receiptNumber(kind: ReceiptKind, id: string) {
   // The prefix is what someone reads out over the phone, so it names the kind
@@ -423,6 +564,7 @@ function receiptHtml(view: ReturnType<typeof buildReceiptView>, image: Awaited<R
     </div>
 
     <p style="max-width:380px;margin:20px auto 0;text-align:center;color:#E9DFFB;font-size:12px;line-height:1.6;">${esc(view.copy.summary)}</p>
+    ${view.copy.action ? `<p style="max-width:380px;margin:16px auto 0;text-align:center;"><a href="${esc(view.copy.action.url)}" style="display:inline-block;background:#ffffff;color:#6d28d9;font-weight:700;font-size:14px;padding:12px 22px;border-radius:999px;text-decoration:none;">${esc(view.copy.action.label)}</a></p>` : ""}
   </body>
 </html>`;
 }
@@ -562,7 +704,7 @@ export async function notifyForOrderStatus(order: OrderRecord) {
   const merchant = await getMerchant(order.businessId);
   if (!merchant) throw new Error("Merchant not found for receipt notification.");
 
-  const owed = ORDER_NOTICES[order.status] ?? [];
+  const owed = noticesFor(order);
   if (owed.length === 0) return [];
 
   const notices: ReceiptRecord[] = [];

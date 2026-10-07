@@ -136,6 +136,11 @@ export function createOrder(input: {
   });
 }
 
+/** "Complete your payment": prices the rest of a part-paid order at today's rate. */
+export function requoteOrder(id: string) {
+  return api<{ order: OrderRecord }>(`/api/orders/${encodeURIComponent(id)}/requote`, { method: "POST" });
+}
+
 export function retryTransfer(id: string) {
   return api<{ message: string }>(`/api/orders/${encodeURIComponent(id)}/retry-transfer`, {
     method: "POST",

@@ -15,6 +15,8 @@ type Tone = "neutral" | "positive" | "negative" | "progress";
 
 const TONES: Record<OrderStatus, Tone> = {
   initiated: "neutral",
+  partially_paid: "progress",
+  awaiting_completion: "progress",
   deposited: "progress",
   pending: "progress",
   fulfilling: "progress",

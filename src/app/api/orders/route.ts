@@ -93,7 +93,15 @@ export async function POST(request: Request) {
       const result =
         chain.id === "stellar"
           ? await createStellarOrder({ idempotencyKey, amountNgn, bank, payerName: input.payerName })
-          : await createLinqOrder({ idempotencyKey, amountNgn, token, network: chain.id, bank, payerName: input.payerName });
+          : await createLinqOrder({
+              idempotencyKey,
+              amountNgn,
+              token,
+              network: chain.id,
+              bank,
+              payerName: input.payerName,
+              merchantRef: merchant.id,
+            });
       order = await updateOrder(order.id, {
         quotedRate: result.quotedRate,
         cryptoAmountDue: result.cryptoAmountDue,
@@ -111,6 +119,8 @@ export async function POST(request: Request) {
         // no equivalent, and those orders keep falling back to a locally built
         // one at the checkout.
         ...("paymentUri" in result && result.paymentUri ? { paymentUri: result.paymentUri } : {}),
+        // The dedicated offramp's quote breakdown and running amounts.
+        ...("detail" in result ? result.detail : {}),
         paycrestPayload: result.raw,
       }) ?? order;
       await addOrderEvent(order.id, "app", `order.created.${result.status}`, result.raw);
