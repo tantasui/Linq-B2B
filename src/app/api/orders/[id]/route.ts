@@ -1,5 +1,6 @@
 import { fail, handleApiError, ok } from "@/server/http";
 import { liveLinqEnabled, stellarServiceEnabled } from "@/server/env";
+import { reportStellarOrderToLinq } from "@/server/linq-directory";
 import { getLinqOrderStatus, isDedicatedOrder } from "@/server/linq-offramp";
 import { getStellarOrderStatus } from "@/server/linq-stellar";
 import { logger } from "@/server/logger";
@@ -59,6 +60,7 @@ export async function GET(_request: Request, { params }: Params) {
         }
         if (statusChanged) {
           await addOrderEvent(order.id, "linq", `order.refresh.${remote.status}`, remote.raw);
+          if (isStellar) await reportStellarOrderToLinq(order.id);
 
           // Receipts are sent from here, not only from the provider webhooks.
           //

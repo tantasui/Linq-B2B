@@ -59,6 +59,11 @@ async function requestLinq<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+/** PUT a JSON body to Linq's dedicated offramp API, as this deployment's business. */
+export function putLinq<T>(path: string, body: unknown) {
+  return requestLinq<T>(path, { method: "PUT", body: JSON.stringify(body) });
+}
+
 export async function getLinqRate() {
   return cached("linq:rate:sui:ngn", 60, async () => {
     const response = await fetch(`${env.LINQ_OFFRAMP_API_URL}/b2b/rate`, { cache: "no-store" });

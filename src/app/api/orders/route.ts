@@ -1,5 +1,6 @@
 import { chainSupportsToken, getChain } from "@/lib/chains";
 import { fail, handleApiError, ok } from "@/server/http";
+import { reportStellarOrderToLinq } from "@/server/linq-directory";
 import { createLinqOrder } from "@/server/linq-offramp";
 import { createStellarOrder } from "@/server/linq-stellar";
 import { DEPOSIT_WINDOW_MS, expireOrderIfDue } from "@/server/order-expiry";
@@ -125,6 +126,9 @@ export async function POST(request: Request) {
         paycrestPayload: result.raw,
       }) ?? order;
       await addOrderEvent(order.id, "app", `order.created.${result.status}`, result.raw);
+      // Linq never sees a Stellar order — linq-stellar settles it — so it is
+      // reported, to keep the merchant's volume on Linq's dashboard whole.
+      if (chain.id === "stellar") await reportStellarOrderToLinq(order.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Order creation failed.";
       await updateOrder(order.id, { status: "failed", paycrestPayload: { error: message } });
