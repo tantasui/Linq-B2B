@@ -101,6 +101,7 @@ export async function POST(request: Request) {
               bank,
               payerName: input.payerName,
               merchantRef: merchant.id,
+              merchantName: merchant.businessName,
             });
       order = await updateOrder(order.id, {
         quotedRate: result.quotedRate,

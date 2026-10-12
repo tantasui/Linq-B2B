@@ -110,6 +110,8 @@ export async function createLinqOrder(input: {
   refundAddress?: string;
   /** Our merchant's id, so Linq can report volume and revenue per merchant. */
   merchantRef?: string;
+  /** The merchant's business name, so Linq's dashboard lists merchants by name, not id. */
+  merchantName?: string;
 }) {
   const dedicated = dedicatedOfframpFor(input.merchantRef);
   logger.info("linq.offramp_route", {
@@ -397,6 +399,7 @@ async function createDedicatedOrder(input: Parameters<typeof createLinqOrder>[0]
       ...(input.refundAddress ? { refundAddress: input.refundAddress } : {}),
       customerRef: `linq-${input.idempotencyKey}`,
       ...(input.merchantRef ? { merchantRef: input.merchantRef } : {}),
+      ...(input.merchantName ? { merchantName: input.merchantName } : {}),
       idempotencyKey: input.idempotencyKey,
     }),
   });
