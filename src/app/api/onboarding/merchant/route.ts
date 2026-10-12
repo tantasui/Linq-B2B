@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleApiError, ok } from "@/server/http";
+import { reportMerchantToLinq } from "@/server/linq-directory";
 import { verifyBankAccount } from "@/server/paycrest";
 import { makeSlug } from "@/server/security";
 import { createSessionToken, verifyEmailProofToken } from "@/server/session";
@@ -64,6 +65,9 @@ export async function POST(request: Request) {
         tokenSupport: wallet.tokenSupport,
       })),
     });
+    // So Linq's admin dashboard lists them from the day they join, not from
+    // their first order. Awaited (serverless), and it never throws.
+    if (merchant) await reportMerchantToLinq(merchant);
     return ok({ merchant, bankVerification: verification, sessionToken: createSessionToken(merchant) });
   } catch (error) {
     return handleApiError(error);

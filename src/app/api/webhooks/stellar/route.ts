@@ -1,4 +1,5 @@
 import { fail, handleApiError, ok } from "@/server/http";
+import { reportStellarOrderToLinq } from "@/server/linq-directory";
 import { normalizeStellarStatus } from "@/server/linq-stellar";
 import { logger } from "@/server/logger";
 import { notifyForOrderStatus } from "@/server/receipts";
@@ -107,6 +108,7 @@ export async function POST(request: Request) {
       })) ?? order;
     }
     await addOrderEvent(order.id, "linq", payload.event ?? `order.${status}`, payload);
+    if (statusChanged && !alreadyFinished) await reportStellarOrderToLinq(order.id);
 
     // Receipts are idempotent per (order, kind, audience, recipient), so a
     // retried delivery does not email anyone twice. The status reported is the

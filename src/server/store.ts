@@ -675,3 +675,77 @@ export async function listWalletIncoming(businessId: string) {
 export function formatNaira(value: number) {
   return formatCurrency(value, "NGN");
 }
+
+// ─── What Linq is told about (see linq-directory.ts) ─────────────────────────
+
+export interface MerchantDirectoryEntry {
+  ref: string;
+  name: string;
+  email: string;
+  joinedAt: string;
+}
+
+/** Every merchant business, for Linq's admin dashboard. */
+export async function listMerchantDirectory(): Promise<MerchantDirectoryEntry[]> {
+  if (!databaseEnabled) return [];
+  const result = await queryDb<Row>("select id, business_name, email, created_at from merchant_businesses order by created_at");
+  return (result?.rows ?? []).map((row) => ({
+    ref: row.id,
+    name: row.business_name,
+    email: row.email,
+    joinedAt: toIso(row.created_at),
+  }));
+}
+
+export interface ExternalOrderReport {
+  id: string;
+  merchantRef: string;
+  chain: string;
+  coin: string;
+  amountNGN: number;
+  amountUsdc: number;
+  status: string;
+  accountName: string;
+  bankName: string;
+  createdAt: string;
+}
+
+/**
+ * Orders settled outside Linq's dedicated offramp — Stellar, which linq-stellar
+ * settles — in the shape Linq records them. One order, or all of them.
+ */
+export async function listExternalOrderReports(orderId?: string): Promise<ExternalOrderReport[]> {
+  if (!databaseEnabled) return [];
+  const result = await queryDb<Row>(
+    `select o.id, o.business_id, o.network, o.token, o.amount_ngn, o.crypto_amount_due, o.status, o.created_at,
+            b.resolved_account_name, b.institution_name
+       from orders o
+       left join bank_accounts b on b.id = o.bank_account_id
+      where o.network = 'stellar' and ($1::text is null or o.id::text = $1)
+      order by o.created_at`,
+    [orderId ?? null],
+  );
+  return (result?.rows ?? []).map((row) => ({
+    id: row.id,
+    merchantRef: row.business_id,
+    chain: row.network,
+    coin: String(row.token ?? "usdc").toLowerCase(),
+    amountNGN: Number(row.amount_ngn),
+    amountUsdc: Number(row.crypto_amount_due),
+    status: row.status,
+    accountName: row.resolved_account_name ?? "",
+    bankName: row.institution_name ?? "",
+    createdAt: toIso(row.created_at),
+  }));
+}
+
+export async function linqSyncDone(key: string) {
+  if (!databaseEnabled) return false;
+  const result = await queryDb<Row>("select 1 from linq_sync_state where key = $1", [key]);
+  return Boolean(result?.rows.length);
+}
+
+export async function markLinqSyncDone(key: string) {
+  if (!databaseEnabled) return;
+  await queryDb("insert into linq_sync_state (key) values ($1) on conflict (key) do nothing", [key]);
+}

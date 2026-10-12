@@ -7,6 +7,13 @@ export async function register() {
     const { runMigrations } = await import("./server/migrations");
     // Not awaited: a slow index build must not delay the server from
     // accepting traffic or passing its health check.
-    void runMigrations();
+    //
+    // Once the schema is current, tell Linq about our merchants and Stellar
+    // orders (linq-directory.ts). After the migrations, because it reads a
+    // table they create; also unawaited, and it never throws.
+    void runMigrations().then(async () => {
+      const { syncDirectoryToLinqAtBoot } = await import("./server/linq-directory");
+      await syncDirectoryToLinqAtBoot();
+    });
   }
 }

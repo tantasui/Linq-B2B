@@ -107,6 +107,17 @@ const REGISTRY: Migration[] = [
       "ALTER TABLE orders ADD COLUMN IF NOT EXISTS requote_count integer",
     ],
   },
+  {
+    // One-off jobs that push existing data to Linq (see linq-directory.ts)
+    // record here that they ran, so a boot does not repeat them.
+    id: "2026_10_12_linq_sync_state",
+    statements: [
+      `CREATE TABLE IF NOT EXISTS linq_sync_state (
+         key     text PRIMARY KEY,
+         done_at timestamptz NOT NULL DEFAULT now()
+       )`,
+    ],
+  },
 ];
 
 // Safe to call on every boot: already-applied migrations are skipped, and

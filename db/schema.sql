@@ -190,6 +190,12 @@ create table if not exists wallet_incoming (
 
 create index if not exists wallet_incoming_business_id_idx on wallet_incoming(business_id);
 
+-- One-off jobs that push existing data to Linq record here that they ran.
+create table if not exists linq_sync_state (
+  key text primary key,
+  done_at timestamptz not null default now()
+);
+
 -- Email one-time codes for merchant sign-in.
 -- Codes are stored hashed; a database dump must not yield working credentials.
 CREATE TABLE IF NOT EXISTS login_codes (
