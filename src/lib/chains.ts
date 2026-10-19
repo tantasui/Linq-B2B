@@ -131,16 +131,13 @@ export const CHAINS: ChainConfig[] = [
     name: "Tron",
     shortName: "TRX",
     family: "tron",
-    // Tron is USDT-only: Linq's Tron watcher tracks TRC20 USDT.
+    // Tron is USDT-only: Linq settles TRC20 USDT.
     tokens: ["USDT"],
     linqNetwork: "tron",
     hasWalletConnector: false,
     addressPattern: /^T[1-9A-HJ-NP-Za-km-z]{33}$/,
     color: "#EF0027",
-    // Off: Tron's gas is too expensive to sponsor on every order, and Linq's
-    // dedicated offramp does not settle it. Kept so existing Tron orders still
-    // render with the right name, logo and explorer.
-    enabled: false,
+    enabled: true,
   },
 ];
 
