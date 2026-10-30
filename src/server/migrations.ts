@@ -118,6 +118,12 @@ const REGISTRY: Migration[] = [
        )`,
     ],
   },
+  {
+    // The Linq Field agent code a merchant entered at signup. Also in
+    // db/schema.sql for fresh databases; this is what brings existing ones up.
+    id: "2026_10_30_merchant_agent_code",
+    statements: ["ALTER TABLE merchant_businesses ADD COLUMN IF NOT EXISTS agent_code text"],
+  },
 ];
 
 // Safe to call on every boot: already-applied migrations are skipped, and

@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       merchantName: input.merchantName,
       businessEmail: input.businessEmail,
       location: input.location,
+      agentCode: input.agentCode,
       bankAccounts: [
         {
           id: makeSlug("bank"),

@@ -107,6 +107,7 @@ function mapMerchant(row: Row, banks: BankAccountRecord[], wallets: MerchantWall
     merchantName: row.merchant_name,
     businessEmail: row.email,
     location: row.location ?? undefined,
+    agentCode: row.agent_code ?? undefined,
     onboardingStatus: row.onboarding_status,
     bankAccounts: banks,
     wallets,
@@ -273,9 +274,11 @@ export async function upsertMerchant(input: Omit<MerchantRecord, "id" | "onboard
         ? "complete"
         : "bank_verified"
       : "started";
+    // agent_code is written on the first insert only: a repeat onboarding
+    // must not set or change it, so it is left out of the update below.
     const business = await queryDb<Row>(
-      `insert into merchant_businesses (user_id, business_name, merchant_name, email, location, onboarding_status, updated_at)
-       values ($1, $2, $3, $4, $5, $6, now())
+      `insert into merchant_businesses (user_id, business_name, merchant_name, email, location, onboarding_status, agent_code, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, now())
        on conflict (user_id) do update set
          business_name = excluded.business_name,
          merchant_name = excluded.merchant_name,
@@ -284,7 +287,7 @@ export async function upsertMerchant(input: Omit<MerchantRecord, "id" | "onboard
          onboarding_status = excluded.onboarding_status,
          updated_at = now()
        returning *`,
-      [userId, input.businessName, input.merchantName, input.businessEmail, input.location ?? null, onboardingStatus],
+      [userId, input.businessName, input.merchantName, input.businessEmail, input.location ?? null, onboardingStatus, input.agentCode ?? null],
     );
     const businessId = business?.rows[0]?.id;
     for (const bank of input.bankAccounts) {
@@ -331,6 +334,7 @@ export async function upsertMerchant(input: Omit<MerchantRecord, "id" | "onboard
     merchantName: input.merchantName,
     businessEmail: input.businessEmail,
     location: input.location,
+    agentCode: existing ? existing.agentCode : input.agentCode,
     onboardingStatus: bankAccounts.some((bank) => bank.verificationStatus === "verified")
       ? wallets.length
         ? "complete"

@@ -1,3 +1,4 @@
+import { AGENT_CODE_MAX_LENGTH, normalizeAgentCode } from "@/lib/agent-code";
 import { z } from "zod";
 
 const text = (max = 120) =>
@@ -46,6 +47,14 @@ export const merchantOnboardingSchema = z.object({
   merchantName: text(120),
   businessEmail: emailSchema,
   location: z.string().trim().max(180).optional(),
+  // Optional, and never refused for being unknown: it is saved as typed, only
+  // tidied, and Linq reports codes it doesn't recognise. Blank means none.
+  agentCode: z
+    .string()
+    .max(80)
+    .transform((value) => normalizeAgentCode(value) || undefined)
+    .pipe(z.string().max(AGENT_CODE_MAX_LENGTH).optional())
+    .optional(),
   bank: z.object({
     institutionCode: institutionCodeSchema,
     institutionName: z.string().trim().max(120).optional(),

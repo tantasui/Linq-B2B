@@ -21,6 +21,8 @@ create table if not exists merchant_businesses (
   email text not null,
   location text,
   onboarding_status text not null default 'started',
+  -- Linq Field agent code entered at signup (LQ-TOLU). Set once, never by the merchant afterwards.
+  agent_code text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
