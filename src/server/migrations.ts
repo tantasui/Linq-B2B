@@ -124,6 +124,12 @@ const REGISTRY: Migration[] = [
     id: "2026_10_30_merchant_agent_code",
     statements: ["ALTER TABLE merchant_businesses ADD COLUMN IF NOT EXISTS agent_code text"],
   },
+  {
+    // The business phone a merchant may give at signup, so Linq Field can
+    // match them to an agent's lead by phone. Also in db/schema.sql.
+    id: "2026_11_02_merchant_phone",
+    statements: ["ALTER TABLE merchant_businesses ADD COLUMN IF NOT EXISTS phone text"],
+  },
 ];
 
 // Safe to call on every boot: already-applied migrations are skipped, and

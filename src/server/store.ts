@@ -108,6 +108,7 @@ function mapMerchant(row: Row, banks: BankAccountRecord[], wallets: MerchantWall
     businessEmail: row.email,
     location: row.location ?? undefined,
     agentCode: row.agent_code ?? undefined,
+    phone: row.phone ?? undefined,
     onboardingStatus: row.onboarding_status,
     bankAccounts: banks,
     wallets,
@@ -275,19 +276,21 @@ export async function upsertMerchant(input: Omit<MerchantRecord, "id" | "onboard
         : "bank_verified"
       : "started";
     // agent_code is written on the first insert only: a repeat onboarding
-    // must not set or change it, so it is left out of the update below.
+    // must not set or change it, so it is left out of the update below. A
+    // repeat without a phone keeps the one already saved.
     const business = await queryDb<Row>(
-      `insert into merchant_businesses (user_id, business_name, merchant_name, email, location, onboarding_status, agent_code, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, now())
+      `insert into merchant_businesses (user_id, business_name, merchant_name, email, location, onboarding_status, agent_code, phone, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, now())
        on conflict (user_id) do update set
          business_name = excluded.business_name,
          merchant_name = excluded.merchant_name,
          email = excluded.email,
          location = excluded.location,
          onboarding_status = excluded.onboarding_status,
+         phone = coalesce(excluded.phone, merchant_businesses.phone),
          updated_at = now()
        returning *`,
-      [userId, input.businessName, input.merchantName, input.businessEmail, input.location ?? null, onboardingStatus, input.agentCode ?? null],
+      [userId, input.businessName, input.merchantName, input.businessEmail, input.location ?? null, onboardingStatus, input.agentCode ?? null, input.phone ?? null],
     );
     const businessId = business?.rows[0]?.id;
     for (const bank of input.bankAccounts) {
@@ -335,6 +338,7 @@ export async function upsertMerchant(input: Omit<MerchantRecord, "id" | "onboard
     businessEmail: input.businessEmail,
     location: input.location,
     agentCode: existing ? existing.agentCode : input.agentCode,
+    phone: input.phone ?? existing?.phone,
     onboardingStatus: bankAccounts.some((bank) => bank.verificationStatus === "verified")
       ? wallets.length
         ? "complete"

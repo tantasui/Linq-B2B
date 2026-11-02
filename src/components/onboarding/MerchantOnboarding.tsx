@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Mail, Search, ShieldCheck, UserCheck } from "lucide-react";
 import {
-  AGENT_CODE_MAX_LENGTH,
   type AgentCodeCheck,
+  agentCodeFromInput,
   checkAgentCode,
   forgetAgentRef,
   looksLikeAgentCode,
@@ -13,6 +13,7 @@ import {
   readAgentRef,
 } from "@/lib/agent-code";
 import { getActiveBusinessId, getActiveSessionToken, getMerchantMe, onboardMerchant, setActiveBusinessId, verifyBank } from "@/lib/api-client";
+import { normalizeNigerianPhone } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import { getBankByCode, nigerianBanks } from "@/lib/banks";
 import { SegmentedBar } from "@/components/brand/SegmentedBar";
@@ -43,6 +44,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
   const [businessName, setBusinessName] = useState("");
   const [merchantName, setMerchantName] = useState("");
   const [businessEmail, setBusinessEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [location, setLocation] = useState("");
   const [agentCode, setAgentCode] = useState("");
   const [agentCheck, setAgentCheck] = useState<AgentCodeCheck | "checking" | null>(null);
@@ -215,6 +217,10 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
         setFeedback("Add business name, merchant name, and a valid email.");
         return;
       }
+      if (phone.trim() && !normalizeNigerianPhone(phone)) {
+        setFeedback("Enter a Nigerian phone number, like 0803 123 4567, or leave it empty.");
+        return;
+      }
       setStep("bank");
       return;
     }
@@ -253,6 +259,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
         businessName,
         merchantName,
         businessEmail,
+        phone: normalizeNigerianPhone(phone) ?? undefined,
         location,
         agentCode: normalizedAgentCode || undefined,
         bank: {
@@ -418,6 +425,15 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
               inputMode="email"
             />
           </Field>
+          <Field label="Business phone (optional)">
+            <Input
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="0803 123 4567"
+              inputMode="tel"
+              autoComplete="tel"
+            />
+          </Field>
           <Field label="Location">
             <Input
               value={location}
@@ -428,9 +444,9 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
           <Field label="Agent code (optional)" hint={agentCodeHint}>
             <Input
               value={agentCode}
-              onChange={(event) => setAgentCode(event.target.value.toUpperCase())}
+              onChange={(event) => setAgentCode(agentCodeFromInput(event.target.value).toUpperCase())}
               placeholder="LQ-TOLU"
-              maxLength={AGENT_CODE_MAX_LENGTH + 8}
+              maxLength={300}
               autoComplete="off"
               autoCapitalize="characters"
               spellCheck={false}
@@ -535,6 +551,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
             ["Business", businessName],
             ["Merchant", merchantName],
             ["Email", businessEmail],
+            ["Phone", normalizeNigerianPhone(phone) ?? "—"],
             ["Location", location || "—"],
             [
               "Agent",

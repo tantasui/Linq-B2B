@@ -44,6 +44,7 @@ export async function POST(request: Request) {
       businessEmail: input.businessEmail,
       location: input.location,
       agentCode: input.agentCode,
+      phone: input.phone,
       bankAccounts: [
         {
           id: makeSlug("bank"),

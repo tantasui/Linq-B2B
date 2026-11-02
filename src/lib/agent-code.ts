@@ -35,10 +35,12 @@ export function looksLikeAgentCode(code: string) {
   );
 }
 
+// Only agent codes count: a link like ?ref=twitter is someone else's
+// tracking, and remembering it would take the credit from the agent.
 function refFromUrl() {
   const raw = new URLSearchParams(window.location.search).get(REF_PARAM);
   const code = raw ? normalizeAgentCode(raw) : "";
-  return code && code.length <= AGENT_CODE_MAX_LENGTH ? code : "";
+  return looksLikeAgentCode(code) ? code : "";
 }
 
 function refFromCookie() {
@@ -47,11 +49,23 @@ function refFromCookie() {
     .find((part) => part.startsWith(`${REF_COOKIE}=`));
   if (!entry) return "";
   try {
-    return normalizeAgentCode(
+    const code = normalizeAgentCode(
       decodeURIComponent(entry.slice(REF_COOKIE.length + 1)),
     );
+    return looksLikeAgentCode(code) ? code : "";
   } catch {
     return "";
+  }
+}
+
+/** What to keep from the code box: someone pasting the agent's whole link gets just its code. */
+export function agentCodeFromInput(raw: string) {
+  const fromLink = raw.match(/[?&]ref=([^&#\s]+)/i);
+  if (!fromLink) return raw;
+  try {
+    return decodeURIComponent(fromLink[1]);
+  } catch {
+    return fromLink[1];
   }
 }
 
