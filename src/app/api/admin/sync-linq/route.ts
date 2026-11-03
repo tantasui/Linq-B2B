@@ -11,6 +11,9 @@ import { syncDirectoryToLinq } from "@/server/linq-directory";
  * only this deployment and Linq hold:
  *
  *   curl -X POST https://<this app>/api/admin/sync-linq -H "x-sync-key: $LINQ_OFFRAMP_WEBHOOK_SECRET"
+ *
+ * The 6-hourly job (netlify/functions) passes ?force=false, so it sends the
+ * merchants without re-sending every Stellar order each time.
  */
 export async function POST(request: Request) {
   try {
@@ -20,7 +23,8 @@ export async function POST(request: Request) {
     const b = Buffer.from(secret);
     if (!secret || a.length !== b.length || !timingSafeEqual(a, b)) return fail("Unauthorized.", 401);
 
-    return ok(await syncDirectoryToLinq({ force: true }));
+    const force = new URL(request.url).searchParams.get("force") !== "false";
+    return ok(await syncDirectoryToLinq({ force }));
   } catch (error) {
     return handleApiError(error);
   }

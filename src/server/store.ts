@@ -691,18 +691,60 @@ export interface MerchantDirectoryEntry {
   name: string;
   email: string;
   joinedAt: string;
+  ownerName: string;
+  phone: string;
+  agentCode: string;
+  onboardingStatus: string;
+  bankAdded: boolean;
+  paymentLinkCount: number;
+  firstPaymentLinkAt: string | null;
+  updatedAt: string;
 }
 
-/** Every merchant business, for Linq's admin dashboard. */
-export async function listMerchantDirectory(): Promise<MerchantDirectoryEntry[]> {
-  if (!databaseEnabled) return [];
-  const result = await queryDb<Row>("select id, business_name, email, created_at from merchant_businesses order by created_at");
-  return (result?.rows ?? []).map((row) => ({
+// updatedAt is the latest change to anything sent here, not just the business
+// row: Linq keeps the newest message, and a new payment link doesn't touch
+// merchant_businesses.
+const MERCHANT_DIRECTORY_SELECT = `
+  select b.id, b.business_name, b.merchant_name, b.email, b.phone, b.agent_code, b.onboarding_status, b.created_at,
+    exists (select 1 from bank_accounts a where a.business_id = b.id and a.verification_status = 'verified') as bank_added,
+    (select count(*)::int from payment_links l where l.business_id = b.id) as payment_link_count,
+    (select min(l.created_at) from payment_links l where l.business_id = b.id) as first_payment_link_at,
+    greatest(
+      b.updated_at,
+      (select max(a.updated_at) from bank_accounts a where a.business_id = b.id),
+      (select max(l.updated_at) from payment_links l where l.business_id = b.id)
+    ) as updated_at
+  from merchant_businesses b`;
+
+function mapMerchantDirectoryEntry(row: Row): MerchantDirectoryEntry {
+  return {
     ref: row.id,
     name: row.business_name,
     email: row.email,
     joinedAt: toIso(row.created_at),
-  }));
+    ownerName: row.merchant_name ?? "",
+    phone: row.phone ?? "",
+    agentCode: row.agent_code ?? "",
+    onboardingStatus: row.onboarding_status,
+    bankAdded: row.bank_added,
+    paymentLinkCount: row.payment_link_count,
+    firstPaymentLinkAt: row.first_payment_link_at ? toIso(row.first_payment_link_at) : null,
+    updatedAt: toIso(row.updated_at),
+  };
+}
+
+/** Every merchant business, for Linq's admin dashboard and Linq Field. */
+export async function listMerchantDirectory(): Promise<MerchantDirectoryEntry[]> {
+  if (!databaseEnabled) return [];
+  const result = await queryDb<Row>(`${MERCHANT_DIRECTORY_SELECT} order by b.created_at`);
+  return (result?.rows ?? []).map(mapMerchantDirectoryEntry);
+}
+
+export async function getMerchantDirectoryEntry(id: string): Promise<MerchantDirectoryEntry | null> {
+  if (!databaseEnabled) return null;
+  const result = await queryDb<Row>(`${MERCHANT_DIRECTORY_SELECT} where b.id::text = $1`, [id]);
+  const row = result?.rows[0];
+  return row ? mapMerchantDirectoryEntry(row) : null;
 }
 
 export interface ExternalOrderReport {

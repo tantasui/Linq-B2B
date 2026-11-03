@@ -1,4 +1,5 @@
 import { fail, handleApiError, ok } from "@/server/http";
+import { reportMerchantToLinq } from "@/server/linq-directory";
 import { getRequestMerchant } from "@/server/request-merchant";
 import { listPaymentLinks, createPaymentLink } from "@/server/store";
 import { paymentLinkSchema } from "@/server/validation";
@@ -19,12 +20,14 @@ export async function POST(request: Request) {
     const input = paymentLinkSchema.parse(await request.json());
     const merchant = await getRequestMerchant(request);
     if (!merchant && !input.businessId) return fail("Finish merchant onboarding before creating payment links.", 409);
+    const businessId = input.businessId ?? merchant!.id;
     const link = await createPaymentLink({
-      businessId: input.businessId ?? merchant!.id,
+      businessId,
       mode: input.mode,
       amountNgn: input.amountNgn,
       description: input.description,
     });
+    await reportMerchantToLinq(businessId);
     return ok({ link }, { status: 201 });
   } catch (error) {
     return handleApiError(error);

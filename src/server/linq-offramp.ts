@@ -60,8 +60,8 @@ async function requestLinq<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /** PUT a JSON body to Linq's dedicated offramp API, as this deployment's business. */
-export function putLinq<T>(path: string, body: unknown) {
-  return requestLinq<T>(path, { method: "PUT", body: JSON.stringify(body) });
+export function putLinq<T>(path: string, body: unknown, init?: RequestInit) {
+  return requestLinq<T>(path, { ...init, method: "PUT", body: JSON.stringify(body) });
 }
 
 export async function getLinqRate() {

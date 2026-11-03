@@ -217,8 +217,12 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
         setFeedback("Add business name, merchant name, and a valid email.");
         return;
       }
+      if (normalizedAgentCode && !phone.trim()) {
+        setFeedback("Add the business phone number, so your signup links to your agent.");
+        return;
+      }
       if (phone.trim() && !normalizeNigerianPhone(phone)) {
-        setFeedback("Enter a Nigerian phone number, like 0803 123 4567, or leave it empty.");
+        setFeedback(normalizedAgentCode ? "Enter a Nigerian phone number, like 0803 123 4567." : "Enter a Nigerian phone number, like 0803 123 4567, or leave it empty.");
         return;
       }
       setStep("bank");
@@ -425,7 +429,10 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
               inputMode="email"
             />
           </Field>
-          <Field label="Business phone (optional)">
+          <Field
+            label={normalizedAgentCode ? "Business phone" : "Business phone (optional)"}
+            hint={normalizedAgentCode ? "We use this to link your signup to the agent who helped you." : undefined}
+          >
             <Input
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
