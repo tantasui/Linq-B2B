@@ -48,6 +48,10 @@ export interface MerchantRecord {
   merchantName: string;
   businessEmail: string;
   location?: string;
+  /** Linq Field agent code entered at signup, tidied (LQ-TOLU). Set once; the merchant can't change it. */
+  agentCode?: string;
+  /** Business phone given at signup, as +2348031234567. Optional. */
+  phone?: string;
   onboardingStatus: "started" | "bank_verified" | "wallet_synced" | "complete";
   bankAccounts: BankAccountRecord[];
   wallets: MerchantWalletRecord[];

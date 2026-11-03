@@ -2,8 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Mail, Search, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Mail, Search, ShieldCheck, UserCheck } from "lucide-react";
+import {
+  type AgentCodeCheck,
+  agentCodeFromInput,
+  checkAgentCode,
+  forgetAgentRef,
+  looksLikeAgentCode,
+  normalizeAgentCode,
+  readAgentRef,
+} from "@/lib/agent-code";
 import { getActiveBusinessId, getActiveSessionToken, getMerchantMe, onboardMerchant, setActiveBusinessId, verifyBank } from "@/lib/api-client";
+import { normalizeNigerianPhone } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import { getBankByCode, nigerianBanks } from "@/lib/banks";
 import { SegmentedBar } from "@/components/brand/SegmentedBar";
@@ -34,7 +44,10 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
   const [businessName, setBusinessName] = useState("");
   const [merchantName, setMerchantName] = useState("");
   const [businessEmail, setBusinessEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [location, setLocation] = useState("");
+  const [agentCode, setAgentCode] = useState("");
+  const [agentCheck, setAgentCheck] = useState<AgentCodeCheck | "checking" | null>(null);
   const [institutionCode, setInstitutionCode] = useState("");
   const [bankQuery, setBankQuery] = useState("");
   const [accountIdentifier, setAccountIdentifier] = useState("");
@@ -55,6 +68,19 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
   }, [bankQuery]);
   const accountSignedIn = Boolean(emailProof);
   const continueDisabled = saving;
+  const normalizedAgentCode = normalizeAgentCode(agentCode);
+  const agentName = agentCheck !== null && agentCheck !== "checking" && agentCheck.status === "valid" ? agentCheck.agentName : undefined;
+  const agentCodeHint = !normalizedAgentCode
+    ? "If a Linq agent helped you sign up, enter their code."
+    : !looksLikeAgentCode(normalizedAgentCode)
+      ? "Agent codes look like LQ-TOLU. You can still continue."
+      : agentCheck === "checking" || agentCheck === null
+        ? "Checking the code…"
+        : agentCheck.status === "unknown"
+          ? "We don't recognise this code. Check it with your agent; you can still continue."
+          : agentCheck.status === "unavailable"
+            ? "Couldn't check the code right now. You can still continue."
+            : undefined;
 
   useEffect(() => {
     if (!onCompleteHref) return;
@@ -73,6 +99,30 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
       cancelled = true;
     };
   }, [onCompleteHref, router]);
+
+  // An agent's ?ref= link prefills the code; anything typed replaces it.
+  useEffect(() => {
+    const remembered = readAgentRef();
+    if (remembered) setAgentCode((current) => current || remembered);
+  }, []);
+
+  // Shows whose code it is as it's typed, so a mistyped code gets noticed.
+  // Never blocks: an unknown code is saved as typed and Linq reports it.
+  useEffect(() => {
+    setAgentCheck(null);
+    if (!looksLikeAgentCode(normalizedAgentCode)) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setAgentCheck("checking");
+      checkAgentCode(normalizedAgentCode, controller.signal)
+        .then(setAgentCheck)
+        .catch(() => undefined);
+    }, 500);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [normalizedAgentCode]);
 
   useEffect(() => {
     setVerifiedName(undefined);
@@ -167,6 +217,10 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
         setFeedback("Add business name, merchant name, and a valid email.");
         return;
       }
+      if (phone.trim() && !normalizeNigerianPhone(phone)) {
+        setFeedback("Enter a Nigerian phone number, like 0803 123 4567, or leave it empty.");
+        return;
+      }
       setStep("bank");
       return;
     }
@@ -205,7 +259,9 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
         businessName,
         merchantName,
         businessEmail,
+        phone: normalizeNigerianPhone(phone) ?? undefined,
         location,
+        agentCode: normalizedAgentCode || undefined,
         bank: {
           institutionCode,
           accountIdentifier,
@@ -214,6 +270,7 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
         },
         wallets: [],
       });
+      forgetAgentRef();
       setFeedback(`Saved ${response.merchant.businessName}. Bank account is ${response.merchant.bankAccounts[0]?.verificationStatus}.`);
       if (onCompleteHref) router.push(onCompleteHref);
     } catch (error) {
@@ -368,6 +425,15 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
               inputMode="email"
             />
           </Field>
+          <Field label="Business phone (optional)">
+            <Input
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="0803 123 4567"
+              inputMode="tel"
+              autoComplete="tel"
+            />
+          </Field>
           <Field label="Location">
             <Input
               value={location}
@@ -375,6 +441,29 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
               placeholder="Lagos, Nigeria"
             />
           </Field>
+          <Field label="Agent code (optional)" hint={agentCodeHint}>
+            <Input
+              value={agentCode}
+              onChange={(event) => setAgentCode(agentCodeFromInput(event.target.value).toUpperCase())}
+              placeholder="LQ-TOLU"
+              maxLength={300}
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+            />
+          </Field>
+          {agentName ? (
+            <div
+              aria-live="polite"
+              className="linq-fade-in flex items-start gap-2.5 rounded-lg bg-success-soft px-4 py-3.5 ring-1 ring-inset ring-success/15"
+            >
+              <UserCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+              <div className="min-w-0">
+                <p className="font-sans font-medium text-micro tracking-mono text-text-subtle">Referred by</p>
+                <p className="mt-0.5 truncate text-sm font-semibold">{agentName}</p>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -462,7 +551,18 @@ export function MerchantOnboarding({ onCompleteHref }: { onCompleteHref?: string
             ["Business", businessName],
             ["Merchant", merchantName],
             ["Email", businessEmail],
+            ["Phone", normalizeNigerianPhone(phone) ?? "—"],
             ["Location", location || "—"],
+            [
+              "Agent",
+              !normalizedAgentCode
+                ? "—"
+                : agentName
+                  ? `${agentName} (${normalizedAgentCode})`
+                  : agentCheck !== null && agentCheck !== "checking" && agentCheck.status === "unknown"
+                    ? `${normalizedAgentCode} (not recognised)`
+                    : normalizedAgentCode,
+            ],
             ["Bank", selectedBank?.name ?? institutionCode],
             ["Account", accountIdentifier],
             ["Account name", verifiedName ?? "Not resolved"],

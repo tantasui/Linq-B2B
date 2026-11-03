@@ -1,3 +1,5 @@
+import { AGENT_CODE_MAX_LENGTH, agentCodeFromInput, normalizeAgentCode } from "@/lib/agent-code";
+import { normalizeNigerianPhone } from "@/lib/phone";
 import { z } from "zod";
 
 const text = (max = 120) =>
@@ -46,6 +48,27 @@ export const merchantOnboardingSchema = z.object({
   merchantName: text(120),
   businessEmail: emailSchema,
   location: z.string().trim().max(180).optional(),
+  // Optional, and never refused: an agent code must not stop a signup. It is
+  // saved as typed, only tidied, and Linq reports codes it doesn't recognise.
+  // A pasted agent link keeps just its code; anything too long to be a code
+  // is dropped. Blank means none.
+  agentCode: z
+    .string()
+    .transform((value) => {
+      const code = normalizeAgentCode(agentCodeFromInput(value));
+      return code && code.length <= AGENT_CODE_MAX_LENGTH ? code : undefined;
+    })
+    .optional(),
+  // Optional. When given, a Nigerian mobile number, stored as +2348031234567
+  // so Linq can match the merchant to a field agent's lead by phone.
+  phone: z
+    .string()
+    .max(40)
+    .optional()
+    .refine((value) => !value?.trim() || normalizeNigerianPhone(value) !== null, {
+      message: "Enter a Nigerian phone number, like 0803 123 4567",
+    })
+    .transform((value) => (value?.trim() ? (normalizeNigerianPhone(value) ?? undefined) : undefined)),
   bank: z.object({
     institutionCode: institutionCodeSchema,
     institutionName: z.string().trim().max(120).optional(),
