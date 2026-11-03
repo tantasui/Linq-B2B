@@ -1,4 +1,5 @@
 import { handleApiError, ok, fail } from "@/server/http";
+import { reportMerchantToLinq } from "@/server/linq-directory";
 import { makeSlug } from "@/server/security";
 import { getMerchant, syncWallets } from "@/server/store";
 import { merchantWalletSyncSchema } from "@/server/validation";
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
         tokenSupport: wallet.tokenSupport,
       })),
     );
+    await reportMerchantToLinq(merchant.id);
     return ok({ wallets });
   } catch (error) {
     return handleApiError(error);

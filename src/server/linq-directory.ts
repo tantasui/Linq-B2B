@@ -2,12 +2,12 @@ import { liveLinqEnabled } from "./env";
 import { putLinq } from "./linq-offramp";
 import { logger } from "./logger";
 import {
+  getMerchantDirectoryEntry,
   linqSyncDone,
   listExternalOrderReports,
   listMerchantDirectory,
   markLinqSyncDone,
   type ExternalOrderReport,
-  type MerchantDirectoryEntry,
 } from "./store";
 
 /**
@@ -26,6 +26,9 @@ import {
 
 const BATCH = 500;
 const STELLAR_BACKFILL = "stellar_orders_backfill_v1";
+// A sign-up or a new payment link waits for this report, so it can't wait long.
+// One that doesn't arrive is picked up by the next full sync.
+const REPORT_TIMEOUT_MS = 4000;
 
 async function putInBatches<T>(path: string, key: string, items: T[]) {
   for (let i = 0; i < items.length; i += BATCH) {
@@ -33,23 +36,17 @@ async function putInBatches<T>(path: string, key: string, items: T[]) {
   }
 }
 
-/** A merchant who just signed up, or changed their details. */
-export async function reportMerchantToLinq(merchant: { id: string; businessName: string; businessEmail?: string }) {
+/** A merchant who signed up, finished onboarding, saved a bank or created a payment link. */
+export async function reportMerchantToLinq(merchantId: string) {
   if (!liveLinqEnabled) return;
   try {
-    const entry: MerchantDirectoryEntry = {
-      ref: merchant.id,
-      name: merchant.businessName,
-      email: merchant.businessEmail ?? "",
-      joinedAt: new Date().toISOString(),
-    };
-    // The directory row carries the real sign-up date; use it when it exists.
-    const known = (await listMerchantDirectory()).find((row) => row.ref === merchant.id);
-    await putLinq("/linq-b2b/merchants", { merchants: [known ?? entry] });
-    logger.info("linq.directory.merchant_reported", { merchantId: merchant.id, name: merchant.businessName });
+    const entry = await getMerchantDirectoryEntry(merchantId);
+    if (!entry) return;
+    await putLinq("/linq-b2b/merchants", { merchants: [entry] }, { signal: AbortSignal.timeout(REPORT_TIMEOUT_MS) });
+    logger.info("linq.directory.merchant_reported", { merchantId, name: entry.name });
   } catch (error) {
     logger.warn("linq.directory.merchant_report_failed", {
-      merchantId: merchant.id,
+      merchantId,
       error: error instanceof Error ? error.message : String(error),
     });
   }
@@ -73,8 +70,9 @@ export async function reportStellarOrderToLinq(orderId: string) {
 
 /**
  * Sends everything Linq should already know: all merchants, and — once — all
- * existing Stellar orders. Run at boot; safe to run again, since both sides
- * upsert. `force` re-sends the Stellar orders regardless of the marker.
+ * existing Stellar orders. Run at boot and every 6 hours; safe to run again,
+ * since both sides upsert. `force` re-sends the Stellar orders regardless of
+ * the marker.
  */
 export async function syncDirectoryToLinq(options: { force?: boolean } = {}) {
   if (!liveLinqEnabled) return { merchants: 0, orders: 0, skipped: "Linq API key not configured" };

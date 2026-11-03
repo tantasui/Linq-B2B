@@ -59,8 +59,9 @@ export const merchantOnboardingSchema = z.object({
       return code && code.length <= AGENT_CODE_MAX_LENGTH ? code : undefined;
     })
     .optional(),
-  // Optional. When given, a Nigerian mobile number, stored as +2348031234567
-  // so Linq can match the merchant to a field agent's lead by phone.
+  // A Nigerian mobile number, stored as +2348031234567 so Linq can match the
+  // merchant to a field agent's lead by phone. Required with an agent code
+  // (below), optional without one.
   phone: z
     .string()
     .max(40)
@@ -76,6 +77,10 @@ export const merchantOnboardingSchema = z.object({
     accountName: text(120).optional(),
   }),
   wallets: z.array(walletSyncSchema).max(20).default([]),
+}).superRefine((input, ctx) => {
+  if (input.agentCode && !input.phone) {
+    ctx.addIssue({ code: "custom", path: ["phone"], message: "Add the business phone number, so your signup links to your agent" });
+  }
 });
 
 export const bankVerifySchema = z.object({
