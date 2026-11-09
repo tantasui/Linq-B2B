@@ -111,6 +111,23 @@ export const CHAINS: ChainConfig[] = [
     enabled: true,
   },
   {
+    id: "ethereum",
+    name: "Ethereum",
+    shortName: "ETH",
+    family: "evm",
+    // Both settle: the Ethereum watcher reads the contract for the order's own
+    // coin, and the sweep and refund move that same contract.
+    tokens: ["USDC", "USDT"],
+    linqNetwork: "ethereum",
+    hasWalletConnector: true,
+    addressPattern: /^0x[a-fA-F0-9]{40}$/,
+    color: "#627EEA",
+    // Off until the backend deployment sets ETHEREUM_ENABLED. The chain is
+    // fully built on both sides; this is the second half of a two-part switch
+    // so the picker can never offer a chain the API is still refusing.
+    enabled: false,
+  },
+  {
     id: "solana",
     name: "Solana",
     shortName: "SOL",
@@ -153,6 +170,10 @@ export function normalizeNetworkKey(network?: string) {
 const NETWORK_ALIASES: Record<string, string> = {
   "sui-mainnet": "sui",
   "base-mainnet": "base",
+  eth: "ethereum",
+  mainnet: "ethereum",
+  "eth-mainnet": "ethereum",
+  "ethereum-mainnet": "ethereum",
   bsc: "bnb",
   "binance-smart-chain": "bnb",
   "bnb-smart-chain": "bnb",
