@@ -296,7 +296,7 @@ function OrdersPage() {
           />
         </div>
 
-        <fieldset className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+        <fieldset className="-mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
           <legend className="sr-only">Filter by status</legend>
           {GROUPS.map((entry) => {
             const active = entry.id === group;
