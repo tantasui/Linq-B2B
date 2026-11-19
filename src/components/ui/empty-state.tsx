@@ -33,7 +33,7 @@ export function EmptyState({
           height={140}
           // A one-shot entrance, not a loop: this sits on a screen people see
           // often, and continuous motion on a daily surface becomes noise.
-          className="mb-7 h-[140px] w-[140px] object-contain linq-fade-in"
+          className="empty-art mb-7 h-[140px] w-[140px] object-contain linq-fade-in"
           priority={false}
         />
       ) : null}

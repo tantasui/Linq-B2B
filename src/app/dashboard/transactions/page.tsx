@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, RotateCcw, Search, X } from "lucide-react";
+import { Copy, Download, RotateCcw, Search, X } from "lucide-react";
 import { getMerchantMe, listOrders } from "@/lib/api-client";
 import { ENABLED_CHAINS, chainDisplayName } from "@/lib/chains";
 import { formatCurrency } from "@/lib/payment-data";
@@ -18,6 +18,8 @@ import { RowSkeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status";
 import { OrderSheet } from "@/components/dashboard/OrderSheet";
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { BulkAction, DataTable, type DataTableColumn } from "@/components/dashboard/DataTable";
+import { useToast } from "@/components/ui/toast";
 import { cn, localIsoDay } from "@/lib/utils";
 
 /** Status filters a merchant thinks in, each covering the raw states that mean it. */
@@ -34,10 +36,8 @@ const GROUPS = [
 ] as const;
 type GroupId = (typeof GROUPS)[number]["id"];
 
-const PAGE_SIZE = 20;
 const FINAL = ["settled", "failed", "refunded", "cancelled", "expired"];
 
-type SortKey = "date" | "amount";
 
 function toCsv(rows: OrderRecord[]) {
   const header = ["id", "created", "payer", "email", "amount_ngn", "crypto", "token", "network", "rate", "status", "deposit_tx"];
@@ -77,10 +77,8 @@ function OrdersPage() {
   const network = params.get("network") ?? "all";
   const group = (GROUPS.some((entry) => entry.id === params.get("status")) ? params.get("status") : "all") as GroupId;
   const day = params.get("day");
-  const page = Math.max(1, Number(params.get("page")) || 1);
   const openId = params.get("order");
-  const sort = (params.get("sort") === "amount" ? "amount" : "date") as SortKey;
-  const ascending = params.get("dir") === "asc";
+  const { toast } = useToast();
 
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
@@ -113,7 +111,7 @@ function OrdersPage() {
   useEffect(() => setDraft(query), [query]);
   useEffect(() => {
     if (draft === query) return;
-    const timer = window.setTimeout(() => update({ q: draft, page: null }, true), 250);
+    const timer = window.setTimeout(() => update({ q: draft }, true), 250);
     return () => window.clearTimeout(timer);
   }, [draft, query, update]);
 
@@ -164,19 +162,89 @@ function OrdersPage() {
         (!day || localIsoDay(order.createdAt) === day)
       );
     });
-    const direction = ascending ? 1 : -1;
-    return rows.sort((a, b) =>
-      sort === "amount"
-        ? (a.amountNgn - b.amountNgn) * direction
-        : (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * direction,
-    );
-  }, [ascending, day, group, groupStatuses, network, orders, query, sort]);
+    return rows;
+  }, [day, group, groupStatuses, network, orders, query]);
 
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const current = Math.min(page, pages);
-  const visible = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
   const openOrder = openId ? orders.find((order) => order.id === openId) ?? null : null;
   const hasFilters = Boolean(query || network !== "all" || group !== "all" || day);
+
+  /**
+   * Columns, in the order a merchant decides in: who paid, how much, and
+   * whether it arrived. Network and time fall away first on a narrow table,
+   * and the payer cell then carries the status and date itself.
+   */
+  const columns: DataTableColumn<OrderRecord>[] = [
+    {
+      key: "payer",
+      header: "Payer",
+      sortValue: (order) => order.payerName.toLowerCase(),
+      render: (order, { narrow }) => (
+        <span className="flex min-w-0 items-center gap-3">
+          <NetworkLogo network={order.network} size={28} />
+          <span className="min-w-0">
+            <span className="block truncate font-medium text-text">{order.payerName}</span>
+            {narrow ? (
+              <span className="mt-1 flex items-center gap-2 text-xs text-text-subtle">
+                <StatusPill status={order.status} />
+                {new Date(order.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+              </span>
+            ) : (
+              <span className="block truncate text-xs text-text-subtle">{order.payerEmail}</span>
+            )}
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: 168,
+      narrowHide: true,
+      sortValue: (order) => order.status,
+      render: (order) => <StatusPill status={order.status} />,
+    },
+    {
+      key: "network",
+      header: "Network",
+      width: 148,
+      narrowHide: true,
+      sortValue: (order) => chainDisplayName(order.network),
+      render: (order) => <span className="truncate text-text-muted">{chainDisplayName(order.network)}</span>,
+    },
+    {
+      key: "amount",
+      header: "Amount",
+      align: "right",
+      numeric: true,
+      width: 150,
+      sortValue: (order) => order.amountNgn,
+      render: (order) => (
+        <span className="block">
+          <span className="block font-medium text-text">{formatCurrency(order.amountNgn, "NGN")}</span>
+          <span className="block text-xs text-text-subtle">
+            {formatTokenAmount(order.cryptoAmountDue)} {order.token}
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: "date",
+      header: "Date",
+      align: "right",
+      width: 120,
+      narrowHide: true,
+      sortValue: (order) => new Date(order.createdAt).getTime(),
+      numeric: true,
+      render: (order) => (
+        <span className="block text-text-muted">
+          <span className="block">{new Date(order.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+          <span className="block text-xs text-text-subtle">
+            {new Date(order.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        </span>
+      ),
+    },
+  ];
 
   const settledTotal = orders.filter((order) => order.status === "settled").reduce((sum, order) => sum + order.amountNgn, 0);
   const pendingTotal = orders.filter((order) => !FINAL.includes(order.status)).reduce((sum, order) => sum + order.amountNgn, 0);
@@ -195,11 +263,8 @@ function OrdersPage() {
     setOpenedHere(false);
   };
 
-  const toggleSort = (key: SortKey) =>
-    update({ sort: key === "date" ? null : key, dir: sort === key && !ascending ? "asc" : null, page: null }, true);
-
-  const exportCsv = () => {
-    const blob = new Blob([toCsv(filtered)], { type: "text/csv;charset=utf-8" });
+  const exportCsv = (rows: OrderRecord[] = filtered) => {
+    const blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -208,16 +273,13 @@ function OrdersPage() {
     URL.revokeObjectURL(url);
   };
 
-  const sortIcon = (key: SortKey) =>
-    sort === key ? (ascending ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : null;
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Orders"
         description="Every payment through your links, newest first."
         actions={
-          <Button variant="secondary" size="sm" onClick={exportCsv} disabled={!filtered.length}>
+          <Button variant="secondary" size="sm" onClick={() => exportCsv()} disabled={!filtered.length}>
             <Download className="h-3.5 w-3.5" /> Export CSV
           </Button>
         }
@@ -243,7 +305,7 @@ function OrdersPage() {
           {day ? (
             <button
               type="button"
-              onClick={() => update({ day: null, page: null })}
+              onClick={() => update({ day: null })}
               className="text-micro font-medium text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
             >
               Show all dates
@@ -252,7 +314,7 @@ function OrdersPage() {
         </div>
         <DateCarousel
           value={day ? new Date(`${day}T00:00:00`) : new Date()}
-          onChange={(next) => update({ day: localIsoDay(next), page: null })}
+          onChange={(next) => update({ day: localIsoDay(next) })}
           counts={countsByDay}
         />
       </Card>
@@ -284,7 +346,7 @@ function OrdersPage() {
           <Select
             className="sm:w-[200px]"
             value={network}
-            onChange={(value) => update({ network: value, page: null })}
+            onChange={(value) => update({ network: value })}
             options={[
               { value: "all", label: "All networks" },
               ...ENABLED_CHAINS.map((chain) => ({
@@ -306,7 +368,7 @@ function OrdersPage() {
                 key={entry.id}
                 type="button"
                 aria-pressed={active}
-                onClick={() => update({ status: entry.id, page: null })}
+                onClick={() => update({ status: entry.id })}
                 className={cn(
                   "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-medium",
                   "transition-colors duration-fast ease-linq",
@@ -322,180 +384,76 @@ function OrdersPage() {
         </fieldset>
       </div>
 
-      <section aria-label="Orders">
-        {loading ? (
-          <RowSkeleton rows={5} />
-        ) : failed && orders.length === 0 ? (
-          <Card className="p-0">
-            <EmptyState
-              art="none"
-              title="Could not load your orders"
-              body="The request did not complete. Check your connection and try again."
-              action={
-                <Button size="sm" variant="secondary" onClick={() => void refresh()}>
-                  Try again
-                </Button>
-              }
-            />
-          </Card>
-        ) : filtered.length === 0 ? (
-          <Card className="p-0">
+      {failed && orders.length === 0 && !loading ? (
+        <Card className="p-0">
+          <EmptyState
+            art="none"
+            title="Could not load your orders"
+            body="The request did not complete. Check your connection and try again."
+            action={
+              <Button size="sm" variant="secondary" onClick={() => void refresh()}>
+                Try again
+              </Button>
+            }
+          />
+        </Card>
+      ) : (
+        <DataTable<OrderRecord>
+          caption="Orders"
+          data={filtered}
+          columns={columns}
+          getRowId={(order) => order.id}
+          loading={loading}
+          noun={["order", "orders"]}
+          initialSort={{ key: "date", dir: "desc" }}
+          onRowOpen={(order) => openOrderSheet(order.id)}
+          isRowOpen={(order) => order.id === openId}
+          rowLabel={(order) => `Open payment from ${order.payerName}`}
+          empty={
             <EmptyState
               title={orders.length ? "Nothing matches those filters" : "No orders yet"}
-              body={orders.length ? "Try another day, network or status." : "Your first payment will appear here."}
-              art={orders.length ? "none" : "coin"}
+              body={
+                orders.length
+                  ? "Try another day, network or status."
+                  : "Share a receive link and the first payment through it lands here."
+              }
+              art="none"
               action={
                 hasFilters ? (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => update({ q: null, network: null, status: null, day: null, page: null })}
-                  >
+                  <Button size="sm" variant="secondary" onClick={() => update({ q: null, network: null, status: null, day: null })}>
                     <RotateCcw className="h-3.5 w-3.5" /> Clear filters
                   </Button>
                 ) : undefined
               }
             />
-          </Card>
-        ) : (
-          <>
-            {/* Table — tablet and up */}
-            <Card className="hidden overflow-hidden p-0 md:block">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-line text-left text-micro font-medium text-text-subtle">
-                    <th scope="col" className="px-5 py-3 font-medium">Payer</th>
-                    <th scope="col" className="px-3 py-3 font-medium">Network</th>
-                    <th scope="col" className="px-3 py-3 font-medium">Status</th>
-                    <th
-                      scope="col"
-                      aria-sort={sort === "amount" ? (ascending ? "ascending" : "descending") : "none"}
-                      className="px-3 py-3 text-right font-medium"
-                    >
-                      <button type="button" onClick={() => toggleSort("amount")} className="ml-auto flex items-center gap-1 hover:text-text">
-                        Amount {sortIcon("amount")}
-                      </button>
-                    </th>
-                    <th
-                      scope="col"
-                      aria-sort={sort === "date" ? (ascending ? "ascending" : "descending") : "none"}
-                      className="px-5 py-3 text-right font-medium"
-                    >
-                      <button type="button" onClick={() => toggleSort("date")} className="ml-auto flex items-center gap-1 hover:text-text">
-                        Date {sortIcon("date")}
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((order) => (
-                    <tr
-                      key={order.id}
-                      onClick={() => openOrderSheet(order.id)}
-                      className="cursor-pointer border-b border-line transition-colors duration-fast ease-linq last:border-b-0 hover:bg-surface-2"
-                    >
-                      <td className="px-5 py-3.5">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            openOrderSheet(order.id);
-                          }}
-                          className="block max-w-[260px] rounded-xs text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="block truncate font-medium">{order.payerName}</span>
-                          <span className="block truncate text-micro text-text-subtle">{order.payerEmail}</span>
-                        </button>
-                      </td>
-                      <td className="px-3 py-3.5">
-                        <span className="flex items-center gap-2 text-text-muted">
-                          <NetworkLogo network={order.network} size={20} />
-                          <span className="truncate">{chainDisplayName(order.network)}</span>
-                        </span>
-                      </td>
-                      <td className="px-3 py-3.5">
-                        <StatusPill status={order.status} />
-                      </td>
-                      <td className="tnum px-3 py-3.5 text-right">
-                        <span className="block font-medium">{formatCurrency(order.amountNgn, "NGN")}</span>
-                        <span className="block text-micro text-text-subtle">
-                          {formatTokenAmount(order.cryptoAmountDue)} {order.token}
-                        </span>
-                      </td>
-                      <td className="tnum whitespace-nowrap px-5 py-3.5 text-right text-text-muted">
-                        <span className="block">
-                          {new Date(order.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                        </span>
-                        <span className="block text-micro text-text-subtle">
-                          {new Date(order.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
-
-            {/* List — phones */}
-            <ul className="md:hidden">
-              {visible.map((order) => (
-                <li key={order.id} className="border-b border-line last:border-b-0">
-                  <button
-                    type="button"
-                    onClick={() => openOrderSheet(order.id)}
-                    className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3.5 rounded-md px-2 py-3.5 text-left transition-colors duration-fast ease-linq hover:bg-surface-2"
-                  >
-                    <NetworkLogo network={order.network} size={32} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{order.payerName}</p>
-                      <p className="tnum truncate text-micro text-text-subtle">
-                        {formatTokenAmount(order.cryptoAmountDue)} {order.token},{" "}
-                        {new Date(order.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5">
-                      <p className="tnum text-sm font-medium">{formatCurrency(order.amountNgn, "NGN")}</p>
-                      <StatusPill status={order.status} />
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            <nav aria-label="Pages" className="mt-4 flex items-center justify-between gap-3 text-xs text-text-muted">
-              <p className="tnum">
-                {(current - 1) * PAGE_SIZE + 1}–{Math.min(current * PAGE_SIZE, filtered.length)} of {filtered.length}
-                {group !== "all" ? `, ${GROUPS.find((entry) => entry.id === group)?.label.toLowerCase()}` : ""}
-              </p>
-              {pages > 1 ? (
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Previous page"
-                    disabled={current <= 1}
-                    onClick={() => update({ page: current - 1 === 1 ? null : String(current - 1) })}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="tnum px-1">
-                    {current} / {pages}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Next page"
-                    disabled={current >= pages}
-                    onClick={() => update({ page: String(current + 1) })}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : null}
-            </nav>
-          </>
-        )}
-      </section>
+          }
+          bulkActions={({ rows, ids, clear }) => (
+            <>
+              <BulkAction
+                icon={<Download className="h-3.5 w-3.5" />}
+                label="Export"
+                onClick={() => {
+                  exportCsv(rows);
+                  toast(`Exported ${rows.length} order${rows.length === 1 ? "" : "s"}`);
+                }}
+              />
+              <BulkAction
+                icon={<Copy className="h-3.5 w-3.5" />}
+                label="Copy IDs"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(ids.join("\n"));
+                    toast(`Copied ${ids.length} order ID${ids.length === 1 ? "" : "s"}`);
+                    clear();
+                  } catch {
+                    toast("Could not copy", "error");
+                  }
+                }}
+              />
+            </>
+          )}
+        />
+      )}
 
       <OrderSheet
         order={openOrder}
