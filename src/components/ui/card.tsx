@@ -42,30 +42,25 @@ export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTML
 CardDescription.displayName = "CardDescription";
 
 /**
- * Section heading used above a group of panels.
+ * Section heading used above a group of panels: the section's name in the
+ * body face, sentence case, on its own hairline, with an optional action.
  *
- * This is the product's version of the landing's "01 — Get paid" marker: sans,
- * sentence case, sitting on its own hairline. Passing `index` prints the number
- * too, which is what makes a dashboard scan as chapters rather than as a pile
- * of cards.
+ * It used to print a chapter number ("03 —") ahead of the name. Numbering
+ * three sections on a screen added a thing to read without adding anything to
+ * know, so the name stands alone.
  */
 export function SectionHeader({
   title,
-  index,
   action,
   className,
 }: {
   title: string;
-  index?: string;
   action?: React.ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cn("mb-4 flex items-end justify-between gap-4 border-b border-line pb-2.5", className)}>
-      <h2 className="font-sans font-medium text-label tracking-mono text-text-subtle">
-        {index ? <span className="mr-2 text-text-muted">{index} —</span> : null}
-        {title}
-      </h2>
+    <div className={cn("mb-2 flex items-end justify-between gap-4 border-b border-line pb-2.5", className)}>
+      <h2 className="text-label font-medium text-text">{title}</h2>
       {action}
     </div>
   );

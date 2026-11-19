@@ -5,12 +5,13 @@ import Link from "next/link";
 import { Calculator, ExternalLink, Link2, Share2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { createPaymentLink, getMerchantMe } from "@/lib/api-client";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { type FiatCurrency, type PaymentMode, formatCurrency, makePaymentPath } from "@/lib/payment-data";
-import type { MerchantRecord } from "@/server/types";
+import type { MerchantRecord, PaymentLinkRecord } from "@/server/types";
 import { cn } from "@/lib/utils";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CopyField } from "@/components/ui/copy";
+import { CopyButton, CopyField } from "@/components/ui/copy";
 import { Field, Input } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
@@ -142,6 +143,7 @@ export default function ReceivePage() {
   const [ready, setReady] = useState(false);
   const [origin, setOrigin] = useState("");
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
+  const [links, setLinks] = useState<PaymentLinkRecord[]>([]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const { toast } = useToast();
@@ -150,7 +152,10 @@ export default function ReceivePage() {
     setOrigin((process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/+$/, ""));
     if (new URLSearchParams(window.location.search).get("mode") === "fixed") setMode("fixed");
     getMerchantMe()
-      .then(({ merchant: record }) => setMerchant(record))
+      .then(({ merchant: record, links: existing }) => {
+        setMerchant(record);
+        setLinks(existing ?? []);
+      })
       .catch(() => undefined);
   }, []);
 
@@ -195,6 +200,7 @@ export default function ReceivePage() {
         description: mode === "fixed" ? description : undefined,
       });
       setRequestId(link.slug);
+      setLinks((current) => [link, ...current.filter((entry) => entry.id !== link.id)]);
       setReady(true);
       toast(mode === "fixed" ? "Payment request created" : "Receive link created");
     } catch (caught) {
@@ -208,13 +214,7 @@ export default function ReceivePage() {
 
   return (
     <div className="space-y-7">
-      <header>
-        <p className="font-sans font-medium text-label tracking-mono text-accent-text">02 — Receive</p>
-        <h1 className="u-display mt-3 text-hero">Collect payment</h1>
-        <p className="mt-3 text-sm text-text-muted">
-          Share a checkout link, or charge a set amount.
-        </p>
-      </header>
+      <PageHeader title="Receive" description="Share a checkout link, or charge a set amount." />
 
       {/* Two modes, equal weight. The active one is raised out of the track as
           its own rounded card rather than marked by a rule along its edge. */}
@@ -228,6 +228,7 @@ export default function ReceivePage() {
             <button
               key={entry.value}
               type="button"
+              aria-pressed={active}
               onClick={() => setMode(entry.value)}
               className={cn(
                 "rounded-md px-3.5 py-3 text-left transition duration-fast ease-linq active:scale-[0.99]",
@@ -235,10 +236,7 @@ export default function ReceivePage() {
               )}
             >
               <p
-                className={cn(
-                  "font-sans font-medium text-[0.8125rem] tracking-mono",
-                  active ? "text-text" : "text-text-muted",
-                )}
+                className={cn("text-[0.8125rem] font-medium", active ? "text-text" : "text-text-muted")}
               >
                 {entry.title}
               </p>
@@ -255,7 +253,7 @@ export default function ReceivePage() {
               <Link2 className="h-5 w-5" />
             </span>
             <div>
-              <p className="font-sans font-medium text-[0.9375rem] tracking-mono">Open receive link</p>
+              <h2 className="text-[0.9375rem] font-medium">Open receive link</h2>
               <p className="mt-1.5 text-xs leading-5 text-text-muted">
                 Customers enter the amount at checkout, choose a stablecoin and network, and Linq
                 settles the Naira to your verified account.
@@ -300,9 +298,57 @@ export default function ReceivePage() {
       )}
 
       {error ? (
-        <p className="linq-fade-in rounded-md bg-danger-soft px-4 py-3 text-xs text-danger ring-1 ring-inset ring-danger/20">
+        <p role="alert" className="linq-fade-in rounded-md bg-danger-soft px-4 py-3 text-xs text-danger ring-1 ring-inset ring-danger/20">
           {error}
         </p>
+      ) : null}
+
+      {links.length ? (
+        <section aria-labelledby="links-heading">
+          <h2 id="links-heading" className="mb-2 border-b border-line pb-2.5 text-label font-medium">
+            Your links
+          </h2>
+          <ul>
+            {links.slice(0, 8).map((link) => {
+              const path = makePaymentPath({
+                id: link.slug,
+                mode: link.mode === "fixed" ? "fixed" : "open",
+                currency,
+                amount: link.mode === "fixed" ? link.amountNgn : undefined,
+                description: link.mode === "fixed" ? link.description : undefined,
+                merchantId: merchant?.id ?? link.businessId,
+              });
+              return (
+                <li key={link.id} className="flex items-center gap-3 border-b border-line py-3 last:border-b-0">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-2 text-text-muted">
+                    <Link2 className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {link.mode === "fixed" && link.amountNgn
+                        ? `${formatCurrency(link.amountNgn, currency)}${link.description ? `, ${link.description}` : ""}`
+                        : "Open amount"}
+                    </p>
+                    <p className="truncate text-micro text-text-subtle">
+                      Created {new Date(link.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      {link.status !== "active" ? `, ${link.status}` : ""}
+                    </p>
+                  </div>
+                  {origin ? <CopyButton value={`${origin}${path}`} label="Link" /> : null}
+                  <Link
+                    href={path}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Preview checkout"
+                    className="grid h-9 w-9 place-items-center rounded-full text-text-muted transition-colors duration-fast ease-linq hover:bg-surface-2 hover:text-text"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       ) : null}
 
       <Sheet

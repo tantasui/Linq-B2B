@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Building2, ImagePlus, LogOut, ShieldCheck, Trash2, Wallet } from "lucide-react";
+import { Building2, ImagePlus, Landmark, LogOut, Mail, ShieldCheck, Trash2, Wallet } from "lucide-react";
 import { MerchantAvatar, merchantLogoChangedEvent, merchantLogoStorageKey } from "@/components/MerchantAvatar";
 import { MerchantOnboarding } from "@/components/onboarding/MerchantOnboarding";
 import { clearActiveSession, getMerchantMe } from "@/lib/api-client";
@@ -14,11 +14,11 @@ import { ENABLED_CHAINS } from "@/lib/chains";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy";
-import { Switch } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddButton } from "@/components/ui/stepper";
 import { TabBar } from "@/components/ui/tab-bar";
 import { useToast } from "@/components/ui/toast";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 
 /** The onboarding milestones a merchant moves through, in order. */
 const KYC_STEPS = ["started", "bank_verified", "wallet_synced", "complete"] as const;
@@ -37,8 +37,8 @@ function Section({
   return (
     <Card>
       <div className="mb-5 flex items-center justify-between gap-4 border-b border-line pb-3">
-        <h2 className="flex items-center gap-2 font-sans font-medium text-label tracking-mono text-text-subtle">
-          <Icon className="h-4 w-4 text-accent-text" />
+        <h2 className="flex items-center gap-2 text-label font-medium text-text">
+          <Icon className="h-4 w-4 text-text-subtle" />
           {title}
         </h2>
         {action}
@@ -50,7 +50,6 @@ function Section({
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const [switches, setSwitches] = useState({ notifications: true, verification: true, biometric: false });
   const [logoVersion, setLogoVersion] = useState(0);
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,10 +98,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <p className="font-sans font-medium text-label tracking-mono text-accent-text">05 — Settings</p>
-        <h1 className="u-display mt-3 text-hero">Business</h1>
-      </header>
+      <PageHeader title="Settings" description="Your business, where your naira goes, and the wallets you accept on." />
 
       {loading ? (
         <Card className="space-y-3">
@@ -123,7 +119,7 @@ export default function SettingsPage() {
               label={
                 merchant.onboardingStatus === "complete"
                   ? "Verified — you can accept payments"
-                  : `Step ${kycStep} of ${KYC_STEPS.length} · ${merchant.onboardingStatus.replace(/_/g, " ")}`
+                  : `Step ${kycStep} of ${KYC_STEPS.length}: ${merchant.onboardingStatus.replace(/_/g, " ")}`
               }
             />
           </Section>
@@ -156,7 +152,7 @@ export default function SettingsPage() {
             ) : null}
           </Section>
 
-          <Section icon={Wallet} title="Naira payout account">
+          <Section icon={Landmark} title="Naira payout account">
             {verifiedBank ? (
               <div className="flex items-center gap-3.5">
                 {verifiedBankLogo ? (
@@ -173,8 +169,7 @@ export default function SettingsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{verifiedBank.resolvedAccountName}</p>
                   <p className="tnum mt-0.5 truncate text-xs text-text-muted">
-                    {verifiedBank.accountIdentifier} ·{" "}
-                    {verifiedBank.institutionName ?? verifiedBank.institutionCode}
+                    {verifiedBank.institutionName ?? verifiedBank.institutionCode}, {verifiedBank.accountIdentifier}
                   </p>
                 </div>
                 <CopyButton value={verifiedBank.accountIdentifier} label="Account number" />
@@ -228,30 +223,21 @@ export default function SettingsPage() {
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-text-muted">Accepted</dt>
-                <dd className="text-right font-medium">{acceptedTokens.join(" · ")}</dd>
+                <dd className="text-right font-medium">{acceptedTokens.join(", ")}</dd>
               </div>
             </dl>
           </Section>
 
-          <Section icon={Bell} title="Notifications & security">
-            <div className="divide-y divide-line">
-              {[
-                { key: "notifications" as const, label: "Payment notifications" },
-                { key: "verification" as const, label: "Confirm large payments" },
-                { key: "biometric" as const, label: "Biometric unlock" },
-              ].map((entry) => (
-                <div key={entry.key} className="flex items-center gap-4 py-4 text-sm first:pt-0 last:pb-0">
-                  <span className="flex-1">{entry.label}</span>
-                  <Switch
-                    checked={switches[entry.key]}
-                    label={entry.label}
-                    onChange={(next) =>
-                      setSwitches((current) => ({ ...current, [entry.key]: next }))
-                    }
-                  />
-                </div>
-              ))}
-            </div>
+          {/* The toggles that stood here (payment notifications, confirm large
+              payments, biometric unlock) were local state that nothing saved
+              and nothing read, so switching one off changed nothing. Until
+              there is a setting behind them, this says what actually happens. */}
+          <Section icon={Mail} title="Receipts and notices">
+            <p className="text-sm leading-6 text-text-muted">
+              Every payment sends a receipt to the payer and a notice to{" "}
+              <span className="font-medium text-text">{merchant.businessEmail}</span>: when a deposit lands, when the
+              payout settles, and if it fails. You can resend either from any order.
+            </p>
           </Section>
         </>
       ) : null}

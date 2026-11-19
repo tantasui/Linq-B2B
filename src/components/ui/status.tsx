@@ -32,6 +32,32 @@ const TONES: Record<OrderStatus, Tone> = {
 };
 
 /**
+ * What each state is called on screen. The raw values are API words —
+ * "awaiting_completion" printed as-is read as "Awaiting_completion".
+ */
+const LABELS: Record<OrderStatus, string> = {
+  initiated: "Awaiting payment",
+  partially_paid: "Part paid",
+  awaiting_completion: "Awaiting completion",
+  deposited: "Payout in progress",
+  pending: "Pending",
+  fulfilling: "Payout in progress",
+  fulfilled: "Fulfilled",
+  validated: "Validated",
+  settling: "Settling",
+  settled: "Settled",
+  cancelled: "Cancelled",
+  refunding: "Refunding",
+  refunded: "Refunded",
+  expired: "Expired",
+  failed: "Failed",
+};
+
+export function statusLabel(status: OrderStatus | string) {
+  return LABELS[status as OrderStatus] ?? status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+}
+
+/**
  * A soft tinted capsule. The ink build used a hard left rule instead, because on
  * a dark ground six filled pills down a table read as a stack of buttons — but
  * on paper a 10% tint is quiet enough to repeat down a column and still gives
@@ -46,19 +72,17 @@ const STYLES: Record<Tone, string> = {
 
 export function StatusPill({ status, className }: { status: OrderStatus; className?: string }) {
   const tone = TONES[status] ?? "neutral";
-  const live = tone === "progress";
 
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
-        "font-sans font-medium capitalize text-[11px] leading-none tracking-mono",
+        "whitespace-nowrap font-sans font-medium text-[11px] leading-none tracking-mono",
         STYLES[tone],
         className,
       )}
     >
-      {live ? <span className="h-1 w-1 animate-pulse rounded-full bg-current" /> : null}
-      {status}
+      {statusLabel(status)}
     </span>
   );
 }

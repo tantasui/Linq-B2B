@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, XAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { ChartFrame } from "@/components/ui/chart-frame";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { NetworkLogo } from "@/components/icons/NetworkLogos";
 import { listOrders } from "@/lib/api-client";
 import { chainDisplayName } from "@/lib/chains";
@@ -17,10 +18,24 @@ import type { OrderRecord } from "@/server/types";
 const SERIES = ["#8A4FFF", "#A172FF", "#B995FF", "#D0B9FF", "#E8DCFF"];
 
 const RANGES = [
-  { id: "24H", days: 1 },
-  { id: "7D", days: 7 },
-  { id: "30D", days: 30 },
+  { id: "24H", label: "24 hours", days: 1 },
+  { id: "7D", label: "7 days", days: 7 },
+  { id: "30D", label: "30 days", days: 30 },
 ];
+
+/** Orders that have reached an end state, one way or the other. */
+const FINISHED = ["settled", "fulfilled", "failed", "expired", "refunded", "cancelled"];
+
+/** The chart tooltip, in the dashboard's own surface rather than Recharts' default box. */
+function VolumeTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md bg-surface px-3 py-2 text-xs shadow-md ring-1 ring-line">
+      <p className="text-text-subtle">{label}</p>
+      <p className="tnum mt-0.5 font-medium text-text">{formatCurrency(payload[0].value, "NGN")}</p>
+    </div>
+  );
+}
 
 const SETTLED = ["settled", "fulfilled"];
 
@@ -76,6 +91,9 @@ export default function AnalyticsPage() {
     return buckets;
   }, [days, settled]);
 
+  const finished = inRange.filter((order) => FINISHED.includes(order.status));
+  const rangeLabel = RANGES.find((entry) => entry.id === range)?.label ?? range;
+
   const routes = useMemo(() => {
     const counts = new Map<string, number>();
     for (const order of inRange) counts.set(order.network, (counts.get(order.network) ?? 0) + 1);
@@ -90,45 +108,49 @@ export default function AnalyticsPage() {
     ["Orders", String(inRange.length), "created"],
     [
       "Settlement rate",
-      inRange.length ? `${Math.round((settled.length / inRange.length) * 100)}%` : "—",
-      "of orders settled",
+      finished.length ? `${Math.round((settled.length / finished.length) * 100)}%` : "—",
+      // Measured over finished orders: one still waiting on its deposit has
+      // not failed to settle, and counting it pulled the rate down.
+      "of finished orders settled",
     ],
     ["Average order", settled.length ? formatCurrency(averageOrder, "NGN") : "—", "per settlement"],
   ];
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-sans font-medium text-label tracking-mono text-accent-text">04 — Analytics</p>
-          <h1 className="u-display mt-3 text-hero">Performance</h1>
-        </div>
-        {/* A segmented control: one rounded track, and the active range rides in
-            it as a filled capsule. */}
-        <div className="flex gap-1 rounded-full bg-surface-2 p-1 ring-1 ring-inset ring-line">
-          {RANGES.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              onClick={() => setRange(entry.id)}
-              className={cn(
-                "rounded-full px-4 py-1.5 font-sans font-medium text-xs tracking-mono",
-                "transition-colors duration-fast ease-linq active:scale-[0.97]",
-                range === entry.id
-                  ? "bg-accent text-accent-contrast shadow-sm"
-                  : "text-text-muted hover:bg-surface hover:text-text",
-              )}
-            >
-              {entry.id}
-            </button>
-          ))}
-        </div>
-      </header>
+      <PageHeader
+        title="Analytics"
+        description="How much you settled, and how your customers pay."
+        actions={
+          // A segmented control: one rounded track, and the active range rides
+          // in it as a filled capsule.
+          <fieldset className="flex gap-1 rounded-full bg-surface-2 p-1 ring-1 ring-inset ring-line">
+            <legend className="sr-only">Date range</legend>
+            {RANGES.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                aria-pressed={range === entry.id}
+                aria-label={entry.label}
+                onClick={() => setRange(entry.id)}
+                className={cn(
+                  "rounded-full px-4 py-1.5 font-sans font-medium text-xs",
+                  "transition-[background-color,color] duration-fast ease-linq",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                  range === entry.id ? "bg-text text-bg shadow-sm" : "text-text-muted hover:bg-surface hover:text-text",
+                )}
+              >
+                {entry.id}
+              </button>
+            ))}
+          </fieldset>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map(([label, value, hint]) => (
           <Card key={label}>
-            <p className="font-sans font-medium text-micro tracking-mono text-text-subtle">{label}</p>
+            <p className="text-micro font-medium text-text-subtle">{label}</p>
             {loading ? (
               <Skeleton className="mt-3 h-7 w-24" />
             ) : (
@@ -140,14 +162,21 @@ export default function AnalyticsPage() {
       </div>
 
       <Card>
-        <p className="font-sans font-medium text-label tracking-mono text-text-subtle">Settlement volume</p>
-        <p className="mt-1.5 text-xs text-text-muted">Naira received · {range}</p>
+        <h2 className="text-label font-medium text-text">Settled volume</h2>
+        <p className="mt-1 text-xs text-text-muted">Naira settled to your account, last {rangeLabel}</p>
+        <div className="relative">
+        {!loading && settled.length === 0 ? (
+          // A flat line at zero reads as a broken chart; say what it means.
+          <p className="absolute inset-0 z-10 grid place-items-center text-sm text-text-subtle">
+            No settled payments in the last {rangeLabel}
+          </p>
+        ) : null}
         <ChartFrame className="mt-6 h-56">
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <AreaChart data={volume} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
               <defs>
                 <linearGradient id="volume-fill" x2="0" y2="1">
-                  <stop stopColor="hsl(var(--accent))" stopOpacity="0.4" />
+                  <stop stopColor="hsl(var(--accent))" stopOpacity="0.18" />
                   <stop offset="1" stopColor="hsl(var(--accent))" stopOpacity="0" />
                 </linearGradient>
               </defs>
@@ -159,21 +188,28 @@ export default function AnalyticsPage() {
                 interval="preserveStartEnd"
                 minTickGap={16}
               />
+              <Tooltip
+                content={<VolumeTooltip />}
+                cursor={{ stroke: "hsl(var(--border-strong))", strokeDasharray: "3 3" }}
+              />
               <Area
                 dataKey="value"
                 type="monotone"
                 stroke="hsl(var(--accent))"
-                strokeWidth={2.5}
+                strokeWidth={2}
                 fill="url(#volume-fill)"
+                activeDot={{ r: 4, strokeWidth: 0, fill: "hsl(var(--accent))" }}
               />
             </AreaChart>
           </ResponsiveContainer>
         </ChartFrame>
+        </div>
       </Card>
 
       <div className="grid gap-3 lg:grid-cols-2">
         <Card>
-          <p className="font-sans font-medium text-label tracking-mono text-text-subtle">Network mix</p>
+          <h2 className="text-label font-medium text-text">Networks</h2>
+          <p className="mt-1 text-xs text-text-muted">Orders by the chain the payer used</p>
           {routes.length ? (
             <div className="mt-2 flex items-center gap-4">
               <ChartFrame className="h-40 w-[45%]">
@@ -194,7 +230,12 @@ export default function AnalyticsPage() {
                       <NetworkLogo network={entry.name} size={18} />
                       <span className="truncate">{chainDisplayName(entry.name)}</span>
                     </span>
-                    <span className="tnum shrink-0 font-medium">{entry.value}</span>
+                    <span className="tnum shrink-0 font-medium">
+                      {entry.value}
+                      <span className="ml-1.5 font-normal text-text-subtle">
+                        {Math.round((entry.value / Math.max(1, inRange.length)) * 100)}%
+                      </span>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -209,8 +250,8 @@ export default function AnalyticsPage() {
         </Card>
 
         <Card>
-          <p className="font-sans font-medium text-label tracking-mono text-text-subtle">Order value distribution</p>
-          <p className="mt-1.5 text-xs text-text-muted">Count by band</p>
+          <h2 className="text-label font-medium text-text">Order sizes</h2>
+          <p className="mt-1 text-xs text-text-muted">How many orders fall in each band</p>
           <ChartFrame className="mt-6 h-40">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart

@@ -161,7 +161,8 @@ export function NotificationCenter() {
                 type="button"
                 onClick={() => {
                   setOpen(false);
-                  router.push("/dashboard/transactions");
+                  // Straight to this order, not just the list it is somewhere in.
+                  router.push(`/dashboard/transactions?order=${encodeURIComponent(order.id)}`);
                 }}
                 className="flex w-full items-center gap-3 rounded-md bg-surface-2 p-3 text-left transition duration-fast ease-linq hover:bg-surface-3"
               >
@@ -169,7 +170,7 @@ export function NotificationCenter() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{activityLine(order)}</p>
                   <p className="truncate text-xs text-text-muted">
-                    {order.payerName} · {chainDisplayName(order.network)} ·{" "}
+                    {order.payerName}, {chainDisplayName(order.network)},{" "}
                     {new Date(order.updatedAt).toLocaleString(undefined, {
                       day: "numeric",
                       month: "short",

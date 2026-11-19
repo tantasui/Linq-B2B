@@ -1,5 +1,20 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/**
+ * tailwind-merge only knows Tailwind's own scale. Left alone it reads the
+ * project's font sizes (tailwind.config.ts → fontSize) as colours, so
+ * `cn("text-micro", "text-text-subtle")` kept the colour and silently dropped
+ * the size — the dashboard's tab bar rendered its 11px labels at 16px.
+ * Naming them here makes them sizes, which only ever conflict with sizes.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [{ text: ["micro", "label", "hero", "display", "display-lg", "display-xl"] }],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
