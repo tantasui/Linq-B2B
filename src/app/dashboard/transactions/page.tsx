@@ -1,67 +1,144 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, Mail, RefreshCcw, RotateCcw, Search } from "lucide-react";
-import { apiUrl, getMerchantMe, listOrders, retryTransfer, sendOrderReceipt } from "@/lib/api-client";
-import { ENABLED_CHAINS } from "@/lib/chains";
-import { explorerTxUrl, shortenHash } from "@/lib/explorer";
-import { merchantReceiptKind, OrderOutcome } from "@/components/OrderOutcome";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, RotateCcw, Search, X } from "lucide-react";
+import { getMerchantMe, listOrders } from "@/lib/api-client";
+import { ENABLED_CHAINS, chainDisplayName } from "@/lib/chains";
 import { formatCurrency } from "@/lib/payment-data";
 import { formatTokenAmount } from "@/lib/money";
-import type { MerchantRecord, OrderRecord, ReceiptKind } from "@/server/types";
+import type { MerchantRecord, OrderRecord } from "@/server/types";
 import { NetworkLogo } from "@/components/icons/NetworkLogos";
-import { Receipt } from "@/components/brand/Receipt";
-import { Button, buttonClasses } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateCarousel } from "@/components/ui/date-carousel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Select } from "@/components/ui/select";
-import { Sheet } from "@/components/ui/sheet";
 import { RowSkeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status";
-import { useToast } from "@/components/ui/toast";
+import { OrderSheet } from "@/components/dashboard/OrderSheet";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { cn, localIsoDay } from "@/lib/utils";
 
-/** States where the Naira leg can be attempted again. */
-const RETRYABLE = new Set(["failed", "refunded", "expired", "cancelled"]);
+/** Status filters a merchant thinks in, each covering the raw states that mean it. */
+const GROUPS = [
+  { id: "all", label: "All", statuses: [] as string[] },
+  { id: "settled", label: "Settled", statuses: ["settled", "fulfilled"] },
+  {
+    id: "progress",
+    label: "In progress",
+    statuses: ["initiated", "partially_paid", "awaiting_completion", "deposited", "pending", "fulfilling", "validated", "settling"],
+  },
+  { id: "failed", label: "Needs attention", statuses: ["failed", "refunding"] },
+  { id: "closed", label: "Closed", statuses: ["expired", "cancelled", "refunded"] },
+] as const;
+type GroupId = (typeof GROUPS)[number]["id"];
 
-export default function TransactionsPage() {
-  const [query, setQuery] = useState("");
-  const [network, setNetwork] = useState("all");
-  const [status, setStatus] = useState("all");
+const PAGE_SIZE = 20;
+const FINAL = ["settled", "failed", "refunded", "cancelled", "expired"];
+
+type SortKey = "date" | "amount";
+
+function toCsv(rows: OrderRecord[]) {
+  const header = ["id", "created", "payer", "email", "amount_ngn", "crypto", "token", "network", "rate", "status", "deposit_tx"];
+  const cell = (value: unknown) => {
+    const text = value == null ? "" : String(value);
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  return [
+    header.join(","),
+    ...rows.map((order) =>
+      [
+        order.id,
+        order.createdAt,
+        order.payerName,
+        order.payerEmail,
+        order.amountNgn,
+        // The figure the payer was shown, rounded up the same way.
+        formatTokenAmount(order.cryptoAmountDue),
+        order.token,
+        order.network,
+        order.quotedRate,
+        order.status,
+        order.depositDigest ?? "",
+      ]
+        .map(cell)
+        .join(","),
+    ),
+  ].join("\n");
+}
+
+function OrdersPage() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const query = params.get("q") ?? "";
+  const network = params.get("network") ?? "all";
+  const group = (GROUPS.some((entry) => entry.id === params.get("status")) ? params.get("status") : "all") as GroupId;
+  const day = params.get("day");
+  const page = Math.max(1, Number(params.get("page")) || 1);
+  const openId = params.get("order");
+  const sort = (params.get("sort") === "amount" ? "amount" : "date") as SortKey;
+  const ascending = params.get("dir") === "asc";
+
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
   const [loading, setLoading] = useState(true);
-  const [openOrder, setOpenOrder] = useState<OrderRecord | null>(null);
-  const [busy, setBusy] = useState(false);
-  // Null means "all time" — the scrubber narrows to a day only once used.
-  const [day, setDay] = useState<Date | null>(null);
-  const { toast } = useToast();
+  const [failed, setFailed] = useState(false);
+  // Typing updates the field at once and the URL a beat later, so history
+  // gets one entry per search rather than one per keystroke.
+  const [draft, setDraft] = useState(query);
+  // True when this page opened the order sheet (and so pushed its history
+  // entry). A sheet reached by a link — from the notification bell, say —
+  // closes by clearing the parameter instead, so closing never leaves the page.
+  const [openedHere, setOpenedHere] = useState(false);
 
-  const refresh = async () => {
-    const data = await listOrders();
-    setOrders(data.orders);
-    // Keep an open receipt in sync with polling rather than freezing a stale copy.
-    setOpenOrder((current) =>
-      current ? data.orders.find((order) => order.id === current.id) ?? current : current,
-    );
-  };
+  /** Filters live in the URL, so Back undoes them and a filtered view can be linked to. */
+  const update = useCallback(
+    (next: Record<string, string | null>, replace = false) => {
+      const merged = new URLSearchParams(params.toString());
+      for (const [key, value] of Object.entries(next)) {
+        if (value == null || value === "" || value === "all") merged.delete(key);
+        else merged.set(key, value);
+      }
+      const search = merged.toString();
+      const url = search ? `${pathname}?${search}` : pathname;
+      if (replace) router.replace(url, { scroll: false });
+      else router.push(url, { scroll: false });
+    },
+    [params, pathname, router],
+  );
+
+  useEffect(() => setDraft(query), [query]);
+  useEffect(() => {
+    if (draft === query) return;
+    const timer = window.setTimeout(() => update({ q: draft, page: null }, true), 250);
+    return () => window.clearTimeout(timer);
+  }, [draft, query, update]);
+
+  const refresh = useCallback(async () => {
+    try {
+      const data = await listOrders();
+      setOrders(data.orders);
+      setFailed(false);
+    } catch {
+      setFailed(true);
+    }
+  }, []);
 
   useEffect(() => {
-    refresh()
-      .catch(() => undefined)
-      .finally(() => setLoading(false));
+    document.title = "Orders · LinqSwitch";
+    refresh().finally(() => setLoading(false));
     getMerchantMe()
       .then((data) => setMerchant(data.merchant))
       .catch(() => undefined);
-    const timer = window.setInterval(() => refresh().catch(() => undefined), 12000);
+    // Polls while something can still change, and only while the tab is visible.
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 12000);
     return () => window.clearInterval(timer);
-  }, []);
-
-  const statuses = useMemo(
-    () => Array.from(new Set(orders.map((order) => order.status))),
-    [orders],
-  );
+  }, [refresh]);
 
   /** Orders per day, so the scrubber can show where activity actually is. */
   const countsByDay = useMemo(() => {
@@ -73,124 +150,141 @@ export default function TransactionsPage() {
     return counts;
   }, [orders]);
 
-  const filtered = useMemo(
-    () =>
-      orders.filter((order) => {
-        const haystack =
-          `${order.id} ${order.payerName} ${order.payerEmail} ${order.token} ${order.network} ${order.paycrestOrderId ?? ""}`.toLowerCase();
-        return (
-          haystack.includes(query.toLowerCase()) &&
-          (network === "all" || order.network === network) &&
-          (status === "all" || order.status === status) &&
-          (!day || localIsoDay(order.createdAt) === localIsoDay(day))
-        );
-      }),
-    [day, network, orders, query, status],
-  );
+  const groupStatuses = GROUPS.find((entry) => entry.id === group)?.statuses ?? [];
 
-  const settledTotal = orders
-    .filter((order) => order.status === "settled")
-    .reduce((sum, order) => sum + order.amountNgn, 0);
-  const pendingTotal = orders
-    .filter((order) => !["settled", "failed", "refunded", "cancelled", "expired"].includes(order.status))
-    .reduce((sum, order) => sum + order.amountNgn, 0);
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const rows = orders.filter((order) => {
+      const haystack =
+        `${order.id} ${order.payerName} ${order.payerEmail} ${order.token} ${order.network} ${order.paycrestOrderId ?? ""} ${order.depositDigest ?? ""}`.toLowerCase();
+      return (
+        (!needle || haystack.includes(needle)) &&
+        (network === "all" || order.network === network) &&
+        (group === "all" || (groupStatuses as readonly string[]).includes(order.status)) &&
+        (!day || localIsoDay(order.createdAt) === day)
+      );
+    });
+    const direction = ascending ? 1 : -1;
+    return rows.sort((a, b) =>
+      sort === "amount"
+        ? (a.amountNgn - b.amountNgn) * direction
+        : (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * direction,
+    );
+  }, [ascending, day, group, groupStatuses, network, orders, query, sort]);
 
-  const retry = async (order: OrderRecord) => {
-    setBusy(true);
-    try {
-      const response = await retryTransfer(order.id);
-      toast(response.message ?? "Retry queued");
-      await refresh();
-    } catch (caught) {
-      toast(caught instanceof Error ? caught.message : "Retry failed", "error");
-    } finally {
-      setBusy(false);
-    }
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const current = Math.min(page, pages);
+  const visible = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  const openOrder = openId ? orders.find((order) => order.id === openId) ?? null : null;
+  const hasFilters = Boolean(query || network !== "all" || group !== "all" || day);
+
+  const settledTotal = orders.filter((order) => order.status === "settled").reduce((sum, order) => sum + order.amountNgn, 0);
+  const pendingTotal = orders.filter((order) => !FINAL.includes(order.status)).reduce((sum, order) => sum + order.amountNgn, 0);
+  const groupCount = (id: GroupId) =>
+    id === "all"
+      ? orders.length
+      : orders.filter((order) => (GROUPS.find((entry) => entry.id === id)?.statuses as readonly string[]).includes(order.status)).length;
+
+  const openOrderSheet = (id: string) => {
+    setOpenedHere(true);
+    update({ order: id });
+  };
+  const closeOrderSheet = () => {
+    if (openedHere) router.back();
+    else update({ order: null }, true);
+    setOpenedHere(false);
   };
 
-  const emailReceipt = async (order: OrderRecord, kind: ReceiptKind) => {
-    setBusy(true);
-    try {
-      await sendOrderReceipt(order.id, {
-        kind,
-        audience: kind.startsWith("payer_") ? "payer" : "merchant",
-      });
-      toast("Receipt queued for delivery");
-    } catch (caught) {
-      toast(caught instanceof Error ? caught.message : "Could not send receipt", "error");
-    } finally {
-      setBusy(false);
-    }
+  const toggleSort = (key: SortKey) =>
+    update({ sort: key === "date" ? null : key, dir: sort === key && !ascending ? "asc" : null, page: null }, true);
+
+  const exportCsv = () => {
+    const blob = new Blob([toCsv(filtered)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `linqswitch-orders-${localIsoDay(new Date())}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
+
+  const sortIcon = (key: SortKey) =>
+    sort === key ? (ascending ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : null;
 
   return (
     <div className="space-y-6">
-      {/* Page headers read like the landing's scene markers: a numbered mono
-          label over a display-weight title. */}
-      <header>
-        <p className="font-sans font-medium text-label tracking-mono text-accent-text">03 — Orders</p>
-        <h1 className="u-display mt-3 text-hero">Payments</h1>
-      </header>
+      <PageHeader
+        title="Orders"
+        description="Every payment through your links, newest first."
+        actions={
+          <Button variant="secondary" size="sm" onClick={exportCsv} disabled={!filtered.length}>
+            <Download className="h-3.5 w-3.5" /> Export CSV
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-3">
         <Card>
-          <p className="font-sans font-medium text-micro tracking-mono text-text-subtle">Settled</p>
-          <p className="tnum u-display mt-3 text-2xl">{formatCurrency(settledTotal, "NGN")}</p>
+          <p className="text-micro font-medium text-text-subtle">Settled</p>
+          <p className="tnum u-display mt-2 text-xl sm:text-2xl">{formatCurrency(settledTotal, "NGN")}</p>
         </Card>
         <Card>
-          <p className="font-sans font-medium text-micro tracking-mono text-text-subtle">In flight</p>
-          <p className="tnum u-display mt-3 text-2xl text-accent-text">
-            {formatCurrency(pendingTotal, "NGN")}
-          </p>
+          <p className="text-micro font-medium text-text-subtle">On its way</p>
+          <p className="tnum u-display mt-2 text-xl text-accent-text sm:text-2xl">{formatCurrency(pendingTotal, "NGN")}</p>
         </Card>
       </div>
 
       {/* Period scrubber — the selected day animates to the centre. */}
       <Card className="px-0 py-3">
         <div className="mb-1 flex items-center justify-between px-5">
-          <p className="font-sans font-medium text-micro tracking-mono text-text-subtle">
-            {day
-              ? day.toLocaleDateString(undefined, { dateStyle: "full" })
-              : "All time"}
+          <p className="text-micro font-medium text-text-subtle">
+            {day ? new Date(`${day}T00:00:00`).toLocaleDateString("en-GB", { dateStyle: "full" }) : "All dates"}
           </p>
           {day ? (
             <button
               type="button"
-              onClick={() => setDay(null)}
-              className="font-sans font-medium text-micro tracking-mono text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
+              onClick={() => update({ day: null, page: null })}
+              className="text-micro font-medium text-accent-text transition-opacity duration-fast ease-linq hover:opacity-75"
             >
-              Clear
+              Show all dates
             </button>
           ) : null}
         </div>
-        <DateCarousel value={day ?? new Date()} onChange={setDay} counts={countsByDay} />
+        <DateCarousel
+          value={day ? new Date(`${day}T00:00:00`) : new Date()}
+          onChange={(next) => update({ day: localIsoDay(next), page: null })}
+          counts={countsByDay}
+        />
       </Card>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <label className="flex h-12 flex-1 items-center gap-3 rounded-full bg-surface px-5 text-text-muted ring-1 ring-inset ring-line transition-shadow duration-fast ease-linq focus-within:ring-2 focus-within:ring-accent focus-within:shadow-[0_0_0_4px_hsl(var(--accent)/0.12)]">
-          <Search className="h-4 w-4 shrink-0" />
-          <input
-            type="search"
-            enterKeyHint="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onFocus={(event) => {
-              // The on-screen keyboard can cover roughly half the viewport —
-              // without this the field can end up hidden behind it right as
-              // it's focused.
-              window.setTimeout(
-                () => event.target.scrollIntoView({ behavior: "smooth", block: "center" }),
-                150,
-              );
-            }}
-            placeholder="Search payer, order or wallet"
-            className="w-full bg-transparent text-sm text-text outline-none placeholder:text-text-subtle"
-          />
-        </label>
-        <div className="grid grid-cols-2 gap-3 sm:w-[340px]">
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <label className="flex h-12 w-full items-center gap-3 rounded-full bg-surface px-5 sm:flex-1 text-text-muted ring-1 ring-inset ring-line transition-shadow duration-fast ease-linq focus-within:ring-2 focus-within:ring-accent focus-within:shadow-[0_0_0_4px_hsl(var(--accent)/0.12)]">
+            <Search className="h-4 w-4 shrink-0" />
+            <span className="sr-only">Search orders</span>
+            <input
+              type="search"
+              enterKeyHint="search"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="Payer, email, order or hash"
+              className="w-full bg-transparent text-sm text-text outline-none placeholder:text-text-subtle [&::-webkit-search-cancel-button]:hidden"
+            />
+            {draft ? (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setDraft("")}
+                className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-text-subtle hover:bg-surface-2 hover:text-text"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </label>
           <Select
+            className="sm:w-[200px]"
             value={network}
-            onChange={setNetwork}
+            onChange={(value) => update({ network: value, page: null })}
             options={[
               { value: "all", label: "All networks" },
               ...ENABLED_CHAINS.map((chain) => ({
@@ -200,44 +294,62 @@ export default function TransactionsPage() {
               })),
             ]}
           />
-          <Select
-            value={status}
-            onChange={setStatus}
-            options={[
-              { value: "all", label: "All statuses" },
-              ...statuses.map((entry) => ({
-                value: entry,
-                label: entry.charAt(0).toUpperCase() + entry.slice(1),
-              })),
-            ]}
-          />
         </div>
+
+        <fieldset className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+          <legend className="sr-only">Filter by status</legend>
+          {GROUPS.map((entry) => {
+            const active = entry.id === group;
+            const count = groupCount(entry.id);
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => update({ status: entry.id, page: null })}
+                className={cn(
+                  "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-medium",
+                  "transition-colors duration-fast ease-linq",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                  active ? "bg-text text-bg" : "bg-surface text-text-muted ring-1 ring-inset ring-line hover:text-text",
+                )}
+              >
+                {entry.label}
+                <span className={cn("tnum", active ? "text-bg/70" : "text-text-subtle")}>{count}</span>
+              </button>
+            );
+          })}
+        </fieldset>
       </div>
 
-      <section>
+      <section aria-label="Orders">
         {loading ? (
-          <RowSkeleton rows={4} />
+          <RowSkeleton rows={5} />
+        ) : failed && orders.length === 0 ? (
+          <Card className="p-0">
+            <EmptyState
+              art="none"
+              title="Could not load your orders"
+              body="The request did not complete. Check your connection and try again."
+              action={
+                <Button size="sm" variant="secondary" onClick={() => void refresh()}>
+                  Try again
+                </Button>
+              }
+            />
+          </Card>
         ) : filtered.length === 0 ? (
           <Card className="p-0">
             <EmptyState
-              title={orders.length ? "Nothing matches those filters" : "No transactions yet"}
-              body={
-                orders.length
-                  ? "Try a different day, network or status."
-                  : "Your first settled payment will appear here."
-              }
+              title={orders.length ? "Nothing matches those filters" : "No orders yet"}
+              body={orders.length ? "Try another day, network or status." : "Your first payment will appear here."}
               art={orders.length ? "none" : "coin"}
               action={
-                orders.length ? (
+                hasFilters ? (
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => {
-                      setQuery("");
-                      setNetwork("all");
-                      setStatus("all");
-                      setDay(null);
-                    }}
+                    onClick={() => update({ q: null, network: null, status: null, day: null, page: null })}
                   >
                     <RotateCcw className="h-3.5 w-3.5" /> Clear filters
                   </Button>
@@ -246,107 +358,161 @@ export default function TransactionsPage() {
             />
           </Card>
         ) : (
-          <div className="border-t border-line">
-            {filtered.map((order) => (
-              <button
-                key={order.id}
-                type="button"
-                onClick={() => setOpenOrder(order)}
-                className="-mx-2 flex w-full items-center gap-3.5 rounded-md border-b border-line px-2 py-3.5 text-left transition-colors duration-fast ease-linq last:border-b-0 hover:bg-surface-2"
-              >
-                <NetworkLogo network={order.network} size={32} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{order.payerName}</p>
-                  <p className="truncate font-sans font-medium text-micro tracking-mono text-text-subtle">
-                    {formatTokenAmount(order.cryptoAmountDue)} {order.token} ·{" "}
-                    {new Date(order.createdAt).toLocaleDateString(undefined, {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </p>
+          <>
+            {/* Table — tablet and up */}
+            <Card className="hidden overflow-hidden p-0 md:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-micro font-medium text-text-subtle">
+                    <th scope="col" className="px-5 py-3 font-medium">Payer</th>
+                    <th scope="col" className="px-3 py-3 font-medium">Network</th>
+                    <th scope="col" className="px-3 py-3 font-medium">Status</th>
+                    <th
+                      scope="col"
+                      aria-sort={sort === "amount" ? (ascending ? "ascending" : "descending") : "none"}
+                      className="px-3 py-3 text-right font-medium"
+                    >
+                      <button type="button" onClick={() => toggleSort("amount")} className="ml-auto flex items-center gap-1 hover:text-text">
+                        Amount {sortIcon("amount")}
+                      </button>
+                    </th>
+                    <th
+                      scope="col"
+                      aria-sort={sort === "date" ? (ascending ? "ascending" : "descending") : "none"}
+                      className="px-5 py-3 text-right font-medium"
+                    >
+                      <button type="button" onClick={() => toggleSort("date")} className="ml-auto flex items-center gap-1 hover:text-text">
+                        Date {sortIcon("date")}
+                      </button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((order) => (
+                    <tr
+                      key={order.id}
+                      onClick={() => openOrderSheet(order.id)}
+                      className="cursor-pointer border-b border-line transition-colors duration-fast ease-linq last:border-b-0 hover:bg-surface-2"
+                    >
+                      <td className="px-5 py-3.5">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openOrderSheet(order.id);
+                          }}
+                          className="block max-w-[260px] rounded-xs text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="block truncate font-medium">{order.payerName}</span>
+                          <span className="block truncate text-micro text-text-subtle">{order.payerEmail}</span>
+                        </button>
+                      </td>
+                      <td className="px-3 py-3.5">
+                        <span className="flex items-center gap-2 text-text-muted">
+                          <NetworkLogo network={order.network} size={20} />
+                          <span className="truncate">{chainDisplayName(order.network)}</span>
+                        </span>
+                      </td>
+                      <td className="px-3 py-3.5">
+                        <StatusPill status={order.status} />
+                      </td>
+                      <td className="tnum px-3 py-3.5 text-right">
+                        <span className="block font-medium">{formatCurrency(order.amountNgn, "NGN")}</span>
+                        <span className="block text-micro text-text-subtle">
+                          {formatTokenAmount(order.cryptoAmountDue)} {order.token}
+                        </span>
+                      </td>
+                      <td className="tnum whitespace-nowrap px-5 py-3.5 text-right text-text-muted">
+                        <span className="block">
+                          {new Date(order.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </span>
+                        <span className="block text-micro text-text-subtle">
+                          {new Date(order.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+
+            {/* List — phones */}
+            <ul className="md:hidden">
+              {visible.map((order) => (
+                <li key={order.id} className="border-b border-line last:border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => openOrderSheet(order.id)}
+                    className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3.5 rounded-md px-2 py-3.5 text-left transition-colors duration-fast ease-linq hover:bg-surface-2"
+                  >
+                    <NetworkLogo network={order.network} size={32} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{order.payerName}</p>
+                      <p className="tnum truncate text-micro text-text-subtle">
+                        {formatTokenAmount(order.cryptoAmountDue)} {order.token},{" "}
+                        {new Date(order.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <p className="tnum text-sm font-medium">{formatCurrency(order.amountNgn, "NGN")}</p>
+                      <StatusPill status={order.status} />
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <nav aria-label="Pages" className="mt-4 flex items-center justify-between gap-3 text-xs text-text-muted">
+              <p className="tnum">
+                {(current - 1) * PAGE_SIZE + 1}–{Math.min(current * PAGE_SIZE, filtered.length)} of {filtered.length}
+                {group !== "all" ? `, ${GROUPS.find((entry) => entry.id === group)?.label.toLowerCase()}` : ""}
+              </p>
+              {pages > 1 ? (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Previous page"
+                    disabled={current <= 1}
+                    onClick={() => update({ page: current - 1 === 1 ? null : String(current - 1) })}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="tnum px-1">
+                    {current} / {pages}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Next page"
+                    disabled={current >= pages}
+                    onClick={() => update({ page: String(current + 1) })}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-                <div className="flex flex-col items-end gap-1.5">
-                  <p className="tnum text-sm font-medium">{formatCurrency(order.amountNgn, "NGN")}</p>
-                  <StatusPill status={order.status} />
-                </div>
-              </button>
-            ))}
-          </div>
+              ) : null}
+            </nav>
+          </>
         )}
       </section>
 
-      {/* Tapping a row opens its receipt — the same ticket the payer received. */}
-      <Sheet
-        open={Boolean(openOrder)}
-        onClose={() => setOpenOrder(null)}
-        title="Transaction"
-        className="bg-bg"
-      >
-        {openOrder ? (
-          <>
-            <Receipt order={openOrder} merchant={merchant} />
-
-            {/* Only rendered once the payment has been seen on-chain. Before
-                that there is no digest, and a dead link would be worse than
-                none. */}
-            {explorerTxUrl(openOrder.network, openOrder.depositDigest) ? (
-              <a
-                href={explorerTxUrl(openOrder.network, openOrder.depositDigest)!}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-5 flex items-center justify-between gap-3 rounded-md bg-surface-2 px-4 py-2.5 text-xs transition duration-fast ease-linq hover:bg-surface-3"
-              >
-                <span className="font-sans font-medium text-micro tracking-mono text-text-subtle">
-                  Deposit transaction
-                </span>
-                <span className="flex items-center gap-1.5 font-medium text-text">
-                  <span className="font-mono">{shortenHash(openOrder.depositDigest!)}</span>
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-text-muted" />
-                </span>
-              </a>
-            ) : null}
-
-            <OrderOutcome order={openOrder} />
-
-            <div className="mt-7 grid grid-cols-2 gap-2">
-              <a
-                href={apiUrl(`/api/orders/${openOrder.id}/receipt.pdf?kind=payer_transaction_success`)}
-                target="_blank"
-                rel="noreferrer"
-                className={buttonClasses({ variant: "secondary", size: "sm" })}
-              >
-                <Download className="h-3.5 w-3.5" /> Download PDF
-              </a>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={busy}
-                onClick={() => emailReceipt(openOrder, "payer_transaction_success")}
-              >
-                <Mail className="h-3.5 w-3.5" /> Email payer
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={busy}
-                className="col-span-2"
-                onClick={() => emailReceipt(openOrder, merchantReceiptKind(openOrder))}
-              >
-                <Mail className="h-3.5 w-3.5" /> Email myself the invoice
-              </Button>
-              {RETRYABLE.has(openOrder.status) ? (
-                <Button
-                  className={cn("col-span-2")}
-                  loading={busy}
-                  onClick={() => retry(openOrder)}
-                >
-                  <RefreshCcw className="h-4 w-4" /> Retry payout to verified account
-                </Button>
-              ) : null}
-            </div>
-          </>
-        ) : null}
-      </Sheet>
+      <OrderSheet
+        order={openOrder}
+        merchant={merchant}
+        onClose={closeOrderSheet}
+        onChanged={refresh}
+      />
     </div>
   );
 }
+
+/** Wraps the page for useSearchParams, which Next requires a Suspense boundary around. */
+export default function TransactionsPage() {
+  return (
+    <Suspense fallback={<RowSkeleton rows={5} />}>
+      <OrdersPage />
+    </Suspense>
+  );
+}
+
