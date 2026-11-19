@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Copy, Download, RotateCcw, Search, X } from "lucide-react";
+import { Download, RotateCcw, Search, X } from "lucide-react";
 import { getMerchantMe, listOrders } from "@/lib/api-client";
 import { ENABLED_CHAINS, chainDisplayName } from "@/lib/chains";
 import { formatCurrency } from "@/lib/payment-data";
@@ -18,8 +18,7 @@ import { RowSkeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status";
 import { OrderSheet } from "@/components/dashboard/OrderSheet";
 import { PageHeader } from "@/components/dashboard/PageHeader";
-import { BulkAction, DataTable, type DataTableColumn } from "@/components/dashboard/DataTable";
-import { useToast } from "@/components/ui/toast";
+import { DataTable, type DataTableColumn } from "@/components/dashboard/DataTable";
 import { cn, localIsoDay } from "@/lib/utils";
 
 /** Status filters a merchant thinks in, each covering the raw states that mean it. */
@@ -78,7 +77,6 @@ function OrdersPage() {
   const group = (GROUPS.some((entry) => entry.id === params.get("status")) ? params.get("status") : "all") as GroupId;
   const day = params.get("day");
   const openId = params.get("order");
-  const { toast } = useToast();
 
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [merchant, setMerchant] = useState<MerchantRecord | null>(null);
@@ -405,6 +403,7 @@ function OrdersPage() {
           getRowId={(order) => order.id}
           loading={loading}
           noun={["order", "orders"]}
+          selectable={false}
           initialSort={{ key: "date", dir: "desc" }}
           onRowOpen={(order) => openOrderSheet(order.id)}
           isRowOpen={(order) => order.id === openId}
@@ -427,31 +426,6 @@ function OrdersPage() {
               }
             />
           }
-          bulkActions={({ rows, ids, clear }) => (
-            <>
-              <BulkAction
-                icon={<Download className="h-3.5 w-3.5" />}
-                label="Export"
-                onClick={() => {
-                  exportCsv(rows);
-                  toast(`Exported ${rows.length} order${rows.length === 1 ? "" : "s"}`);
-                }}
-              />
-              <BulkAction
-                icon={<Copy className="h-3.5 w-3.5" />}
-                label="Copy IDs"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(ids.join("\n"));
-                    toast(`Copied ${ids.length} order ID${ids.length === 1 ? "" : "s"}`);
-                    clear();
-                  } catch {
-                    toast("Could not copy", "error");
-                  }
-                }}
-              />
-            </>
-          )}
         />
       )}
 
