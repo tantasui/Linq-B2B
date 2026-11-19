@@ -446,3 +446,153 @@ dynamic-widget,
   --seg-7: #D0B9FF;
   --seg-8: #DCCAFF;
 }
+
+/* ============================================================================
+   CONSOLE — the merchant dashboard's own theme
+   ----------------------------------------------------------------------------
+   /dashboard sets `theme-console` on <html> while it is mounted (so sheets and
+   toasts portalled to <body> pick it up too) and removes it on the way out. The
+   landing page and the payer checkout never see it and keep the paper-and-
+   purple brand.
+
+   The direction: a working tool, not a brochure. Crisp white surfaces on a
+   barely-grey ground, ink type, hairline borders doing the structure, small
+   radii, and one colour — a deep money green — reserved for money that moved
+   and the one action that moves it. Purple survives only in the LINQ mark.
+   ========================================================================== */
+.theme-console {
+  /* Mercury's surfaces, Linq's colour. Rationale: src/app/dashboard/DESIGN.md */
+  color-scheme: dark;
+
+  --bg: 240 18% 11%;             /* #171721 — onyx canvas */
+  --surface: 240 17% 14%;        /* #1E1E2A — graphite card */
+  --surface-2: 240 16% 18%;      /* #272735 — raised control, hover */
+  --surface-3: 240 15% 22%;      /* #2F2F3F — pressed */
+
+  --text: 240 22% 94%;           /* #EDEDF3 — ivory */
+  --text-muted: 240 8% 78%;      /* #C3C3CC — ash */
+  --text-subtle: 240 6% 61%;     /* #9494A3 */
+
+  --border: 240 14% 20%;         /* #2C2C3A */
+  --border-strong: 240 11% 28%;  /* #3F3F4F */
+
+  --accent: 262 100% 65%;        /* Linq purple, the one action colour */
+  --accent-hover: 262 100% 71%;  /* lightens on hover on a dark ground */
+  --accent-text: 259 100% 79%;   /* #B395FF — purple type, readable on onyx */
+  --accent-soft: 262 40% 22%;
+  --accent-contrast: 0 0% 100%;
+
+  --success: 150 55% 58%;
+  --success-soft: 152 30% 15%;
+  --warning: 38 92% 62%;
+  --warning-soft: 36 40% 17%;
+  --danger: 2 85% 68%;
+  --danger-soft: 2 32% 15%;
+
+  --ticket: 240 16% 18%;
+  --ticket-edge: 240 11% 30%;
+  --printer: 240 18% 8%;
+
+  --brand: 262 100% 65%;
+
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --radius: 12px;
+  --btn-radius: 32px;
+
+  /* Cards sit flat; only floating layers cast a shadow. */
+  --shadow-sm: 0 0 0 0 transparent;
+  --shadow-md: 0 0 0 0 transparent;
+  --shadow-lg: 0 12px 32px hsl(240 30% 3% / 0.5);
+  --shadow-xl: 0 24px 64px hsl(240 30% 3% / 0.6);
+
+  --track-display: 0.01em;
+}
+
+html.theme-console body {
+  letter-spacing: 0;
+}
+
+/* Headings in a tool are set to be read, not admired: smaller, tighter. */
+.theme-console .u-display {
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+/* Buttons: squared to the radius scale, and the secondary is a white chip on a
+   hairline instead of an outline that floods ink on hover. Marker classes come
+   from buttonClasses(), so checkout buttons (no theme) are untouched. */
+.theme-console .btn {
+  border-radius: var(--btn-radius);
+  letter-spacing: 0;
+}
+/* Secondary: Mercury's ghost — ivory hairline, no fill, no ink flood on hover. */
+.theme-console .btn-secondary {
+  background: transparent;
+  color: hsl(var(--text));
+  box-shadow: inset 0 0 0 1px hsl(var(--text) / 0.35);
+}
+.theme-console .btn-secondary:hover {
+  background: hsl(var(--surface-2));
+  color: hsl(var(--text));
+  box-shadow: inset 0 0 0 1px hsl(var(--text) / 0.6);
+}
+.theme-console .btn-primary,
+.theme-console .btn-primary:hover {
+  box-shadow: none;
+}
+
+/* The skeleton sweep is white-on-paper by default; on onyx it would flash. */
+.theme-console .linq-skeleton {
+  background: hsl(var(--surface-2));
+}
+.theme-console .linq-skeleton::after {
+  background: linear-gradient(90deg, transparent, hsl(var(--text) / 0.06), transparent);
+}
+
+/* Stellar's mark is a flat black silhouette; on onyx it is turned white. */
+.theme-console .stellar-mark {
+  filter: invert(1) brightness(1.6);
+}
+
+.theme-console ::-webkit-scrollbar-thumb {
+  background: hsl(var(--text) / 0.18);
+  background-clip: content-box;
+}
+
+/* The coin and rocket illustrations belong to the brand's playful layer. */
+.theme-console .empty-art {
+  display: none;
+}
+
+.theme-console ::selection {
+  background: hsl(var(--accent) / 0.16);
+}
+
+/* Table checkboxes: the tick and the part-checked bar, drawn in white on the accent. */
+.linq-check::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur) var(--ease);
+  background: center / 12px 12px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 6.3l2.4 2.4 4.6-5'/%3E%3C/svg%3E");
+}
+.linq-check:indeterminate::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M3 6h6'/%3E%3C/svg%3E");
+}
+.linq-check:checked::after,
+.linq-check:indeterminate::after {
+  opacity: 1;
+  transform: none;
+}
+
+/* Behind sheets and the command menu: darken the onyx page, never lighten it. */
+.theme-console .linq-scrim {
+  background: hsl(240 30% 3% / 0.62);
+}

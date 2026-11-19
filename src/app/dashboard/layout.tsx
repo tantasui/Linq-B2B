@@ -76,6 +76,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .catch(() => setMerchant(null));
   }, []);
 
+  // The console theme sits on <html> while the dashboard is open, so sheets,
+  // the command menu and toasts (portalled to <body>) wear it too. The wrapper
+  // below carries the class as well, for the server-rendered first paint.
+  useEffect(() => {
+    document.documentElement.classList.add("theme-console");
+    return () => document.documentElement.classList.remove("theme-console");
+  }, []);
+
   // ⌘K / Ctrl+K anywhere in the dashboard.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -91,7 +99,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const verified = merchant?.onboardingStatus === "complete";
 
   return (
-    <div className="min-h-screen bg-bg text-text">
+    <div className="theme-console min-h-screen bg-bg text-text">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[120] focus:rounded-full focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:shadow-md"
@@ -105,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           href="/dashboard"
           aria-label="LinqSwitch home"
           className={cn(
-            "mb-7 flex items-center justify-center gap-2.5 rounded-md text-accent transition-opacity duration-fast ease-linq hover:opacity-80 lg:justify-start lg:px-2",
+            "mb-7 flex items-center justify-center gap-2.5 rounded-md text-[hsl(var(--brand))] transition-opacity duration-fast ease-linq hover:opacity-80 lg:justify-start lg:px-2",
             focusRing,
           )}
         >
@@ -192,7 +200,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             </>
           ) : (
-            <LinqMark size={30} className="text-accent" />
+            <LinqMark size={30} className="text-[hsl(var(--brand))]" />
           )}
         </Link>
 

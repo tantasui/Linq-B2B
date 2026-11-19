@@ -70,7 +70,7 @@ export function CommandMenu({ items, onClose }: { items: CommandItem[]; onClose:
         aria-label="Close"
         tabIndex={-1}
         onClick={onClose}
-        className="linq-fade-in absolute inset-0 bg-text/30 backdrop-blur-[3px]"
+        className="linq-scrim linq-fade-in absolute inset-0 bg-text/30 backdrop-blur-[3px]"
       />
       <div
         role="dialog"

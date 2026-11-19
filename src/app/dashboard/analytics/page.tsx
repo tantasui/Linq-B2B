@@ -124,7 +124,7 @@ export default function AnalyticsPage() {
         actions={
           // A segmented control: one rounded track, and the active range rides
           // in it as a filled capsule.
-          <fieldset className="flex gap-1 rounded-full bg-surface-2 p-1 ring-1 ring-inset ring-line">
+          <fieldset className="flex min-w-0 gap-1 rounded-full bg-surface-2 p-1 ring-1 ring-inset ring-line">
             <legend className="sr-only">Date range</legend>
             {RANGES.map((entry) => (
               <button

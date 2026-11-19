@@ -206,7 +206,7 @@ export function Sheet({
         ref={backdropRef}
         aria-label="Close"
         onClick={() => requestClose()}
-        className={cn("absolute inset-0 bg-text/30 backdrop-blur-[3px]", !closing && "linq-fade-in")}
+        className={cn("linq-scrim absolute inset-0 bg-text/30 backdrop-blur-[3px]", !closing && "linq-fade-in")}
       />
       <section
         ref={sectionRef}

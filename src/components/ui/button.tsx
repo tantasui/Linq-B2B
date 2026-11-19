@@ -22,9 +22,9 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
  * rule, because two competing elevations in one row read as clutter.
  */
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-accent text-accent-contrast shadow-sm hover:bg-accent-hover hover:shadow-md",
-  default: "bg-accent text-accent-contrast shadow-sm hover:bg-accent-hover hover:shadow-md",
-  secondary: "bg-transparent text-text ring-1 ring-inset ring-text-subtle hover:bg-text hover:text-bg",
+  primary: "btn-primary bg-accent text-accent-contrast shadow-sm hover:bg-accent-hover hover:shadow-md",
+  default: "btn-primary bg-accent text-accent-contrast shadow-sm hover:bg-accent-hover hover:shadow-md",
+  secondary: "btn-secondary bg-transparent text-text ring-1 ring-inset ring-text-subtle hover:bg-text hover:text-bg",
   outline: "bg-transparent text-text-muted ring-1 ring-inset ring-line hover:text-text hover:ring-text-subtle",
   ghost: "bg-transparent text-text-muted hover:bg-surface-2 hover:text-text",
   danger: "bg-transparent text-danger ring-1 ring-inset ring-danger/40 hover:bg-danger-soft",
@@ -54,7 +54,9 @@ export function buttonClasses({
   className,
 }: { variant?: ButtonVariant; size?: ButtonSize; className?: string } = {}) {
   return cn(
-    "inline-flex select-none items-center justify-center whitespace-nowrap rounded-full",
+    // `btn` is a hook for a page theme (the dashboard's squares the corners); it
+    // carries no style of its own.
+    "btn inline-flex select-none items-center justify-center whitespace-nowrap rounded-full",
     "font-sans font-medium tracking-mono",
     "transition-[background-color,color,box-shadow,opacity,transform] duration-fast ease-linq",
     "active:scale-[0.98]",
