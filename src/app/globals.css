@@ -461,52 +461,55 @@ dynamic-widget,
    and the one action that moves it. Purple survives only in the LINQ mark.
    ========================================================================== */
 .theme-console {
-  --bg: 240 9% 98%;              /* #FAFAFB — the ground */
-  --surface: 0 0% 100%;
-  --surface-2: 240 6% 96.5%;     /* #F5F5F7 — sidebar, recessed rows */
-  --surface-3: 240 5% 92%;       /* #E9E9EC — hover / pressed */
+  /* Mercury's surfaces, Linq's colour. Rationale: src/app/dashboard/DESIGN.md */
+  color-scheme: dark;
 
-  --text: 240 10% 6%;            /* #0E0E11 */
-  --text-muted: 240 4% 36%;      /* #5A5A61 */
-  --text-subtle: 240 4% 46%;     /* #71717A */
+  --bg: 240 18% 11%;             /* #171721 — onyx canvas */
+  --surface: 240 17% 14%;        /* #1E1E2A — graphite card */
+  --surface-2: 240 16% 18%;      /* #272735 — raised control, hover */
+  --surface-3: 240 15% 22%;      /* #2F2F3F — pressed */
 
-  --border: 240 6% 90%;          /* #E4E4E8 */
-  --border-strong: 240 5% 82%;
+  --text: 240 22% 94%;           /* #EDEDF3 — ivory */
+  --text-muted: 240 8% 78%;      /* #C3C3CC — ash */
+  --text-subtle: 240 6% 61%;     /* #9494A3 */
 
-  --accent: 158 82% 26%;         /* #0C7A52 — money green */
-  --accent-hover: 158 84% 21%;
-  --accent-text: 158 80% 24%;
-  --accent-soft: 152 48% 94.5%;  /* #EAF6F0 */
+  --border: 240 14% 20%;         /* #2C2C3A */
+  --border-strong: 240 11% 28%;  /* #3F3F4F */
+
+  --accent: 262 100% 65%;        /* Linq purple, the one action colour */
+  --accent-hover: 262 100% 71%;  /* lightens on hover on a dark ground */
+  --accent-text: 259 100% 79%;   /* #B395FF — purple type, readable on onyx */
+  --accent-soft: 262 40% 22%;
   --accent-contrast: 0 0% 100%;
 
-  --success: 158 82% 26%;
-  --success-soft: 152 48% 94.5%;
-  --warning: 32 92% 36%;
-  --warning-soft: 40 90% 94%;
-  --danger: 358 70% 46%;
-  --danger-soft: 358 85% 96.5%;
+  --success: 150 55% 58%;
+  --success-soft: 152 30% 15%;
+  --warning: 38 92% 62%;
+  --warning-soft: 36 40% 17%;
+  --danger: 2 85% 68%;
+  --danger-soft: 2 32% 15%;
 
-  /* The receipt ticket goes neutral here; the printer keeps the money colour. */
-  --ticket: 240 6% 97%;
-  --ticket-edge: 240 6% 86%;
-  --printer: 240 10% 6%;
+  --ticket: 240 16% 18%;
+  --ticket-edge: 240 11% 30%;
+  --printer: 240 18% 8%;
 
-  --brand: 262 100% 65%;         /* the LINQ mark only */
+  --brand: 262 100% 65%;
 
-  --r-xs: 4px;
-  --r-sm: 6px;
-  --r-md: 8px;
-  --r-lg: 10px;
-  --r-xl: 12px;
-  --radius: 8px;
-  --btn-radius: 8px;
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --radius: 12px;
+  --btn-radius: 32px;
 
-  --shadow-sm: 0 1px 2px hsl(240 10% 6% / 0.05);
-  --shadow-md: 0 1px 2px hsl(240 10% 6% / 0.04), 0 4px 12px hsl(240 10% 6% / 0.06);
-  --shadow-lg: 0 2px 4px hsl(240 10% 6% / 0.04), 0 12px 32px hsl(240 10% 6% / 0.10);
-  --shadow-xl: 0 4px 8px hsl(240 10% 6% / 0.05), 0 24px 56px hsl(240 10% 6% / 0.16);
+  /* Cards sit flat; only floating layers cast a shadow. */
+  --shadow-sm: 0 0 0 0 transparent;
+  --shadow-md: 0 0 0 0 transparent;
+  --shadow-lg: 0 12px 32px hsl(240 30% 3% / 0.5);
+  --shadow-xl: 0 24px 64px hsl(240 30% 3% / 0.6);
 
-  --track-display: -0.025em;
+  --track-display: 0.01em;
 }
 
 html.theme-console body {
@@ -515,7 +518,7 @@ html.theme-console body {
 
 /* Headings in a tool are set to be read, not admired: smaller, tighter. */
 .theme-console .u-display {
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.15;
 }
 
@@ -526,17 +529,38 @@ html.theme-console body {
   border-radius: var(--btn-radius);
   letter-spacing: 0;
 }
+/* Secondary: Mercury's ghost — ivory hairline, no fill, no ink flood on hover. */
 .theme-console .btn-secondary {
-  background: hsl(var(--surface));
+  background: transparent;
   color: hsl(var(--text));
-  box-shadow: inset 0 0 0 1px hsl(var(--border-strong)), var(--shadow-sm);
+  box-shadow: inset 0 0 0 1px hsl(var(--text) / 0.35);
 }
 .theme-console .btn-secondary:hover {
   background: hsl(var(--surface-2));
   color: hsl(var(--text));
+  box-shadow: inset 0 0 0 1px hsl(var(--text) / 0.6);
 }
-.theme-console .btn-primary {
-  box-shadow: inset 0 -1px 0 hsl(0 0% 0% / 0.18), var(--shadow-sm);
+.theme-console .btn-primary,
+.theme-console .btn-primary:hover {
+  box-shadow: none;
+}
+
+/* The skeleton sweep is white-on-paper by default; on onyx it would flash. */
+.theme-console .linq-skeleton {
+  background: hsl(var(--surface-2));
+}
+.theme-console .linq-skeleton::after {
+  background: linear-gradient(90deg, transparent, hsl(var(--text) / 0.06), transparent);
+}
+
+/* Stellar's mark is a flat black silhouette; on onyx it is turned white. */
+.theme-console .stellar-mark {
+  filter: invert(1) brightness(1.6);
+}
+
+.theme-console ::-webkit-scrollbar-thumb {
+  background: hsl(var(--text) / 0.18);
+  background-clip: content-box;
 }
 
 /* The coin and rocket illustrations belong to the brand's playful layer. */
@@ -566,4 +590,9 @@ html.theme-console body {
 .linq-check:indeterminate::after {
   opacity: 1;
   transform: none;
+}
+
+/* Behind sheets and the command menu: darken the onyx page, never lighten it. */
+.theme-console .linq-scrim {
+  background: hsl(240 30% 3% / 0.62);
 }

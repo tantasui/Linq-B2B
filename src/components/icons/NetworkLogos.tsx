@@ -109,7 +109,7 @@ export function NetworkLogo({
         // ink build's near-black surfaces; the product is on paper now, so it
         // stays black and the invert would make it vanish instead. Every other
         // badge here is genuinely multi-colour and is never tinted.
-        chain?.id === "stellar" && "brightness-0",
+        chain?.id === "stellar" && "stellar-mark brightness-0",
         className,
       )}
       style={{ width: size, height: size, display: "block", flexShrink: 0, borderRadius: "50%" }}
