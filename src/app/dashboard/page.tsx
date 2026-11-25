@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ArrowDownLeft, ArrowRight, ChevronRight, Eye, EyeOff, Receipt as ReceiptIcon, ShieldCheck } from "lucide-react";
+import { ArrowDownLeft, ArrowRight, ChevronRight, Eye, EyeOff, Receipt as ReceiptIcon, ShieldCheck } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { ChartFrame } from "@/components/ui/chart-frame";
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils";
 import type { MerchantRecord, OrderRecord } from "@/server/types";
 
 const IN_FLIGHT = ["initiated", "partially_paid", "awaiting_completion", "deposited", "pending", "fulfilling", "validated", "settling"];
-const NEEDS_ATTENTION = ["failed", "refunding"];
 const HIDE_KEY = "linq:hide-balance";
 
 export default function DashboardPage() {
@@ -71,7 +70,6 @@ export default function DashboardPage() {
 
   const settled = orders.filter((order) => order.status === "settled");
   const pending = orders.filter((order) => IN_FLIGHT.includes(order.status));
-  const attention = orders.filter((order) => NEEDS_ATTENTION.includes(order.status));
   const totalNgn = settled.reduce((sum, order) => sum + order.amountNgn, 0);
   const pendingNgn = pending.reduce((sum, order) => sum + order.amountNgn, 0);
   const trend = settled.length
@@ -147,21 +145,11 @@ export default function DashboardPage() {
         </Link>
       ) : null}
 
-      {attention.length ? (
-        <Link
-          href="/dashboard/transactions?status=failed"
-          className="flex items-center gap-3.5 rounded-lg bg-danger-soft px-4 py-3.5 text-sm text-danger ring-1 ring-inset ring-danger/15 transition-colors duration-fast ease-linq hover:bg-danger-soft/70"
-        >
-          <AlertTriangle className="h-5 w-5 shrink-0" />
-          <span className="min-w-0 flex-1">
-            <span className="font-medium">
-              {attention.length} payout{attention.length === 1 ? "" : "s"} need{attention.length === 1 ? "s" : ""} attention.
-            </span>{" "}
-            {attention.length === 1 ? "Open it to retry the payout." : "Open each to retry its payout."}
-          </span>
-          <ArrowRight className="h-4 w-4 shrink-0" />
-        </Link>
-      ) : null}
+      {/* No "N payouts need attention" banner. It counted every order marked
+          failed, and an order is also marked failed when creating it fails
+          before any money moves, so a run of abandoned checkouts read as
+          payouts gone wrong. A real payout failure still reaches the
+          merchant by email and under Transactions. */}
 
       {/* Two ways to get paid, given equal weight. */}
       <section aria-label="Get paid" className="grid grid-cols-2 gap-3">
