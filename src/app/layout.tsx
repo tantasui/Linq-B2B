@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter_Tight, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import ClientBody from "./ClientBody";
 import { ToastProvider } from "@/components/ui/toast";
@@ -9,18 +9,25 @@ import { ToastProvider } from "@/components/ui/toast";
  * dashboard and a heading on the landing page are literally the same type at
  * the same tracking. Inter Tight carries display and prose (400 for body, 680
  * for headings); JetBrains Mono carries every label, status and column head.
+ *
+ * Self-hosted (latin subset, variable woff2, in ./fonts) rather than loaded
+ * through next/font/google, which fetches from Google Fonts on every build and
+ * failed a production build when Google's response did not parse. Both are
+ * OFL-licensed. See components/landing/fonts.ts.
  */
-const interTight = Inter_Tight({
-  subsets: ["latin"],
+const interTight = localFont({
+  src: "./fonts/inter-tight-latin.woff2",
   variable: "--font-display",
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
+  style: "normal",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
+const jetbrainsMono = localFont({
+  src: "./fonts/jetbrains-mono-latin.woff2",
   variable: "--font-mono",
-  weight: ["400", "500"],
+  weight: "400 500",
+  style: "normal",
   display: "swap",
 });
 
